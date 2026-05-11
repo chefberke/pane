@@ -5,7 +5,7 @@ import "./globals.css";
 const geist = Geist({ subsets: ["latin"], variable: "--font-geist" });
 
 export const metadata: Metadata = {
-  title: "Termal — Visual Bookmark Canvas",
+  title: "Pane",
   description: "An infinite visual workspace for saving and organizing internet content",
 };
 
