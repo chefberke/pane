@@ -2,6 +2,7 @@
 import { useEffect, useRef, useState, useCallback } from 'react';
 import type { Block } from '@/types';
 
+/** Props for the ⌘K search modal. */
 interface Props {
   blocks: Block[];
   isDark: boolean;
@@ -9,6 +10,7 @@ interface Props {
   onNavigate: (block: Block) => void;
 }
 
+/** Returns a human-readable label for a block, used for search and display. */
 function getBlockLabel(block: Block): string {
   if (block.type === 'link') return block.title || block.url;
   if (block.type === 'youtube') return block.title || 'YouTube video';

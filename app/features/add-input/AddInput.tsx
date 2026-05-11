@@ -1,8 +1,11 @@
 'use client';
 import { useState, useEffect, useRef } from 'react';
 
+/** Props for the double-click popover that lets users type a URL or note. */
 interface Props {
+  /** Viewport-relative X position of the popover center. */
   x: number;
+  /** Viewport-relative Y position of the popover center. */
   y: number;
   onSubmit: (value: string) => void;
   onClose: () => void;

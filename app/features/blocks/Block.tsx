@@ -1,14 +1,17 @@
 'use client';
 import { memo, useRef, useEffect, useCallback } from 'react';
 import type { Block } from '@/types';
-import LinkPreview from './blocks/LinkPreview';
-import YoutubeEmbed from './blocks/YoutubeEmbed';
-import TwitterEmbed from './blocks/TwitterEmbed';
-import ImageEmbed from './blocks/ImageEmbed';
-import TextNote from './blocks/TextNote';
+import LinkPreview from './renderers/LinkPreview';
+import YoutubeEmbed from './renderers/YoutubeEmbed';
+import TwitterEmbed from './renderers/TwitterEmbed';
+import ImageEmbed from './renderers/ImageEmbed';
+import TextNote from './renderers/TextNote';
+import { DRAG_THRESHOLD } from './constants';
 
+/** Props for the draggable block container. */
 interface Props {
   block: Block;
+  /** Current canvas scale — used to convert screen px to canvas units during drag. */
   scale: number;
   selected: boolean;
   isInMultiSelection: boolean;
@@ -66,7 +69,7 @@ function BlockContainer({
       const s = scaleRef.current;
       const dx = (e.clientX - dragStart.current.mx) / s;
       const dy = (e.clientY - dragStart.current.my) / s;
-      if (Math.abs(dx) > 2 || Math.abs(dy) > 2) hasDragged.current = true;
+      if (Math.abs(dx) > DRAG_THRESHOLD || Math.abs(dy) > DRAG_THRESHOLD) hasDragged.current = true;
       dragDelta.current = { dx, dy };
 
       if (isMultiDrag.current) {

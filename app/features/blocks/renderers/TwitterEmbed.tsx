@@ -1,6 +1,7 @@
 'use client';
 import type { TwitterBlock } from '@/types';
 
+/** Renders a tweet via the Twitter platform embed iframe. */
 export default function TwitterEmbed({ block }: { block: TwitterBlock }) {
   return (
     <div className="w-[320px] h-[480px] bg-white dark:bg-[#242424] overflow-hidden">

@@ -2,6 +2,7 @@
 import { useState, useRef, useEffect } from 'react';
 import type { TextBlock } from '@/types';
 
+/** Props for the editable sticky-note text block. */
 interface Props {
   block: TextBlock;
   onUpdate: (content: string) => void;

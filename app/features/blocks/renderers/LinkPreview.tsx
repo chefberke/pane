@@ -2,10 +2,15 @@
 import { useState } from 'react';
 import type { LinkBlock } from '@/types';
 
+function parseDomain(url: string): string {
+  try { return new URL(url).hostname.replace('www.', ''); } catch { return url; }
+}
+
+/** Renders a rich link preview card with image, title, description, and favicon. */
 export default function LinkPreview({ block }: { block: LinkBlock }) {
   const { url, title, description, image, favicon, loading } = block;
   const [imgFailed, setImgFailed] = useState(false);
-  const domain = (() => { try { return new URL(url).hostname.replace('www.', ''); } catch { return url; } })();
+  const domain = parseDomain(url);
 
   if (loading) {
     return (

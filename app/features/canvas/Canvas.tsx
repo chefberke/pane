@@ -1,38 +1,15 @@
 'use client';
 import { useState, useRef, useCallback, useEffect } from 'react';
-import type { Block } from '@/types';
-import BlockContainer from './Block';
-import AddInput from './AddInput';
-import Toolbar from './Toolbar';
-import SearchModal from './SearchModal';
+import type { Block, LinkBlock } from '@/types';
+import BlockContainer from '../blocks/Block';
+import AddInput from '../add-input/AddInput';
+import Toolbar from '../toolbar/Toolbar';
+import SearchModal from '../search/SearchModal';
+import { MIN_SCALE, MAX_SCALE, ZOOM_STEP, DRAG_THRESHOLD, MARQUEE_THRESHOLD, DOT_GRID_SIZE, BLOCK_SIZES } from './constants';
+import { uid, detectType, extractYouTubeId, extractTweetId } from './utils';
+import type { Marquee } from './types';
 
-const MIN_SCALE = 0.1;
-const MAX_SCALE = 4;
-
-function uid() { return Math.random().toString(36).slice(2, 10); }
-
-function detectType(url: string): Block['type'] {
-  try {
-    const u = new URL(url);
-    if (u.hostname.includes('youtube.com') || u.hostname.includes('youtu.be')) return 'youtube';
-    if (u.hostname.includes('twitter.com') || u.hostname.includes('x.com')) return 'twitter';
-    if (/\.(png|jpg|jpeg|gif|webp|svg|avif)(\?.*)?$/i.test(u.pathname)) return 'image';
-  } catch { /* not a URL */ }
-  return 'link';
-}
-
-function extractYouTubeId(url: string): string | null {
-  const patterns = [/[?&]v=([a-zA-Z0-9_-]{11})/, /youtu\.be\/([a-zA-Z0-9_-]{11})/, /\/embed\/([a-zA-Z0-9_-]{11})/, /\/shorts\/([a-zA-Z0-9_-]{11})/];
-  for (const p of patterns) { const m = url.match(p); if (m?.[1]) return m[1]; }
-  return null;
-}
-
-function extractTweetId(url: string): string | null {
-  return url.match(/(?:twitter\.com|x\.com)\/\w+\/status\/(\d+)/)?.[1] ?? null;
-}
-
-type Marquee = { x1: number; y1: number; x2: number; y2: number };
-
+/** Infinite pan/zoom canvas — manages blocks, viewport transforms, and all keyboard shortcuts. */
 export default function Canvas() {
   const [blocks, setBlocks] = useState<Block[]>([]);
   const [offset, setOffset] = useState({ x: 0, y: 0 });
@@ -54,6 +31,7 @@ export default function Canvas() {
   const didDrag = useRef(false);
   const spaceHeld = useRef(false);
 
+  // Stable refs so event handlers can read latest values without stale closures
   const offsetRef = useRef(offset);
   const scaleRef = useRef(scale);
   const selectedIdsRef = useRef(selectedIds);
@@ -61,7 +39,7 @@ export default function Canvas() {
   useEffect(() => { scaleRef.current = scale; }, [scale]);
   useEffect(() => { selectedIdsRef.current = selectedIds; }, [selectedIds]);
 
-  // Theme
+  // Theme — respects saved preference, falls back to system preference
   useEffect(() => {
     const saved = localStorage.getItem('termal-theme');
     const prefersDark = window.matchMedia('(prefers-color-scheme: dark)').matches;
@@ -79,7 +57,7 @@ export default function Canvas() {
     });
   }, []);
 
-  // Persist blocks
+  // Persist blocks to localStorage
   useEffect(() => {
     try { const saved = localStorage.getItem('termal-blocks'); if (saved) setBlocks(JSON.parse(saved)); } catch { /* ignore */ }
   }, []);
@@ -93,7 +71,7 @@ export default function Canvas() {
     if (el) setOffset({ x: el.clientWidth / 2, y: el.clientHeight / 2 });
   }, []);
 
-  // Zoom with wheel
+  // Pinch/wheel zoom anchored to cursor position
   useEffect(() => {
     const el = viewportRef.current;
     if (!el) return;
@@ -103,23 +81,23 @@ export default function Canvas() {
       const cx = e.clientX - rect.left;
       const cy = e.clientY - rect.top;
       const factor = e.deltaY < 0 ? 1.08 : 0.92;
-      const prevScale = scaleRef.current;
-      const nextScale = Math.min(MAX_SCALE, Math.max(MIN_SCALE, prevScale * factor));
-      const ratio = nextScale / prevScale;
+      const prev = scaleRef.current;
+      const next = Math.min(MAX_SCALE, Math.max(MIN_SCALE, prev * factor));
+      const ratio = next / prev;
       const nextOffset = {
         x: cx - (cx - offsetRef.current.x) * ratio,
         y: cy - (cy - offsetRef.current.y) * ratio,
       };
-      scaleRef.current = nextScale;
+      scaleRef.current = next;
       offsetRef.current = nextOffset;
-      setScale(nextScale);
+      setScale(next);
       setOffset(nextOffset);
     };
     el.addEventListener('wheel', onWheel, { passive: false });
     return () => el.removeEventListener('wheel', onWheel);
   }, []);
 
-  // Space key = temporary pan mode
+  // Space bar activates temporary pan mode
   useEffect(() => {
     const onDown = (e: KeyboardEvent) => {
       if (e.code !== 'Space' || e.repeat) return;
@@ -137,6 +115,42 @@ export default function Canvas() {
     window.addEventListener('keyup', onUp);
     return () => { window.removeEventListener('keydown', onDown); window.removeEventListener('keyup', onUp); };
   }, []);
+
+  const screenToCanvas = useCallback((sx: number, sy: number) => ({
+    x: (sx - offsetRef.current.x) / scaleRef.current,
+    y: (sy - offsetRef.current.y) / scaleRef.current,
+  }), []);
+
+  /** Scales around the viewport center by `factor`. */
+  const zoomBy = useCallback((factor: number) => {
+    setScale(s => {
+      const next = Math.min(MAX_SCALE, Math.max(MIN_SCALE, s * factor));
+      const el = viewportRef.current;
+      if (el) {
+        const cx = el.clientWidth / 2;
+        const cy = el.clientHeight / 2;
+        setOffset(o => ({ x: cx - (cx - o.x) * (next / s), y: cy - (cy - o.y) * (next / s) }));
+      }
+      return next;
+    });
+  }, []);
+
+  /** Resets scale to 1 and re-centers the viewport. */
+  const resetView = useCallback(() => {
+    setScale(1);
+    const el = viewportRef.current;
+    if (el) setOffset({ x: el.clientWidth / 2, y: el.clientHeight / 2 });
+  }, []);
+
+  /** Adds a blank text note at the viewport center. */
+  const addTextNote = useCallback(() => {
+    const el = viewportRef.current;
+    const sx = el ? el.clientWidth / 2 : 400;
+    const sy = el ? el.clientHeight / 2 : 300;
+    const pos = screenToCanvas(sx, sy);
+    const { w, h } = BLOCK_SIZES.text;
+    setBlocks(prev => [...prev, { id: uid(), type: 'text', content: '', x: pos.x - w / 2, y: pos.y - h / 2 }]);
+  }, [screenToCanvas]);
 
   // Keyboard shortcuts
   useEffect(() => {
@@ -159,89 +173,52 @@ export default function Canvas() {
 
       if (inInput) return;
 
-      // Mode shortcuts
       if (e.key === 'v' || e.key === 'V') setIsPanMode(false);
       if (e.key === 'h' || e.key === 'H') setIsPanMode(true);
-
-      // Add text note
-      if (e.key === 't' || e.key === 'T') {
-        const el = viewportRef.current;
-        const sx = el ? el.clientWidth / 2 : 400;
-        const sy = el ? el.clientHeight / 2 : 300;
-        const pos = {
-          x: (sx - offsetRef.current.x) / scaleRef.current,
-          y: (sy - offsetRef.current.y) / scaleRef.current,
-        };
-        setBlocks(prev => [...prev, { id: uid(), type: 'text', content: '', x: pos.x - 112, y: pos.y - 44 }]);
-      }
-
-      // Theme toggle
-      if (e.key === 'd' || e.key === 'D') {
-        setIsDark(prev => {
-          const next = !prev;
-          document.documentElement.classList.toggle('dark', next);
-          localStorage.setItem('termal-theme', next ? 'dark' : 'light');
-          return next;
-        });
-      }
-
-      // Zoom
-      if (e.key === '0') {
-        setScale(1);
-        const el = viewportRef.current;
-        if (el) setOffset({ x: el.clientWidth / 2, y: el.clientHeight / 2 });
-      }
-      if ((e.key === '=' || e.key === '+') && !e.metaKey && !e.ctrlKey) {
-        setScale(s => {
-          const next = Math.min(MAX_SCALE, s * 1.25);
-          const el = viewportRef.current;
-          if (el) { const cx = el.clientWidth / 2; const cy = el.clientHeight / 2; setOffset(o => ({ x: cx - (cx - o.x) * (next / s), y: cy - (cy - o.y) * (next / s) })); }
-          return next;
-        });
-      }
-      if (e.key === '-' && !e.metaKey && !e.ctrlKey) {
-        setScale(s => {
-          const next = Math.max(MIN_SCALE, s / 1.25);
-          const el = viewportRef.current;
-          if (el) { const cx = el.clientWidth / 2; const cy = el.clientHeight / 2; setOffset(o => ({ x: cx - (cx - o.x) * (next / s), y: cy - (cy - o.y) * (next / s) })); }
-          return next;
-        });
-      }
+      if (e.key === 't' || e.key === 'T') addTextNote();
+      if (e.key === 'd' || e.key === 'D') toggleTheme();
+      if (e.key === '0') resetView();
+      if ((e.key === '=' || e.key === '+') && !e.metaKey && !e.ctrlKey) zoomBy(ZOOM_STEP);
+      if (e.key === '-' && !e.metaKey && !e.ctrlKey) zoomBy(1 / ZOOM_STEP);
     };
     window.addEventListener('keydown', onKey);
     return () => window.removeEventListener('keydown', onKey);
-  }, []);
-
-  const screenToCanvas = useCallback((sx: number, sy: number) => ({
-    x: (sx - offsetRef.current.x) / scaleRef.current,
-    y: (sy - offsetRef.current.y) / scaleRef.current,
-  }), []);
+  }, [addTextNote, toggleTheme, resetView, zoomBy]);
 
   const addBlockFromUrl = useCallback(async (url: string, screenX: number, screenY: number) => {
     const pos = screenToCanvas(screenX, screenY);
     const type = detectType(url);
+
     if (type === 'youtube') {
       const videoId = extractYouTubeId(url);
       if (!videoId) return;
-      setBlocks(prev => [...prev, { id: uid(), type: 'youtube', videoId, x: pos.x - 200, y: pos.y - 112 }]);
+      const { w, h } = BLOCK_SIZES.youtube;
+      setBlocks(prev => [...prev, { id: uid(), type: 'youtube', videoId, x: pos.x - w / 2, y: pos.y - h / 2 }]);
       return;
     }
     if (type === 'twitter') {
       const tweetId = extractTweetId(url);
       if (!tweetId) return;
-      setBlocks(prev => [...prev, { id: uid(), type: 'twitter', tweetId, url, x: pos.x - 160, y: pos.y - 240 }]);
+      const { w, h } = BLOCK_SIZES.twitter;
+      setBlocks(prev => [...prev, { id: uid(), type: 'twitter', tweetId, url, x: pos.x - w / 2, y: pos.y - h / 2 }]);
       return;
     }
     if (type === 'image') {
-      setBlocks(prev => [...prev, { id: uid(), type: 'image', url, x: pos.x - 144, y: pos.y - 100 }]);
+      const { w, h } = BLOCK_SIZES.image;
+      setBlocks(prev => [...prev, { id: uid(), type: 'image', url, x: pos.x - w / 2, y: pos.y - h / 2 }]);
       return;
     }
+
     const id = uid();
-    setBlocks(prev => [...prev, { id, type: 'link', url, loading: true, x: pos.x - 144, y: pos.y - 60 }]);
+    const { w, h } = BLOCK_SIZES.link;
+    setBlocks(prev => [...prev, { id, type: 'link', url, loading: true, x: pos.x - w / 2, y: pos.y - h / 2 }]);
     try {
       const res = await fetch(`/api/preview?url=${encodeURIComponent(url)}`);
       const data = await res.json();
-      setBlocks(prev => prev.map(b => b.id === id ? { ...b, loading: false, title: data.title, description: data.description, image: data.image, favicon: data.favicon } : b));
+      setBlocks(prev => prev.map(b => b.id === id
+        ? { ...b, loading: false, title: data.title, description: data.description, image: data.image, favicon: data.favicon }
+        : b
+      ));
     } catch {
       setBlocks(prev => prev.map(b => b.id === id ? { ...b, loading: false } : b));
     }
@@ -250,7 +227,7 @@ export default function Canvas() {
   const addBlockFromUrlRef = useRef(addBlockFromUrl);
   useEffect(() => { addBlockFromUrlRef.current = addBlockFromUrl; }, [addBlockFromUrl]);
 
-  // Global paste
+  // Paste a URL anywhere on the canvas to drop it at the viewport center
   useEffect(() => {
     const onPaste = (e: ClipboardEvent) => {
       const text = e.clipboardData?.getData('text')?.trim();
@@ -263,7 +240,6 @@ export default function Canvas() {
     return () => window.removeEventListener('paste', onPaste);
   }, []);
 
-  // Multi-drag callbacks (stable refs, no deps)
   const handleMultiDragMove = useCallback((dx: number, dy: number) => {
     selectedIdsRef.current.forEach(id => {
       const el = document.querySelector(`[data-block-id="${id}"]`) as HTMLElement | null;
@@ -288,37 +264,27 @@ export default function Canvas() {
         next.has(id) ? next.delete(id) : next.add(id);
         return next;
       }
-      // If clicking a block already in a multi-selection, keep all selected (to allow group drag)
+      // Keep group selected when clicking into a multi-selection (allows group drag)
       if (prev.size > 1 && prev.has(id)) return prev;
       return new Set([id]);
     });
   }, []);
 
   const handleBlockClickEnd = useCallback((id: string, wasDragged: boolean) => {
-    // Clicked (no drag) on a block inside a multi-selection → reduce to single
+    // Plain click inside a multi-selection → collapse to single
     if (!wasDragged && selectedIdsRef.current.size > 1 && selectedIdsRef.current.has(id)) {
       setSelectedIds(new Set([id]));
     }
   }, []);
 
-  // Canvas mouse handlers
   const handleCanvasMouseDown = useCallback((e: React.MouseEvent) => {
-    // Middle mouse = always pan
-    if (e.button === 1) {
+    if (e.button === 1 || (e.button === 0 && (spaceHeld.current || isPanMode))) {
       isPanning.current = true;
       panOrigin.current = { mx: e.clientX, my: e.clientY, ox: offsetRef.current.x, oy: offsetRef.current.y };
       return;
     }
     if (e.button !== 0) return;
 
-    // Space held or pan mode = pan
-    if (spaceHeld.current || isPanMode) {
-      isPanning.current = true;
-      panOrigin.current = { mx: e.clientX, my: e.clientY, ox: offsetRef.current.x, oy: offsetRef.current.y };
-      return;
-    }
-
-    // Select mode = marquee
     const rect = viewportRef.current!.getBoundingClientRect();
     isMarqueeing.current = true;
     didDrag.current = false;
@@ -330,7 +296,7 @@ export default function Canvas() {
     if (isPanning.current) {
       const dx = e.clientX - panOrigin.current.mx;
       const dy = e.clientY - panOrigin.current.my;
-      if (Math.abs(dx) > 2 || Math.abs(dy) > 2) didDrag.current = true;
+      if (Math.abs(dx) > DRAG_THRESHOLD || Math.abs(dy) > DRAG_THRESHOLD) didDrag.current = true;
       setOffset({ x: panOrigin.current.ox + dx, y: panOrigin.current.oy + dy });
       return;
     }
@@ -338,7 +304,7 @@ export default function Canvas() {
       const rect = viewportRef.current!.getBoundingClientRect();
       const mx = e.clientX - rect.left;
       const my = e.clientY - rect.top;
-      if (Math.abs(mx - marqueeStart.current.x) > 4 || Math.abs(my - marqueeStart.current.y) > 4) {
+      if (Math.abs(mx - marqueeStart.current.x) > MARQUEE_THRESHOLD || Math.abs(my - marqueeStart.current.y) > MARQUEE_THRESHOLD) {
         didDrag.current = true;
         const m: Marquee = {
           x1: Math.min(marqueeStart.current.x, mx),
@@ -354,31 +320,30 @@ export default function Canvas() {
 
   const handleMouseUp = useCallback(() => {
     isPanning.current = false;
+    if (!isMarqueeing.current) return;
 
-    if (isMarqueeing.current) {
-      isMarqueeing.current = false;
-      const m = marqueeRef.current;
-      if (m) {
-        const viewport = viewportRef.current;
-        if (viewport) {
-          const vRect = viewport.getBoundingClientRect();
-          const newSelected = new Set<string>();
-          document.querySelectorAll('[data-block-id]').forEach(el => {
-            const bRect = (el as HTMLElement).getBoundingClientRect();
-            const bx1 = bRect.left - vRect.left;
-            const by1 = bRect.top - vRect.top;
-            const bx2 = bRect.right - vRect.left;
-            const by2 = bRect.bottom - vRect.top;
-            if (bx1 < m.x2 && bx2 > m.x1 && by1 < m.y2 && by2 > m.y1) {
-              newSelected.add((el as HTMLElement).dataset.blockId!);
-            }
-          });
-          if (newSelected.size > 0) setSelectedIds(newSelected);
+    isMarqueeing.current = false;
+    const m = marqueeRef.current;
+    if (!m) return;
+
+    const viewport = viewportRef.current;
+    if (viewport) {
+      const vRect = viewport.getBoundingClientRect();
+      const newSelected = new Set<string>();
+      document.querySelectorAll('[data-block-id]').forEach(el => {
+        const bRect = (el as HTMLElement).getBoundingClientRect();
+        const bx1 = bRect.left - vRect.left;
+        const by1 = bRect.top - vRect.top;
+        const bx2 = bRect.right - vRect.left;
+        const by2 = bRect.bottom - vRect.top;
+        if (bx1 < m.x2 && bx2 > m.x1 && by1 < m.y2 && by2 > m.y1) {
+          newSelected.add((el as HTMLElement).dataset.blockId!);
         }
-        marqueeRef.current = null;
-        setMarquee(null);
-      }
+      });
+      if (newSelected.size > 0) setSelectedIds(newSelected);
     }
+    marqueeRef.current = null;
+    setMarquee(null);
   }, []);
 
   const handleDoubleClick = useCallback((e: React.MouseEvent) => {
@@ -395,12 +360,13 @@ export default function Canvas() {
       addBlockFromUrl(trimmed, sx, sy);
     } else {
       const pos = screenToCanvas(sx, sy);
-      setBlocks(prev => [...prev, { id: uid(), type: 'text', content: trimmed, x: pos.x - 112, y: pos.y - 44 }]);
+      const { w, h } = BLOCK_SIZES.text;
+      setBlocks(prev => [...prev, { id: uid(), type: 'text', content: trimmed, x: pos.x - w / 2, y: pos.y - h / 2 }]);
     }
   }, [addBlockFromUrl, screenToCanvas]);
 
   const refreshEmbeds = useCallback(async () => {
-    const linkBlocks = blocks.filter(b => b.type === 'link') as import('@/types').LinkBlock[];
+    const linkBlocks = blocks.filter(b => b.type === 'link') as LinkBlock[];
     if (!linkBlocks.length) return;
     setIsRefreshing(true);
     setBlocks(prev => prev.map(b => b.type === 'link' ? { ...b, loading: true } : b));
@@ -408,7 +374,10 @@ export default function Canvas() {
       try {
         const res = await fetch(`/api/preview?url=${encodeURIComponent(b.url)}`);
         const data = await res.json();
-        setBlocks(prev => prev.map(p => p.id === b.id ? { ...p, loading: false, title: data.title, description: data.description, image: data.image, favicon: data.favicon } : p));
+        setBlocks(prev => prev.map(p => p.id === b.id
+          ? { ...p, loading: false, title: data.title, description: data.description, image: data.image, favicon: data.favicon }
+          : p
+        ));
       } catch {
         setBlocks(prev => prev.map(p => p.id === b.id ? { ...p, loading: false } : p));
       }
@@ -425,30 +394,20 @@ export default function Canvas() {
     setSelectedIds(prev => { const n = new Set(prev); n.delete(id); return n; });
   }, []);
 
-  const BLOCK_SIZES: Record<Block['type'], { w: number; h: number }> = {
-    link: { w: 288, h: 140 },
-    youtube: { w: 400, h: 225 },
-    twitter: { w: 320, h: 480 },
-    image: { w: 288, h: 200 },
-    text: { w: 224, h: 88 },
-  };
-
   const navigateToBlock = useCallback((block: Block) => {
     setIsSearchOpen(false);
     setSelectedIds(new Set([block.id]));
     const el = viewportRef.current;
     if (!el) return;
     const { w, h } = BLOCK_SIZES[block.type];
-    const targetScale = 1;
     const cx = el.clientWidth / 2;
     const cy = el.clientHeight / 2;
-    const ox = cx - (block.x + w / 2) * targetScale;
-    const oy = cy - (block.y + h / 2) * targetScale;
-    setScale(targetScale);
-    setOffset({ x: ox, y: oy });
+    setScale(1);
+    setOffset({ x: cx - (block.x + w / 2), y: cy - (block.y + h / 2) });
   }, []);
 
   const inPanMode = isPanMode || spaceHeld.current;
+  const gridSize = DOT_GRID_SIZE * scale;
 
   return (
     <div
@@ -469,8 +428,8 @@ export default function Canvas() {
         className="absolute inset-0 pointer-events-none"
         style={{
           backgroundImage: `radial-gradient(circle, ${isDark ? '#2e2e2e' : '#c8c5bf'} 1px, transparent 1px)`,
-          backgroundSize: `${24 * scale}px ${24 * scale}px`,
-          backgroundPosition: `${offset.x % (24 * scale)}px ${offset.y % (24 * scale)}px`,
+          backgroundSize: `${gridSize}px ${gridSize}px`,
+          backgroundPosition: `${offset.x % gridSize}px ${offset.y % gridSize}px`,
         }}
       />
 
@@ -512,7 +471,6 @@ export default function Canvas() {
         />
       )}
 
-      {/* Add input popover */}
       {addPos && (
         <AddInput
           x={addPos.x}
@@ -522,7 +480,6 @@ export default function Canvas() {
         />
       )}
 
-      {/* Search modal */}
       {isSearchOpen && (
         <SearchModal
           blocks={blocks}
@@ -532,7 +489,6 @@ export default function Canvas() {
         />
       )}
 
-      {/* Toolbar */}
       <Toolbar
         scale={scale}
         blockCount={blocks.length}
@@ -544,40 +500,15 @@ export default function Canvas() {
         onTogglePanMode={() => setIsPanMode(p => !p)}
         onSearch={() => setIsSearchOpen(true)}
         onRefresh={refreshEmbeds}
-        onZoomIn={() => {
-          setScale(s => {
-            const next = Math.min(MAX_SCALE, s * 1.25);
-            const el = viewportRef.current;
-            if (el) { const cx = el.clientWidth / 2; const cy = el.clientHeight / 2; setOffset(o => ({ x: cx - (cx - o.x) * (next / s), y: cy - (cy - o.y) * (next / s) })); }
-            return next;
-          });
-        }}
-        onZoomOut={() => {
-          setScale(s => {
-            const next = Math.max(MIN_SCALE, s / 1.25);
-            const el = viewportRef.current;
-            if (el) { const cx = el.clientWidth / 2; const cy = el.clientHeight / 2; setOffset(o => ({ x: cx - (cx - o.x) * (next / s), y: cy - (cy - o.y) * (next / s) })); }
-            return next;
-          });
-        }}
-        onReset={() => {
-          setScale(1);
-          const el = viewportRef.current;
-          if (el) setOffset({ x: el.clientWidth / 2, y: el.clientHeight / 2 });
-        }}
-        onAddText={() => {
-          const el = viewportRef.current;
-          const sx = el ? el.clientWidth / 2 : 400;
-          const sy = el ? el.clientHeight / 2 : 300;
-          const pos = screenToCanvas(sx, sy);
-          setBlocks(prev => [...prev, { id: uid(), type: 'text', content: '', x: pos.x - 112, y: pos.y - 44 }]);
-        }}
+        onZoomIn={() => zoomBy(ZOOM_STEP)}
+        onZoomOut={() => zoomBy(1 / ZOOM_STEP)}
+        onReset={resetView}
+        onAddText={addTextNote}
         onClear={() => {
           if (window.confirm('Remove all blocks from the canvas?')) { setBlocks([]); setSelectedIds(new Set()); }
         }}
       />
 
-      {/* Empty state hint */}
       {blocks.length === 0 && !addPos && (
         <div className="absolute inset-0 flex flex-col items-center justify-center pointer-events-none select-none">
           <p className="text-gray-400 dark:text-[#4a4a4a] text-base font-medium">Double-click anywhere to add content</p>

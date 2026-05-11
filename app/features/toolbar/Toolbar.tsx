@@ -1,68 +1,16 @@
 'use client';
-import { useRef, useState } from 'react';
+import { useState, useEffect } from 'react';
 import { motion, LayoutGroup } from 'framer-motion';
-import { useEffect } from 'react';
+import Tip from './Tip';
+import { Btn, Sep } from './Btn';
 
-/* Floating tooltip shown on hover */
-function Tip({ label, shortcut, children }: { label: string; shortcut?: string; children: React.ReactNode }) {
-  const [visible, setVisible] = useState(false);
-  const timer = useRef<ReturnType<typeof setTimeout> | null>(null);
-
-  const show = () => { timer.current = setTimeout(() => setVisible(true), 400); };
-  const hide = () => { if (timer.current) clearTimeout(timer.current); setVisible(false); };
-
-  return (
-    <div className="relative" onMouseEnter={show} onMouseLeave={hide}>
-      {children}
-      {visible && (
-        <div className="absolute bottom-full left-1/2 -translate-x-1/2 mb-2.5 pointer-events-none z-50 flex flex-col items-center">
-          <div className="flex items-center gap-1.5 bg-gray-900/95 dark:bg-[#0a0a0a]/95 text-white text-[11px] rounded-lg px-2.5 py-1.5 whitespace-nowrap shadow-xl backdrop-blur-sm">
-            <span className="font-medium">{label}</span>
-            {shortcut && (
-              <kbd className="text-[9px] font-mono bg-white/15 rounded px-1.5 py-0.5 leading-none tracking-wide">
-                {shortcut}
-              </kbd>
-            )}
-          </div>
-          <div className="w-2 h-2 bg-gray-900/95 dark:bg-[#0a0a0a]/95 rotate-45 -mt-1 rounded-[1px]" />
-        </div>
-      )}
-    </div>
-  );
-}
-
-/* Icon-only toolbar button */
-function Btn({
-  onClick, active = false, children, className = '',
-}: {
-  onClick?: () => void;
-  active?: boolean;
-  children: React.ReactNode;
-  className?: string;
-}) {
-  return (
-    <button
-      onClick={onClick}
-      className={[
-        'w-8 h-8 flex items-center justify-center rounded-xl transition-colors duration-100',
-        active
-          ? 'bg-gray-900 dark:bg-white text-white dark:text-gray-900'
-          : 'text-gray-500 dark:text-[#888] hover:bg-gray-100 dark:hover:bg-[#2e2e2e] hover:text-gray-800 dark:hover:text-[#ccc]',
-        className,
-      ].join(' ')}
-    >
-      {children}
-    </button>
-  );
-}
-
-const Sep = () => <div className="w-px h-4 bg-gray-200 dark:bg-[#333] mx-0.5 flex-shrink-0" />;
-
+/** Props for the floating bottom toolbar. */
 interface Props {
   scale: number;
   blockCount: number;
   isDark: boolean;
   isPanMode: boolean;
+  /** Whether any link blocks exist that can have their metadata refreshed. */
   hasRefreshable: boolean;
   isRefreshing: boolean;
   onZoomIn: () => void;
@@ -76,8 +24,11 @@ interface Props {
   onRefresh: () => void;
 }
 
-export default function Toolbar(props: Props) {
-  const { scale, blockCount, isDark, isPanMode, hasRefreshable, isRefreshing, onZoomIn, onZoomOut, onReset, onAddText, onClear, onToggleTheme, onTogglePanMode, onSearch, onRefresh } = props;
+export default function Toolbar({
+  scale, blockCount, isDark, isPanMode, hasRefreshable, isRefreshing,
+  onZoomIn, onZoomOut, onReset, onAddText, onClear,
+  onToggleTheme, onTogglePanMode, onSearch, onRefresh,
+}: Props) {
   const [rotation, setRotation] = useState(0);
   useEffect(() => {
     if (isRefreshing) setRotation(r => r + 360);
@@ -135,7 +86,6 @@ export default function Toolbar(props: Props) {
 
       <Sep />
 
-      {/* Zoom */}
       <Tip label="Zoom out" shortcut="−">
         <Btn onClick={onZoomOut}>
           <svg width="12" height="12" viewBox="0 0 12 12" fill="none">
@@ -163,7 +113,6 @@ export default function Toolbar(props: Props) {
 
       <Sep />
 
-      {/* Search */}
       <Tip label="Search blocks" shortcut="⌘K">
         <Btn onClick={onSearch}>
           <svg width="14" height="14" viewBox="0 0 14 14" fill="none">
@@ -175,7 +124,6 @@ export default function Toolbar(props: Props) {
 
       <Sep />
 
-      {/* Text note */}
       <Tip label="Text note" shortcut="T">
         <Btn onClick={onAddText}>
           <svg width="14" height="14" viewBox="0 0 14 14" fill="none">
@@ -184,7 +132,6 @@ export default function Toolbar(props: Props) {
         </Btn>
       </Tip>
 
-      {/* Theme */}
       <Tip label={isDark ? 'Light mode' : 'Dark mode'} shortcut="D">
         <Btn onClick={onToggleTheme}>
           {isDark ? (
