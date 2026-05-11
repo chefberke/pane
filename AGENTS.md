@@ -21,6 +21,7 @@ app/
       types.ts          ← exported TypeScript types/interfaces (no logic)
       utils.ts          ← exported pure functions (no React, no side effects)
       <SubComponent>.tsx ← named sub-components used only by this feature
+      hooks/            ← custom hooks owned by this feature (one file per hook)
       renderers/        ← one file per variant when a feature has multiple render modes
   api/
     <route>/
@@ -68,6 +69,11 @@ Current features:
 - Create a separate file when a sub-component has its own props interface, local state, or is longer than ~30 lines.
 - Small presentational components that are a few lines (e.g. a divider) can share a file.
 
+### `hooks/`
+- One file per custom hook (`use<Name>.ts`).
+- Hooks must be owned by one feature — no cross-feature hook imports. If two features need the same hook, extract it to a shared location (e.g. a small inline copy for tiny primitives).
+- Every exported hook gets a one-line TSDoc.
+
 ### `renderers/`
 - One file per render variant. Use when a parent component switches on a discriminated union type.
 - Each renderer receives only the specific block type it renders, not the union.
@@ -86,6 +92,10 @@ Current features:
 
 5. **TSDoc on every export.** One line is enough. Skip only when the name is completely self-evident (e.g. `export const MIN_SCALE = 0.1`).
 
+6. **Group props when there are more than ~5.** Use `status`/`actions` (or similar named bags) instead of a flat list of unrelated props. Memoize the bags with `useMemo` so referential stability is preserved for `memo`-wrapped children.
+
+7. **Extract custom hooks for distinct concerns.** When a component has more than ~4 `useState`/`useRef` pairs or multiple `useEffect` blocks, split each logical concern into its own hook under `hooks/`. The main component should read like an orchestrator, not an implementation.
+
 ---
 
 ## Adding a new feature
@@ -94,6 +104,7 @@ Current features:
 2. Start with a single `<Name>.tsx`. Split into `constants.ts`, `types.ts`, `utils.ts` as soon as any of those categories have more than one item.
 3. Wire it into the canvas or page — don't create a new top-level route unless it truly needs one.
 4. Do not create an `index.ts` barrel — import the file directly (`'../toolbar/Toolbar'`, not `'../toolbar'`).
+5. If the component grows beyond ~4 state/ref pairs or has multiple distinct concerns, add a `hooks/` subfolder and extract each concern into its own `use<Name>.ts`.
 
 ## Adding a new block type
 

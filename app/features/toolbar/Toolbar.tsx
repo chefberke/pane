@@ -1,34 +1,15 @@
 'use client';
 import { useState, useEffect } from 'react';
 import { motion, LayoutGroup } from 'framer-motion';
+import type { ToolbarStatus, ToolbarActions } from './types';
 import Tip from './Tip';
 import { Btn, Sep } from './Btn';
 
-/** Props for the floating bottom toolbar. */
-interface Props {
-  scale: number;
-  blockCount: number;
-  isDark: boolean;
-  isPanMode: boolean;
-  /** Whether any link blocks exist that can have their metadata refreshed. */
-  hasRefreshable: boolean;
-  isRefreshing: boolean;
-  onZoomIn: () => void;
-  onZoomOut: () => void;
-  onReset: () => void;
-  onAddText: () => void;
-  onClear: () => void;
-  onToggleTheme: () => void;
-  onTogglePanMode: () => void;
-  onSearch: () => void;
-  onRefresh: () => void;
-}
+/** Floating bottom toolbar with mode toggles, zoom controls, and canvas actions. */
+export default function Toolbar({ status, actions }: { status: ToolbarStatus; actions: ToolbarActions }) {
+  const { scale, blockCount, isDark, isPanMode, hasRefreshable, isRefreshing } = status;
+  const { zoomIn, zoomOut, reset, addText, clear, toggleTheme, togglePanMode, search, refresh } = actions;
 
-export default function Toolbar({
-  scale, blockCount, isDark, isPanMode, hasRefreshable, isRefreshing,
-  onZoomIn, onZoomOut, onReset, onAddText, onClear,
-  onToggleTheme, onTogglePanMode, onSearch, onRefresh,
-}: Props) {
   const [rotation, setRotation] = useState(0);
   useEffect(() => {
     if (isRefreshing) setRotation(r => r + 360);
@@ -45,7 +26,7 @@ export default function Toolbar({
         <div className="flex items-center bg-gray-100 dark:bg-[#2a2a2a] rounded-[11px] p-0.5 gap-0.5">
           <Tip label="Select" shortcut="V">
             <button
-              onClick={() => { if (isPanMode) onTogglePanMode(); }}
+              onClick={() => { if (isPanMode) togglePanMode(); }}
               className="relative w-7 h-7 flex items-center justify-center rounded-[9px]"
             >
               {!isPanMode && (
@@ -64,7 +45,7 @@ export default function Toolbar({
           </Tip>
           <Tip label="Pan" shortcut="H">
             <button
-              onClick={() => { if (!isPanMode) onTogglePanMode(); }}
+              onClick={() => { if (!isPanMode) togglePanMode(); }}
               className="relative w-7 h-7 flex items-center justify-center rounded-[9px]"
             >
               {isPanMode && (
@@ -87,7 +68,7 @@ export default function Toolbar({
       <Sep />
 
       <Tip label="Zoom out" shortcut="−">
-        <Btn onClick={onZoomOut}>
+        <Btn onClick={zoomOut}>
           <svg width="12" height="12" viewBox="0 0 12 12" fill="none">
             <path d="M2 6h8" stroke="currentColor" strokeWidth="1.6" strokeLinecap="round"/>
           </svg>
@@ -96,7 +77,7 @@ export default function Toolbar({
 
       <Tip label="Reset zoom" shortcut="0">
         <button
-          onClick={onReset}
+          onClick={reset}
           className="h-8 px-2 flex items-center justify-center rounded-xl hover:bg-gray-100 dark:hover:bg-[#2e2e2e] text-[11px] font-semibold text-gray-500 dark:text-[#888] hover:text-gray-800 dark:hover:text-[#ccc] transition-colors tabular-nums min-w-[42px]"
         >
           {Math.round(scale * 100)}%
@@ -104,7 +85,7 @@ export default function Toolbar({
       </Tip>
 
       <Tip label="Zoom in" shortcut="+">
-        <Btn onClick={onZoomIn}>
+        <Btn onClick={zoomIn}>
           <svg width="12" height="12" viewBox="0 0 12 12" fill="none">
             <path d="M6 2v8M2 6h8" stroke="currentColor" strokeWidth="1.6" strokeLinecap="round"/>
           </svg>
@@ -114,7 +95,7 @@ export default function Toolbar({
       <Sep />
 
       <Tip label="Search blocks" shortcut="⌘K">
-        <Btn onClick={onSearch}>
+        <Btn onClick={search}>
           <svg width="14" height="14" viewBox="0 0 14 14" fill="none">
             <circle cx="6" cy="6" r="4" stroke="currentColor" strokeWidth="1.35"/>
             <path d="M9.5 9.5L12.5 12.5" stroke="currentColor" strokeWidth="1.35" strokeLinecap="round"/>
@@ -125,7 +106,7 @@ export default function Toolbar({
       <Sep />
 
       <Tip label="Text note" shortcut="T">
-        <Btn onClick={onAddText}>
+        <Btn onClick={addText}>
           <svg width="14" height="14" viewBox="0 0 14 14" fill="none">
             <path d="M2 3h10M7 3v8M4.5 11h5" stroke="currentColor" strokeWidth="1.35" strokeLinecap="round" strokeLinejoin="round"/>
           </svg>
@@ -133,7 +114,7 @@ export default function Toolbar({
       </Tip>
 
       <Tip label={isDark ? 'Light mode' : 'Dark mode'} shortcut="D">
-        <Btn onClick={onToggleTheme}>
+        <Btn onClick={toggleTheme}>
           {isDark ? (
             <svg width="14" height="14" viewBox="0 0 15 15" fill="none">
               <circle cx="7.5" cy="7.5" r="2.8" stroke="currentColor" strokeWidth="1.35"/>
@@ -152,7 +133,7 @@ export default function Toolbar({
           <Sep />
           <Tip label="Refresh embeds">
             <button
-              onClick={() => { if (!isRefreshing) onRefresh(); }}
+              onClick={() => { if (!isRefreshing) refresh(); }}
               className="w-8 h-8 flex items-center justify-center rounded-xl text-gray-500 dark:text-[#888] hover:bg-gray-100 dark:hover:bg-[#2e2e2e] hover:text-gray-800 dark:hover:text-[#ccc] transition-colors disabled:opacity-40"
               disabled={isRefreshing}
             >
@@ -174,7 +155,7 @@ export default function Toolbar({
           <Sep />
           <Tip label="Clear canvas">
             <button
-              onClick={onClear}
+              onClick={clear}
               className="h-8 px-2.5 flex items-center rounded-xl text-[11px] font-medium text-gray-400 dark:text-[#555] hover:text-red-500 dark:hover:text-[#f87171] hover:bg-red-50 dark:hover:bg-[#2e1a1a] transition-colors"
             >
               Clear

@@ -1,5 +1,5 @@
 'use client';
-import { useEffect, useRef, useState, useCallback } from 'react';
+import { useEffect, useMemo, useRef, useState, useCallback } from 'react';
 import type { Block } from '@/types';
 
 /** Props for the ⌘K search modal. */
@@ -34,9 +34,11 @@ export default function SearchModal({ blocks, isDark, onClose, onNavigate }: Pro
   const inputRef = useRef<HTMLInputElement>(null);
   const listRef = useRef<HTMLDivElement>(null);
 
-  const results = query.trim()
-    ? blocks.filter(b => getBlockLabel(b).toLowerCase().includes(query.toLowerCase()))
-    : blocks;
+  const results = useMemo(() =>
+    query.trim()
+      ? blocks.filter(b => getBlockLabel(b).toLowerCase().includes(query.toLowerCase()))
+      : blocks,
+  [blocks, query]);
 
   useEffect(() => { setActiveIdx(0); }, [query]);
   useEffect(() => { inputRef.current?.focus(); }, []);
