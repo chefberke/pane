@@ -29,6 +29,7 @@ export default function AddInput({ x, y, onSubmit, onClose }: Props) {
       style={{ left: x, top: y, transform: 'translate(-50%, -50%)' }}
       onClick={e => e.stopPropagation()}
       onMouseDown={e => e.stopPropagation()}
+      onPointerDown={e => e.stopPropagation()}
       onDoubleClick={e => e.stopPropagation()}
     >
       <input

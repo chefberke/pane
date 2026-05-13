@@ -72,6 +72,7 @@ export default function Canvas() {
     setOffset,
     setSelectedIds,
     onDoubleClickCanvas: (sx, sy) => setAddPos({ x: sx, y: sy }),
+    onCanvasClick: () => setAddPos(null),
   });
 
   useCanvasKeyboard({

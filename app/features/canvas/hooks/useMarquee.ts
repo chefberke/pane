@@ -9,12 +9,14 @@ export function useMarquee({
   setOffset,
   setSelectedIds,
   onDoubleClickCanvas,
+  onCanvasClick,
 }: {
   viewportRef: RefObject<HTMLDivElement | null>;
   offsetRef: RefObject<{ x: number; y: number }>;
   setOffset: Dispatch<SetStateAction<{ x: number; y: number }>>;
   setSelectedIds: Dispatch<SetStateAction<Set<string>>>;
   onDoubleClickCanvas: (sx: number, sy: number) => void;
+  onCanvasClick?: () => void;
 }) {
   const [marquee, setMarquee] = useState<Marquee | null>(null);
   const [isPanMode, setIsPanMode] = useState(false);
@@ -98,7 +100,10 @@ export function useMarquee({
 
     isMarqueeing.current = false;
     const m = marqueeRef.current;
-    if (!m) return;
+    if (!m) {
+      if (!didDrag.current) onCanvasClick?.();
+      return;
+    }
 
     const viewport = viewportRef.current;
     if (viewport) {
@@ -118,7 +123,7 @@ export function useMarquee({
     }
     marqueeRef.current = null;
     setMarquee(null);
-  }, [viewportRef, setSelectedIds]);
+  }, [viewportRef, setSelectedIds, onCanvasClick]);
 
   const onDoubleClick = useCallback((e: React.MouseEvent) => {
     if (didDrag.current) return;
