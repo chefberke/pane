@@ -31,7 +31,7 @@ export default function Canvas() {
 
   const { isDark, toggleTheme } = useTheme();
   const { offset, scale, offsetRef, scaleRef, setOffset, setScale, screenToCanvas, zoomBy, resetView } = useViewport(viewportRef);
-  const { blocks, setBlocks, isRefreshing, addBlockFromUrl, refreshEmbeds, updateBlock, deleteBlock, clearBlocks } = useBlocks({ screenToCanvas });
+  const { blocks, setBlocks, isRefreshing, addBlockFromUrl, refreshEmbeds, updateBlock, deleteBlock } = useBlocks({ screenToCanvas });
 
   const blocksRef = useLatestRef(blocks);
   const { pushSnapshot, undo, redo, canUndo, canRedo } = useHistory({ setBlocks, blocksRef });
@@ -151,16 +151,15 @@ export default function Canvas() {
 
   const toolbarActions = useMemo(() => ({
     addText: addTextNote,
-    clear: () => { if (window.confirm('Remove all blocks from the canvas?')) { pushSnapshot(); clearBlocks(); setSelectedIds(new Set()); } },
     toggleTheme,
     togglePanMode: () => setIsPanMode(p => !p),
     search: () => setIsSearchOpen(true),
     refresh: refreshEmbeds,
     undo,
     redo,
-  }), [zoomBy, resetView, addTextNote, clearBlocks, setSelectedIds, toggleTheme, setIsPanMode, refreshEmbeds, pushSnapshot, undo, redo]);
+  }), [zoomBy, resetView, addTextNote, toggleTheme, setIsPanMode, refreshEmbeds, pushSnapshot, undo, redo]);
 
-  const toolbarStatus = { blockCount: blocks.length, isDark, isPanMode, hasRefreshable: blocks.some(b => b.type === 'link'), isRefreshing, canUndo, canRedo };
+  const toolbarStatus = { isDark, isPanMode, hasRefreshable: blocks.some(b => b.type === 'link'), isRefreshing, canUndo, canRedo };
   const inPanMode = isPanMode || isPanning.current;
   const gridSize = DOT_GRID_SIZE * scale;
 

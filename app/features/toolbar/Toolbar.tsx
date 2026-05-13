@@ -8,8 +8,8 @@ import { Btn, Sep } from './Btn';
 
 /** Floating bottom toolbar with mode toggles and canvas actions. */
 export default function Toolbar({ status, actions }: { status: ToolbarStatus; actions: ToolbarActions }) {
-  const { blockCount, isDark, isPanMode, hasRefreshable, isRefreshing, canUndo, canRedo } = status;
-  const { addText, clear, toggleTheme, togglePanMode, search, refresh, undo, redo } = actions;
+  const { isDark, isPanMode, hasRefreshable, isRefreshing, canUndo, canRedo } = status;
+  const { addText, toggleTheme, togglePanMode, search, refresh, undo, redo } = actions;
 
   const [rotation, setRotation] = useState(0);
   useEffect(() => {
@@ -105,19 +105,6 @@ export default function Toolbar({ status, actions }: { status: ToolbarStatus; ac
         </>
       )}
 
-      {blockCount > 0 && (
-        <>
-          <Sep />
-          <Tip label="Clear canvas">
-            <button
-              onClick={clear}
-              className="h-8 px-2.5 flex items-center rounded-xl text-[11px] font-medium text-gray-400 dark:text-[#555] hover:text-red-500 dark:hover:text-[#f87171] hover:bg-red-50 dark:hover:bg-[#2e1a1a] transition-colors"
-            >
-              Clear
-            </button>
-          </Tip>
-        </>
-      )}
     </div>
   );
 }

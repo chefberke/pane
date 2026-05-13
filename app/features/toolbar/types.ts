@@ -1,6 +1,5 @@
 /** Display state consumed by the Toolbar component. */
 export interface ToolbarStatus {
-  blockCount: number;
   isDark: boolean;
   isPanMode: boolean;
   hasRefreshable: boolean;
@@ -12,7 +11,6 @@ export interface ToolbarStatus {
 /** Action callbacks consumed by the Toolbar component. */
 export interface ToolbarActions {
   addText: () => void;
-  clear: () => void;
   toggleTheme: () => void;
   togglePanMode: () => void;
   search: () => void;
