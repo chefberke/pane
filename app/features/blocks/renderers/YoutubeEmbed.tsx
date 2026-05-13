@@ -5,7 +5,7 @@ import type { YouTubeBlock } from '@/types';
 export default function YoutubeEmbed({ block }: { block: YouTubeBlock }) {
   return (
     <div className="w-[400px]">
-      <div className="aspect-video">
+      <div className="relative aspect-video">
         <iframe
           className="w-full h-full border-0 block"
           src={`https://www.youtube-nocookie.com/embed/${block.videoId}?rel=0`}
@@ -13,6 +13,8 @@ export default function YoutubeEmbed({ block }: { block: YouTubeBlock }) {
           allowFullScreen
           title={block.title ?? 'YouTube video'}
         />
+        {/* Blocks iframe from stealing mouse events — drag and double-click are handled by BlockContainer */}
+        <div className="absolute inset-0" />
       </div>
     </div>
   );

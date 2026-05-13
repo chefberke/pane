@@ -47,6 +47,13 @@ export default function Canvas() {
   useCanvasKeyboard({ setSelectedIds, setAddPos, setIsSearchOpen, setIsPanMode, deleteSelected, addTextNote, toggleTheme, resetView, zoomBy });
   usePasteUrl({ viewportRef, addBlockFromUrl });
 
+  const handleOpenBlock = useCallback((block: Block) => {
+    let url: string | null = null;
+    if (block.type === 'link' || block.type === 'twitter' || block.type === 'image') url = block.url;
+    if (block.type === 'youtube') url = `https://www.youtube.com/watch?v=${block.videoId}`;
+    if (url) window.open(url, '_blank', 'noopener,noreferrer');
+  }, []);
+
   const handleDeleteBlock = useCallback((id: string) => {
     deleteBlock(id);
     setSelectedIds(prev => { const n = new Set(prev); n.delete(id); return n; });
@@ -78,11 +85,12 @@ export default function Canvas() {
   const blockHandlers = useMemo(() => ({
     onSelect: handleBlockSelect,
     onClickEnd: handleBlockClickEnd,
+    onOpen: handleOpenBlock,
     onUpdate: updateBlock,
     onDelete: handleDeleteBlock,
     onMultiDragMove: handleMultiDragMove,
     onMultiDragEnd: handleMultiDragEnd,
-  }), [handleBlockSelect, handleBlockClickEnd, updateBlock, handleDeleteBlock, handleMultiDragMove, handleMultiDragEnd]);
+  }), [handleBlockSelect, handleBlockClickEnd, handleOpenBlock, updateBlock, handleDeleteBlock, handleMultiDragMove, handleMultiDragEnd]);
 
   const toolbarActions = useMemo(() => ({
     zoomIn: () => zoomBy(ZOOM_STEP),

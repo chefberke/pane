@@ -43,6 +43,7 @@ function BlockContainer({ block, scale, selected, isInMultiSelection, handlers }
         willChange: 'transform',
       }}
       onMouseDown={onMouseDown}
+      onDoubleClick={e => { e.stopPropagation(); handlers.onOpen(block); }}
     >
       {/* Overlay blocks iframe pointer events while dragging */}
       <div ref={overlayRef} className="absolute inset-0 z-20" style={{ display: 'none' }} />
