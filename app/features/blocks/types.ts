@@ -9,4 +9,5 @@ export interface BlockHandlers {
   onDelete: (id: string) => void;
   onMultiDragMove: (dx: number, dy: number) => void;
   onMultiDragEnd: (dx: number, dy: number) => void;
+  onBeforeDragCommit: () => void;
 }

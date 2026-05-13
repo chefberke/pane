@@ -2,7 +2,7 @@ import { useState, useRef, useCallback, useEffect, type RefObject, type Dispatch
 import type { Marquee } from '../types';
 import { DRAG_THRESHOLD, MARQUEE_THRESHOLD } from '../constants';
 
-/** Manages canvas pan gesture, marquee selection, space-key temporary pan, and double-click. */
+/** Manages canvas pan gesture, marquee selection, space-key temporary pan, and double-click via Pointer Events. */
 export function useMarquee({
   viewportRef,
   offsetRef,
@@ -46,10 +46,15 @@ export function useMarquee({
     return () => { window.removeEventListener('keydown', onDown); window.removeEventListener('keyup', onUp); };
   }, []);
 
-  const onMouseDown = useCallback((e: React.MouseEvent) => {
-    if (e.button === 1 || (e.button === 0 && (spaceHeld.current || isPanMode))) {
+  const onPointerDown = useCallback((e: React.PointerEvent) => {
+    const isTouch = e.pointerType !== 'mouse';
+    const isMiddle = e.pointerType === 'mouse' && e.button === 1;
+    const isPanGesture = isMiddle || (e.button === 0 && (spaceHeld.current || isPanMode)) || isTouch;
+
+    if (isPanGesture) {
       isPanning.current = true;
       panOrigin.current = { mx: e.clientX, my: e.clientY, ox: offsetRef.current.x, oy: offsetRef.current.y };
+      (e.currentTarget as HTMLElement).setPointerCapture(e.pointerId);
       return;
     }
     if (e.button !== 0) return;
@@ -61,7 +66,7 @@ export function useMarquee({
     if (!e.shiftKey) setSelectedIds(new Set());
   }, [isPanMode, offsetRef, viewportRef, setSelectedIds]);
 
-  const onMouseMove = useCallback((e: React.MouseEvent) => {
+  const onPointerMove = useCallback((e: React.PointerEvent) => {
     if (isPanning.current) {
       const dx = e.clientX - panOrigin.current.mx;
       const dy = e.clientY - panOrigin.current.my;
@@ -87,7 +92,7 @@ export function useMarquee({
     }
   }, [setOffset, viewportRef]);
 
-  const onMouseUp = useCallback(() => {
+  const onPointerUp = useCallback(() => {
     isPanning.current = false;
     if (!isMarqueeing.current) return;
 
@@ -121,5 +126,5 @@ export function useMarquee({
     onDoubleClickCanvas(e.clientX - rect.left, e.clientY - rect.top);
   }, [viewportRef, onDoubleClickCanvas]);
 
-  return { marquee, isPanMode, setIsPanMode, isPanning, onMouseDown, onMouseMove, onMouseUp, onDoubleClick };
+  return { marquee, isPanMode, setIsPanMode, isPanning, onPointerDown, onPointerMove, onPointerUp, onDoubleClick };
 }

@@ -1,6 +1,6 @@
 import { useRef, useCallback, useEffect } from 'react';
 import type { Block } from '@/types';
-import { DRAG_THRESHOLD } from '../constants';
+import { DRAG_THRESHOLD } from '../../canvas/constants';
 
 interface UseBlockDragArgs {
   block: Block;
@@ -11,12 +11,13 @@ interface UseBlockDragArgs {
   onUpdate: (id: string, updates: Partial<Block>) => void;
   onMultiDragMove: (dx: number, dy: number) => void;
   onMultiDragEnd: (dx: number, dy: number) => void;
+  onBeforeDragCommit: () => void;
 }
 
-/** Handles the drag gesture for a single block, supporting both solo and group drag. */
+/** Handles the drag gesture for a single block, supporting both solo and group drag via Pointer Events. */
 export function useBlockDrag({
   block, scale, isInMultiSelection,
-  onSelect, onClickEnd, onUpdate, onMultiDragMove, onMultiDragEnd,
+  onSelect, onClickEnd, onUpdate, onMultiDragMove, onMultiDragEnd, onBeforeDragCommit,
 }: UseBlockDragArgs) {
   const containerRef = useRef<HTMLDivElement>(null);
   const overlayRef = useRef<HTMLDivElement>(null);
@@ -27,14 +28,13 @@ export function useBlockDrag({
   const dragStart = useRef({ mx: 0, my: 0, bx: 0, by: 0 });
   const dragDelta = useRef({ dx: 0, dy: 0 });
 
-  // Keep latest scale and multi-selection status readable inside global event handlers
   const scaleRef = useRef(scale);
   useEffect(() => { scaleRef.current = scale; }, [scale]);
   const isInMultiRef = useRef(isInMultiSelection);
   useEffect(() => { isInMultiRef.current = isInMultiSelection; }, [isInMultiSelection]);
 
-  const onMouseDown = useCallback((e: React.MouseEvent) => {
-    if (e.button !== 0) return;
+  const onPointerDown = useCallback((e: React.PointerEvent) => {
+    if (e.button !== 0 && e.pointerType === 'mouse') return;
     e.stopPropagation();
 
     onSelect(block.id, e.shiftKey);
@@ -46,12 +46,14 @@ export function useBlockDrag({
     dragDelta.current = { dx: 0, dy: 0 };
     dragStart.current = { mx: e.clientX, my: e.clientY, bx: block.x, by: block.y };
 
+    (e.currentTarget as HTMLElement).setPointerCapture(e.pointerId);
+
     if (containerRef.current) containerRef.current.style.cursor = 'grabbing';
     if (overlayRef.current) overlayRef.current.style.display = 'block';
   }, [block.id, block.x, block.y, onSelect]);
 
   useEffect(() => {
-    const onMove = (e: MouseEvent) => {
+    const onMove = (e: PointerEvent) => {
       if (!dragging.current) return;
       const s = scaleRef.current;
       const dx = (e.clientX - dragStart.current.mx) / s;
@@ -83,6 +85,8 @@ export function useBlockDrag({
         return;
       }
 
+      onBeforeDragCommit();
+
       if (isMultiDrag.current) {
         onMultiDragEnd(dragDelta.current.dx, dragDelta.current.dy);
       } else {
@@ -94,13 +98,13 @@ export function useBlockDrag({
       }
     };
 
-    window.addEventListener('mousemove', onMove);
-    window.addEventListener('mouseup', onUp);
+    window.addEventListener('pointermove', onMove);
+    window.addEventListener('pointerup', onUp);
     return () => {
-      window.removeEventListener('mousemove', onMove);
-      window.removeEventListener('mouseup', onUp);
+      window.removeEventListener('pointermove', onMove);
+      window.removeEventListener('pointerup', onUp);
     };
-  }, [block.id, onUpdate, onClickEnd, onMultiDragMove, onMultiDragEnd]);
+  }, [block.id, onUpdate, onClickEnd, onMultiDragMove, onMultiDragEnd, onBeforeDragCommit]);
 
-  return { containerRef, overlayRef, onMouseDown };
+  return { containerRef, overlayRef, onPointerDown };
 }

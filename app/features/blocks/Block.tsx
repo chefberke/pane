@@ -19,7 +19,7 @@ interface Props {
 
 /** Draggable block container — renders the appropriate embed and delegates interaction via handlers. */
 function BlockContainer({ block, scale, selected, isInMultiSelection, handlers }: Props) {
-  const { containerRef, overlayRef, onMouseDown } = useBlockDrag({
+  const { containerRef, overlayRef, onPointerDown } = useBlockDrag({
     block,
     scale,
     isInMultiSelection,
@@ -28,6 +28,7 @@ function BlockContainer({ block, scale, selected, isInMultiSelection, handlers }
     onUpdate: handlers.onUpdate,
     onMultiDragMove: handlers.onMultiDragMove,
     onMultiDragEnd: handlers.onMultiDragEnd,
+    onBeforeDragCommit: handlers.onBeforeDragCommit,
   });
 
   return (
@@ -42,7 +43,7 @@ function BlockContainer({ block, scale, selected, isInMultiSelection, handlers }
         cursor: 'grab',
         willChange: 'transform',
       }}
-      onMouseDown={onMouseDown}
+      onPointerDown={onPointerDown}
       onDoubleClick={e => { e.stopPropagation(); handlers.onOpen(block); }}
     >
       {/* Overlay blocks iframe pointer events while dragging */}
@@ -74,7 +75,7 @@ function BlockContainer({ block, scale, selected, isInMultiSelection, handlers }
         ].join(' ')}
         style={{ cursor: 'default' }}
         onClick={e => { e.stopPropagation(); handlers.onDelete(block.id); }}
-        onMouseDown={e => e.stopPropagation()}
+        onPointerDown={e => e.stopPropagation()}
         title="Delete"
       >
         ×
