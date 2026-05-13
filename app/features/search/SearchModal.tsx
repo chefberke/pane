@@ -1,5 +1,6 @@
 'use client';
 import { useEffect, useMemo, useRef, useState, useCallback } from 'react';
+import { Search } from 'lucide-react';
 import type { Block } from '@/types';
 
 /** Props for the ⌘K search modal. */
@@ -85,10 +86,7 @@ export default function SearchModal({ blocks, isDark, onClose, onNavigate }: Pro
       >
         {/* Input */}
         <div className="flex items-center gap-2.5 px-4" style={{ height: 48, borderBottom: `1px solid ${isDark ? 'rgba(255,255,255,0.05)' : 'rgba(0,0,0,0.05)'}` }}>
-          <svg width="14" height="14" viewBox="0 0 16 16" fill="none" style={{ color: isDark ? '#444' : '#bbb', flexShrink: 0 }}>
-            <circle cx="6.5" cy="6.5" r="4.5" stroke="currentColor" strokeWidth="1.6"/>
-            <path d="M10.5 10.5L14 14" stroke="currentColor" strokeWidth="1.6" strokeLinecap="round"/>
-          </svg>
+          <Search size={14} style={{ color: isDark ? '#444' : '#bbb', flexShrink: 0 }} />
           <input
             ref={inputRef}
             type="text"

@@ -6,6 +6,8 @@ import AddInput from '../add-input/AddInput';
 import Toolbar from '../toolbar/Toolbar';
 import SearchModal from '../search/SearchModal';
 import ShortcutsHelp from './ShortcutsHelp';
+import ShortcutsButton from './ShortcutsButton';
+import ZoomControls from './ZoomControls';
 import { ZOOM_STEP, BLOCK_SIZES, DOT_GRID_SIZE } from './constants';
 import { uid } from './utils';
 import { loadCanvasState } from './utils/storage';
@@ -30,7 +32,7 @@ export default function Canvas() {
   const { blocks, setBlocks, isRefreshing, addBlockFromUrl, refreshEmbeds, updateBlock, deleteBlock, clearBlocks } = useBlocks({ screenToCanvas });
 
   const blocksRef = useLatestRef(blocks);
-  const { pushSnapshot, undo, redo } = useHistory({ setBlocks, blocksRef });
+  const { pushSnapshot, undo, redo, canUndo, canRedo } = useHistory({ setBlocks, blocksRef });
 
   const { selectedIds, setSelectedIds, handleBlockSelect, handleBlockClickEnd, handleMultiDragMove, handleMultiDragEnd, deleteSelected, duplicateSelected, selectAll, nudgeSelected } = useSelection({ blocks, setBlocks, pushSnapshot });
 
@@ -125,18 +127,17 @@ export default function Canvas() {
   }), [handleBlockSelect, handleBlockClickEnd, handleOpenBlock, updateBlock, handleDeleteBlock, handleMultiDragMove, handleMultiDragEnd, pushSnapshot]);
 
   const toolbarActions = useMemo(() => ({
-    zoomIn: () => zoomBy(ZOOM_STEP),
-    zoomOut: () => zoomBy(1 / ZOOM_STEP),
-    reset: resetView,
     addText: addTextNote,
     clear: () => { if (window.confirm('Remove all blocks from the canvas?')) { pushSnapshot(); clearBlocks(); setSelectedIds(new Set()); } },
     toggleTheme,
     togglePanMode: () => setIsPanMode(p => !p),
     search: () => setIsSearchOpen(true),
     refresh: refreshEmbeds,
-  }), [zoomBy, resetView, addTextNote, clearBlocks, setSelectedIds, toggleTheme, setIsPanMode, refreshEmbeds, pushSnapshot]);
+    undo,
+    redo,
+  }), [zoomBy, resetView, addTextNote, clearBlocks, setSelectedIds, toggleTheme, setIsPanMode, refreshEmbeds, pushSnapshot, undo, redo]);
 
-  const toolbarStatus = { scale, blockCount: blocks.length, isDark, isPanMode, hasRefreshable: blocks.some(b => b.type === 'link'), isRefreshing };
+  const toolbarStatus = { blockCount: blocks.length, isDark, isPanMode, hasRefreshable: blocks.some(b => b.type === 'link'), isRefreshing, canUndo, canRedo };
   const inPanMode = isPanMode || isPanning.current;
   const gridSize = DOT_GRID_SIZE * scale;
 
@@ -222,35 +223,19 @@ export default function Canvas() {
 
       <Toolbar status={toolbarStatus} actions={toolbarActions} />
 
-      <button
-        className="absolute bottom-6 right-6 w-9 h-9 flex items-center justify-center rounded-2xl backdrop-blur-md border pointer-events-auto transition-all duration-150 hover:scale-105"
-        style={{
-          background: isDark ? 'rgba(30,30,30,0.95)' : 'rgba(255,255,255,0.95)',
-          borderColor: isDark ? 'rgba(255,255,255,0.06)' : 'rgba(0,0,0,0.06)',
-          boxShadow: isDark ? '0 8px 32px rgba(0,0,0,0.5)' : '0 8px 32px rgba(0,0,0,0.1)',
-          color: isDark ? '#888' : '#999',
-          fontSize: 14,
-          fontWeight: 500,
-        }}
-        onPointerDown={e => e.stopPropagation()}
-        onDoubleClick={e => e.stopPropagation()}
-        onClick={() => setIsHelpOpen(p => !p)}
-        onMouseEnter={e => {
-          const el = e.currentTarget;
-          el.style.background = isDark ? 'rgba(50,50,50,0.98)' : 'rgba(245,245,245,0.98)';
-          el.style.color = isDark ? '#ccc' : '#555';
-          el.style.boxShadow = isDark ? '0 12px 40px rgba(0,0,0,0.6)' : '0 12px 40px rgba(0,0,0,0.15)';
-        }}
-        onMouseLeave={e => {
-          const el = e.currentTarget;
-          el.style.background = isDark ? 'rgba(30,30,30,0.95)' : 'rgba(255,255,255,0.95)';
-          el.style.color = isDark ? '#888' : '#999';
-          el.style.boxShadow = isDark ? '0 8px 32px rgba(0,0,0,0.5)' : '0 8px 32px rgba(0,0,0,0.1)';
-        }}
-        title="Keyboard shortcuts (?)"
-      >
-        ?
-      </button>
+      <ZoomControls
+        scale={scale}
+        isDark={isDark}
+        onZoomIn={() => zoomBy(ZOOM_STEP)}
+        onZoomOut={() => zoomBy(1 / ZOOM_STEP)}
+        onReset={resetView}
+        canUndo={canUndo}
+        canRedo={canRedo}
+        onUndo={undo}
+        onRedo={redo}
+      />
+
+      <ShortcutsButton isDark={isDark} onClick={() => setIsHelpOpen(p => !p)} />
 
       {blocks.length === 0 && !addPos && (
         <div className="absolute inset-0 flex flex-col items-center justify-center pointer-events-none select-none">
