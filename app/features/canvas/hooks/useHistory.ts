@@ -1,5 +1,5 @@
 import { useRef, useCallback, useState, type Dispatch, type SetStateAction, type RefObject } from 'react';
-import type { Block } from '@/types';
+import type { Block } from '@/app/features/types';
 
 const LIMIT = 100;
 

@@ -1,6 +1,6 @@
 'use client';
 import { useState } from 'react';
-import type { LinkBlock } from '@/types';
+import type { LinkBlock } from '@/app/features/types';
 
 function parseDomain(url: string): string {
   try { return new URL(url).hostname.replace('www.', ''); } catch { return url; }

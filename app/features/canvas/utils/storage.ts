@@ -1,4 +1,4 @@
-import type { Block } from '@/types';
+import type { Block } from '@/app/features/types';
 
 const KEY = 'pane-canvas-v1';
 const LEGACY_KEY = 'termal-blocks';

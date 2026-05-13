@@ -1,9 +1,16 @@
+export interface Comment {
+  id: string;
+  text: string;
+  createdAt: number;
+}
+
 export interface BaseBlock {
   id: string;
   x: number;
   y: number;
   width?: number;
   height?: number;
+  comments?: Comment[];
 }
 
 export interface LinkBlock extends BaseBlock {

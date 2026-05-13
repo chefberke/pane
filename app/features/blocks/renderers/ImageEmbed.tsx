@@ -1,5 +1,5 @@
 'use client';
-import type { ImageBlock } from '@/types';
+import type { ImageBlock } from '@/app/features/types';
 
 /** Renders a direct image URL, constrained to a max height with object-contain. */
 export default function ImageEmbed({ block }: { block: ImageBlock }) {

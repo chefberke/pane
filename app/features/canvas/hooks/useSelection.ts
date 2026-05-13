@@ -1,5 +1,5 @@
 import { useState, useCallback, type Dispatch, type SetStateAction } from 'react';
-import type { Block } from '@/types';
+import type { Block } from '@/app/features/types';
 import { useLatestRef } from './useLatestRef';
 import { uid } from '../utils';
 

@@ -1,4 +1,4 @@
-import type { Block } from '@/types';
+import type { Block } from '@/app/features/types';
 
 /** Generates a short random collision-resistant string ID. */
 export function uid(): string {

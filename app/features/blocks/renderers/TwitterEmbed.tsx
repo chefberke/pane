@@ -1,5 +1,5 @@
 'use client';
-import type { TwitterBlock } from '@/types';
+import type { TwitterBlock } from '@/app/features/types';
 
 /** Renders a tweet via the Twitter platform embed iframe. */
 export default function TwitterEmbed({ block }: { block: TwitterBlock }) {

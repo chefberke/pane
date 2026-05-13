@@ -1,7 +1,7 @@
 'use client';
 import { useEffect, useMemo, useRef, useState, useCallback } from 'react';
 import { Search } from 'lucide-react';
-import type { Block } from '@/types';
+import type { Block } from '@/app/features/types';
 
 /** Props for the ⌘K search modal. */
 interface Props {

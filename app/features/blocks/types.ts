@@ -1,4 +1,4 @@
-import type { Block } from '@/types';
+import type { Block } from '@/app/features/types';
 
 /** Callback handlers passed to BlockContainer for interaction delegation. */
 export interface BlockHandlers {
@@ -7,6 +7,7 @@ export interface BlockHandlers {
   onOpen: (block: Block) => void;
   onUpdate: (id: string, updates: Partial<Block>) => void;
   onDelete: (id: string) => void;
+  onOpenComments: (block: Block, anchor: { x: number; y: number }) => void;
   onMultiDragMove: (dx: number, dy: number) => void;
   onMultiDragEnd: (dx: number, dy: number) => void;
   onBeforeDragCommit: () => void;

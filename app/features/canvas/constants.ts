@@ -1,4 +1,4 @@
-import type { Block } from '@/types';
+import type { Block } from '@/app/features/types';
 
 export const MIN_SCALE = 0.1;
 export const MAX_SCALE = 4;

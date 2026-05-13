@@ -1,5 +1,5 @@
 import { useEffect, useRef } from 'react';
-import type { Block } from '@/types';
+import type { Block } from '@/app/features/types';
 import { saveCanvasState } from '../utils/storage';
 
 /** Debounced persistence of canvas state to localStorage (150ms). */

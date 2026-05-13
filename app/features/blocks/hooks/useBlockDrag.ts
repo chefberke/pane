@@ -1,5 +1,5 @@
 import { useRef, useCallback, useEffect } from 'react';
-import type { Block } from '@/types';
+import type { Block } from '@/app/features/types';
 import { DRAG_THRESHOLD } from '../../canvas/constants';
 
 interface UseBlockDragArgs {

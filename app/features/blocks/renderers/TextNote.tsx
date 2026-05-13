@@ -1,6 +1,6 @@
 'use client';
 import { useState, useRef, useEffect } from 'react';
-import type { TextBlock } from '@/types';
+import type { TextBlock } from '@/app/features/types';
 
 /** Props for the editable sticky-note text block. */
 interface Props {

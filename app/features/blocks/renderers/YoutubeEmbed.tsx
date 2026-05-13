@@ -1,5 +1,5 @@
 'use client';
-import type { YouTubeBlock } from '@/types';
+import type { YouTubeBlock } from '@/app/features/types';
 
 /** Renders a privacy-enhanced YouTube embed (youtube-nocookie.com). */
 export default function YoutubeEmbed({ block }: { block: YouTubeBlock }) {
