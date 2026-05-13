@@ -1,7 +1,6 @@
 import { useState, useCallback, useEffect, type RefObject } from 'react';
 import { MIN_SCALE, MAX_SCALE } from '../constants';
 import { useLatestRef } from './useLatestRef';
-
 /** Manages pan offset, zoom scale, wheel zoom, and coordinate conversion for the canvas viewport. */
 export function useViewport(viewportRef: RefObject<HTMLDivElement | null>) {
   const [offset, setOffset] = useState({ x: 0, y: 0 });
@@ -69,5 +68,5 @@ export function useViewport(viewportRef: RefObject<HTMLDivElement | null>) {
     if (el) setOffset({ x: el.clientWidth / 2, y: el.clientHeight / 2 });
   }, [viewportRef]);
 
-  return { offset, scale, offsetRef, setOffset, setScale, screenToCanvas, zoomBy, resetView };
+  return { offset, scale, offsetRef, scaleRef, setOffset, setScale, screenToCanvas, zoomBy, resetView };
 }
