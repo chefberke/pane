@@ -6,38 +6,61 @@ export function useCanvasKeyboard({
   setSelectedIds,
   setAddPos,
   setIsSearchOpen,
+  setIsHelpOpen,
   setIsPanMode,
   deleteSelected,
+  duplicateSelected,
+  selectAll,
+  nudgeSelected,
   addTextNote,
   toggleTheme,
   resetView,
   zoomBy,
+  undo,
+  redo,
 }: {
   setSelectedIds: Dispatch<SetStateAction<Set<string>>>;
   setAddPos: Dispatch<SetStateAction<{ x: number; y: number } | null>>;
   setIsSearchOpen: Dispatch<SetStateAction<boolean>>;
+  setIsHelpOpen: Dispatch<SetStateAction<boolean>>;
   setIsPanMode: Dispatch<SetStateAction<boolean>>;
   deleteSelected: () => void;
+  duplicateSelected: () => void;
+  selectAll: () => void;
+  nudgeSelected: (dx: number, dy: number) => void;
   addTextNote: () => void;
   toggleTheme: () => void;
   resetView: () => void;
   zoomBy: (factor: number) => void;
+  undo: () => void;
+  redo: () => void;
 }) {
   useEffect(() => {
     const onKey = (e: KeyboardEvent) => {
       const active = document.activeElement;
       const inInput = active?.tagName === 'INPUT' || active?.tagName === 'TEXTAREA';
+      const meta = e.metaKey || e.ctrlKey;
 
-      if (e.key === 'Escape') { setSelectedIds(new Set()); setAddPos(null); setIsSearchOpen(false); }
+      if (e.key === 'Escape') { setSelectedIds(new Set()); setAddPos(null); setIsSearchOpen(false); setIsHelpOpen(false); return; }
 
-      if ((e.key === 'k' || e.key === 'K') && (e.metaKey || e.ctrlKey)) {
+      if ((e.key === 'k' || e.key === 'K') && meta) { e.preventDefault(); setIsSearchOpen(prev => !prev); return; }
+
+      if ((e.key === 'z' || e.key === 'Z') && meta) {
         e.preventDefault();
-        setIsSearchOpen(prev => !prev);
+        if (e.shiftKey) redo(); else undo();
         return;
       }
 
-      if ((e.key === 'Delete' || e.key === 'Backspace') && !inInput) {
-        deleteSelected();
+      if ((e.key === 'Delete' || e.key === 'Backspace') && !inInput) { deleteSelected(); return; }
+
+      if (meta && (e.key === 'd' || e.key === 'D')) { e.preventDefault(); duplicateSelected(); return; }
+      if (meta && (e.key === 'a' || e.key === 'A')) { e.preventDefault(); selectAll(); return; }
+
+      if (!inInput && !meta) {
+        if (e.key === 'ArrowUp')    { e.preventDefault(); nudgeSelected(0, e.shiftKey ? -10 : -1); return; }
+        if (e.key === 'ArrowDown')  { e.preventDefault(); nudgeSelected(0, e.shiftKey ? 10 : 1); return; }
+        if (e.key === 'ArrowLeft')  { e.preventDefault(); nudgeSelected(e.shiftKey ? -10 : -1, 0); return; }
+        if (e.key === 'ArrowRight') { e.preventDefault(); nudgeSelected(e.shiftKey ? 10 : 1, 0); return; }
       }
 
       if (inInput) return;
@@ -47,10 +70,15 @@ export function useCanvasKeyboard({
       if (e.key === 't' || e.key === 'T') addTextNote();
       if (e.key === 'd' || e.key === 'D') toggleTheme();
       if (e.key === '0') resetView();
-      if ((e.key === '=' || e.key === '+') && !e.metaKey && !e.ctrlKey) zoomBy(ZOOM_STEP);
-      if (e.key === '-' && !e.metaKey && !e.ctrlKey) zoomBy(1 / ZOOM_STEP);
+      if ((e.key === '=' || e.key === '+') && !meta) zoomBy(ZOOM_STEP);
+      if (e.key === '-' && !meta) zoomBy(1 / ZOOM_STEP);
+      if (e.key === '?') { e.preventDefault(); setIsHelpOpen(prev => !prev); }
     };
     window.addEventListener('keydown', onKey);
     return () => window.removeEventListener('keydown', onKey);
-  }, [setSelectedIds, setAddPos, setIsSearchOpen, setIsPanMode, deleteSelected, addTextNote, toggleTheme, resetView, zoomBy]);
+  }, [
+    setSelectedIds, setAddPos, setIsSearchOpen, setIsHelpOpen, setIsPanMode,
+    deleteSelected, duplicateSelected, selectAll, nudgeSelected,
+    addTextNote, toggleTheme, resetView, zoomBy, undo, redo,
+  ]);
 }
