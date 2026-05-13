@@ -1,5 +1,5 @@
 'use client';
-import { memo } from 'react';
+import { memo, useState } from 'react';
 import { MessageCircle, Trash2 } from 'lucide-react';
 import type { Block } from '@/app/features/types';
 import type { BlockHandlers } from './types';
@@ -20,6 +20,8 @@ interface Props {
 
 /** Draggable block container — renders the appropriate embed and delegates interaction via handlers. */
 function BlockContainer({ block, scale, selected, isInMultiSelection, handlers }: Props) {
+  const [isEditingText, setIsEditingText] = useState(false);
+
   const { containerRef, overlayRef, onPointerDown } = useBlockDrag({
     block,
     scale,
@@ -44,8 +46,15 @@ function BlockContainer({ block, scale, selected, isInMultiSelection, handlers }
         cursor: 'grab',
         willChange: 'transform',
       }}
-      onPointerDown={onPointerDown}
-      onDoubleClick={e => { e.stopPropagation(); handlers.onOpen(block); }}
+      onPointerDown={isEditingText ? undefined : onPointerDown}
+      onDoubleClick={e => {
+        e.stopPropagation();
+        if (block.type === 'text') {
+          setIsEditingText(true);
+        } else {
+          handlers.onOpen(block);
+        }
+      }}
     >
       {/* Overlay blocks iframe pointer events while dragging */}
       <div ref={overlayRef} className="absolute inset-0 z-20" style={{ display: 'none' }} />
@@ -64,7 +73,12 @@ function BlockContainer({ block, scale, selected, isInMultiSelection, handlers }
         {block.type === 'twitter' && <TwitterEmbed block={block} />}
         {block.type === 'image' && <ImageEmbed block={block} />}
         {block.type === 'text' && (
-          <TextNote block={block} onUpdate={content => handlers.onUpdate(block.id, { content } as Partial<Block>)} />
+          <TextNote
+            block={block}
+            onUpdate={content => handlers.onUpdate(block.id, { content } as Partial<Block>)}
+            isEditing={isEditingText}
+            onStopEdit={() => setIsEditingText(false)}
+          />
         )}
       </div>
 

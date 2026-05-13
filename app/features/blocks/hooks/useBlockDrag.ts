@@ -27,6 +27,7 @@ export function useBlockDrag({
   const isMultiDrag = useRef(false);
   const dragStart = useRef({ mx: 0, my: 0, bx: 0, by: 0 });
   const dragDelta = useRef({ dx: 0, dy: 0 });
+  const capturedPointerId = useRef<number | null>(null);
 
   const scaleRef = useRef(scale);
   useEffect(() => { scaleRef.current = scale; }, [scale]);
@@ -45,8 +46,7 @@ export function useBlockDrag({
     isMultiDrag.current = isInMultiRef.current;
     dragDelta.current = { dx: 0, dy: 0 };
     dragStart.current = { mx: e.clientX, my: e.clientY, bx: block.x, by: block.y };
-
-    (e.currentTarget as HTMLElement).setPointerCapture(e.pointerId);
+    capturedPointerId.current = e.pointerId;
 
     if (containerRef.current) containerRef.current.style.cursor = 'grabbing';
     if (overlayRef.current) overlayRef.current.style.display = 'block';
@@ -58,7 +58,12 @@ export function useBlockDrag({
       const s = scaleRef.current;
       const dx = (e.clientX - dragStart.current.mx) / s;
       const dy = (e.clientY - dragStart.current.my) / s;
-      if (Math.abs(dx) > DRAG_THRESHOLD || Math.abs(dy) > DRAG_THRESHOLD) hasDragged.current = true;
+      if (Math.abs(dx) > DRAG_THRESHOLD || Math.abs(dy) > DRAG_THRESHOLD) {
+        if (!hasDragged.current && capturedPointerId.current !== null && containerRef.current) {
+          containerRef.current.setPointerCapture(capturedPointerId.current);
+        }
+        hasDragged.current = true;
+      }
       dragDelta.current = { dx, dy };
 
       if (isMultiDrag.current) {
@@ -72,6 +77,7 @@ export function useBlockDrag({
     const onUp = () => {
       if (!dragging.current) return;
       dragging.current = false;
+      capturedPointerId.current = null;
 
       if (overlayRef.current) overlayRef.current.style.display = 'none';
       const el = containerRef.current;
