@@ -20,20 +20,12 @@ async function hydrateLinkBlock(
   }
 }
 
-/** Manages the block collection, localStorage persistence, CRUD operations, and link-preview hydration. */
+/** Manages the block collection, CRUD operations, and link-preview hydration. */
 export function useBlocks({ screenToCanvas }: {
   screenToCanvas: (sx: number, sy: number) => { x: number; y: number };
 }) {
   const [blocks, setBlocks] = useState<Block[]>([]);
   const [isRefreshing, setIsRefreshing] = useState(false);
-
-  useEffect(() => {
-    try { const saved = localStorage.getItem('termal-blocks'); if (saved) setBlocks(JSON.parse(saved)); } catch { /* ignore */ }
-  }, []);
-
-  useEffect(() => {
-    try { localStorage.setItem('termal-blocks', JSON.stringify(blocks)); } catch { /* ignore */ }
-  }, [blocks]);
 
   /** Adds a block from a URL, auto-detecting the type and fetching link metadata. */
   const addBlockFromUrl = useCallback(async (url: string, screenX: number, screenY: number) => {
