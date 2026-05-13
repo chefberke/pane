@@ -21,15 +21,15 @@ export default function Tip({ label, shortcut, children }: Props) {
       {children}
       {visible && (
         <div className="absolute bottom-full left-1/2 -translate-x-1/2 mb-2.5 pointer-events-none z-50 flex flex-col items-center">
-          <div className="flex items-center gap-1.5 bg-gray-900/95 dark:bg-[#0a0a0a]/95 text-white text-[11px] rounded-lg px-2.5 py-1.5 whitespace-nowrap shadow-xl backdrop-blur-sm">
+          <div className="flex items-center gap-1.5 bg-white/95 dark:bg-[#1e1e1e]/95 text-gray-800 dark:text-[#eee] text-[11px] rounded-lg px-2.5 py-1.5 whitespace-nowrap shadow-xl shadow-black/10 dark:shadow-black/50 border border-black/[0.06] dark:border-white/[0.06] backdrop-blur-sm">
             <span className="font-medium">{label}</span>
             {shortcut && (
-              <kbd className="text-[9px] font-mono bg-white/15 rounded px-1.5 py-0.5 leading-none tracking-wide">
+              <kbd className="text-[9px] font-mono bg-black/[0.07] dark:bg-white/15 text-gray-600 dark:text-[#aaa] rounded px-1.5 py-0.5 leading-none tracking-wide">
                 {shortcut}
               </kbd>
             )}
           </div>
-          <div className="w-2 h-2 bg-gray-900/95 dark:bg-[#0a0a0a]/95 rotate-45 -mt-1 rounded-[1px]" />
+          <div className="w-2 h-2 bg-white/95 dark:bg-[#1e1e1e]/95 border-r border-b border-black/[0.06] dark:border-white/[0.06] rotate-45 -mt-1 rounded-[1px]" />
         </div>
       )}
     </div>
