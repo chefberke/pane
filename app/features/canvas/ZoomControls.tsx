@@ -75,7 +75,7 @@ export default function ZoomControls({ scale, isDark, onZoomIn, onZoomOut, onRes
       >
         <Tip label="Zoom out" shortcut="−">
           <button
-            className="w-9 h-9 flex items-center justify-center rounded-l-2xl transition-colors duration-100"
+            className="w-9 h-9 flex items-center justify-center rounded-l-2xl transition-colors duration-100 cursor-pointer"
             style={btnStyle}
             onClick={onZoomOut}
             onMouseEnter={onEnter}
@@ -89,7 +89,7 @@ export default function ZoomControls({ scale, isDark, onZoomIn, onZoomOut, onRes
 
         <Tip label="Reset zoom" shortcut="0">
           <button
-            className="h-9 px-2 flex items-center justify-center transition-colors duration-100 tabular-nums"
+            className="h-9 px-2 flex items-center justify-center transition-colors duration-100 tabular-nums cursor-pointer"
             style={{ ...btnStyle, fontSize: 11, fontWeight: 600, minWidth: 42 }}
             onClick={onReset}
             onMouseEnter={onEnter}
@@ -103,7 +103,7 @@ export default function ZoomControls({ scale, isDark, onZoomIn, onZoomOut, onRes
 
         <Tip label="Zoom in" shortcut="+">
           <button
-            className="w-9 h-9 flex items-center justify-center rounded-r-2xl transition-colors duration-100"
+            className="w-9 h-9 flex items-center justify-center rounded-r-2xl transition-colors duration-100 cursor-pointer"
             style={btnStyle}
             onClick={onZoomIn}
             onMouseEnter={onEnter}
@@ -125,7 +125,7 @@ export default function ZoomControls({ scale, isDark, onZoomIn, onZoomOut, onRes
       >
         <Tip label="Undo" shortcut="⌘Z">
           <button
-            className="w-9 h-9 flex items-center justify-center rounded-l-2xl transition-colors duration-100 disabled:opacity-30"
+            className="w-9 h-9 flex items-center justify-center rounded-l-2xl transition-colors duration-100 disabled:opacity-30 cursor-pointer disabled:cursor-default"
             style={canUndo ? btnStyle : { ...btnStyle, pointerEvents: 'none' }}
             onClick={onUndo}
             onMouseEnter={canUndo ? onEnter : undefined}
@@ -140,7 +140,7 @@ export default function ZoomControls({ scale, isDark, onZoomIn, onZoomOut, onRes
 
         <Tip label="Redo" shortcut="⌘⇧Z">
           <button
-            className="w-9 h-9 flex items-center justify-center rounded-r-2xl transition-colors duration-100 disabled:opacity-30"
+            className="w-9 h-9 flex items-center justify-center rounded-r-2xl transition-colors duration-100 disabled:opacity-30 cursor-pointer disabled:cursor-default"
             style={canRedo ? btnStyle : { ...btnStyle, pointerEvents: 'none' }}
             onClick={onRedo}
             onMouseEnter={canRedo ? onEnter : undefined}

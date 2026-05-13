@@ -13,7 +13,7 @@ export function Btn({ onClick, active = false, children, className = '' }: BtnPr
     <button
       onClick={onClick}
       className={[
-        'w-8 h-8 flex items-center justify-center rounded-xl transition-colors duration-100',
+        'w-8 h-8 flex items-center justify-center rounded-xl transition-colors duration-100 cursor-pointer',
         active
           ? 'bg-gray-900 dark:bg-white text-white dark:text-gray-900'
           : 'text-gray-500 dark:text-[#888] hover:bg-gray-100 dark:hover:bg-[#2e2e2e] hover:text-gray-800 dark:hover:text-[#ccc]',

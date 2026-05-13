@@ -25,7 +25,7 @@ export default function Toolbar({ status, actions }: { status: ToolbarStatus; ac
           <Tip label="Select" shortcut="V">
             <button
               onClick={() => { if (isPanMode) togglePanMode(); }}
-              className="relative w-7 h-7 flex items-center justify-center rounded-[9px]"
+              className="relative w-7 h-7 flex items-center justify-center rounded-[9px] cursor-pointer"
             >
               {!isPanMode && (
                 <motion.div
@@ -42,7 +42,7 @@ export default function Toolbar({ status, actions }: { status: ToolbarStatus; ac
           <Tip label="Pan" shortcut="H">
             <button
               onClick={() => { if (!isPanMode) togglePanMode(); }}
-              className="relative w-7 h-7 flex items-center justify-center rounded-[9px]"
+              className="relative w-7 h-7 flex items-center justify-center rounded-[9px] cursor-pointer"
             >
               {isPanMode && (
                 <motion.div
@@ -87,7 +87,7 @@ export default function Toolbar({ status, actions }: { status: ToolbarStatus; ac
           <Tip label="Refresh embeds">
             <button
               onClick={() => { if (!isRefreshing) { setRotation(r => r + 360); refresh(); } }}
-              className="w-8 h-8 flex items-center justify-center rounded-xl text-gray-500 dark:text-[#888] hover:bg-gray-100 dark:hover:bg-[#2e2e2e] hover:text-gray-800 dark:hover:text-[#ccc] transition-colors disabled:opacity-40"
+              className="w-8 h-8 flex items-center justify-center rounded-xl text-gray-500 dark:text-[#888] hover:bg-gray-100 dark:hover:bg-[#2e2e2e] hover:text-gray-800 dark:hover:text-[#ccc] transition-colors disabled:opacity-40 cursor-pointer disabled:cursor-default"
               disabled={isRefreshing}
             >
               <motion.span
