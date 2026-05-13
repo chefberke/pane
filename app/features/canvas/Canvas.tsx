@@ -1,12 +1,14 @@
 'use client';
-import { useState, useRef, useCallback, useMemo } from 'react';
+import { useState, useRef, useCallback, useMemo, useEffect } from 'react';
 import type { Block } from '@/types';
 import BlockContainer from '../blocks/Block';
 import AddInput from '../add-input/AddInput';
 import Toolbar from '../toolbar/Toolbar';
 import SearchModal from '../search/SearchModal';
-import { ZOOM_STEP, DOT_GRID_SIZE, BLOCK_SIZES } from './constants';
+import ShortcutsHelp from './ShortcutsHelp';
+import { ZOOM_STEP, BLOCK_SIZES, DOT_GRID_SIZE } from './constants';
 import { uid } from './utils';
+import { loadCanvasState } from './utils/storage';
 import { useViewport } from './hooks/useViewport';
 import { useTheme } from './hooks/useTheme';
 import { useBlocks } from './hooks/useBlocks';
@@ -14,18 +16,40 @@ import { useSelection } from './hooks/useSelection';
 import { useMarquee } from './hooks/useMarquee';
 import { useCanvasKeyboard } from './hooks/useCanvasKeyboard';
 import { usePasteUrl } from './hooks/usePasteUrl';
+import { useHistory } from './hooks/useHistory';
+import { useCanvasPersistence } from './hooks/useCanvasPersistence';
+import { usePinchZoom } from './hooks/usePinchZoom';
+import { useLatestRef } from './hooks/useLatestRef';
 
 /** Infinite pan/zoom canvas — orchestrates viewport, blocks, selection, and keyboard shortcuts. */
 export default function Canvas() {
   const viewportRef = useRef<HTMLDivElement>(null);
 
   const { isDark, toggleTheme } = useTheme();
-  const { offset, scale, offsetRef, setOffset, setScale, screenToCanvas, zoomBy, resetView } = useViewport(viewportRef);
+  const { offset, scale, offsetRef, scaleRef, setOffset, setScale, screenToCanvas, zoomBy, resetView } = useViewport(viewportRef);
   const { blocks, setBlocks, isRefreshing, addBlockFromUrl, refreshEmbeds, updateBlock, deleteBlock, clearBlocks } = useBlocks({ screenToCanvas });
-  const { selectedIds, setSelectedIds, handleBlockSelect, handleBlockClickEnd, handleMultiDragMove, handleMultiDragEnd, deleteSelected } = useSelection({ setBlocks });
+
+  const blocksRef = useLatestRef(blocks);
+  const { pushSnapshot, undo, redo } = useHistory({ setBlocks, blocksRef });
+
+  const { selectedIds, setSelectedIds, handleBlockSelect, handleBlockClickEnd, handleMultiDragMove, handleMultiDragEnd, deleteSelected, duplicateSelected, selectAll, nudgeSelected } = useSelection({ blocks, setBlocks, pushSnapshot });
 
   const [addPos, setAddPos] = useState<{ x: number; y: number } | null>(null);
   const [isSearchOpen, setIsSearchOpen] = useState(false);
+  const [isHelpOpen, setIsHelpOpen] = useState(false);
+
+  useCanvasPersistence({ blocks, offset, scale });
+  usePinchZoom({ viewportRef, setOffset, setScale, offsetRef, scaleRef });
+
+  // Restore persisted state after hydration (client-only, runs once)
+  useEffect(() => {
+    const saved = loadCanvasState();
+    if (!saved) return;
+    if (saved.blocks.length) setBlocks(saved.blocks);
+    if (saved.scale !== 1) setScale(saved.scale);
+    if (saved.offset.x !== 0 || saved.offset.y !== 0) setOffset(saved.offset);
+  // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, []);
 
   const addTextNote = useCallback(() => {
     const el = viewportRef.current;
@@ -33,10 +57,11 @@ export default function Canvas() {
     const sy = el ? el.clientHeight / 2 : 300;
     const { x, y } = screenToCanvas(sx, sy);
     const { w, h } = BLOCK_SIZES.text;
+    pushSnapshot();
     setBlocks(prev => [...prev, { id: uid(), type: 'text', content: '', x: x - w / 2, y: y - h / 2 }]);
-  }, [screenToCanvas, setBlocks]);
+  }, [screenToCanvas, setBlocks, pushSnapshot]);
 
-  const { marquee, isPanMode, setIsPanMode, isPanning, onMouseDown, onMouseMove, onMouseUp, onDoubleClick } = useMarquee({
+  const { marquee, isPanMode, setIsPanMode, isPanning, onPointerDown, onPointerMove, onPointerUp, onDoubleClick } = useMarquee({
     viewportRef,
     offsetRef,
     setOffset,
@@ -44,7 +69,11 @@ export default function Canvas() {
     onDoubleClickCanvas: (sx, sy) => setAddPos({ x: sx, y: sy }),
   });
 
-  useCanvasKeyboard({ setSelectedIds, setAddPos, setIsSearchOpen, setIsPanMode, deleteSelected, addTextNote, toggleTheme, resetView, zoomBy });
+  useCanvasKeyboard({
+    setSelectedIds, setAddPos, setIsSearchOpen, setIsHelpOpen, setIsPanMode,
+    deleteSelected, duplicateSelected, selectAll, nudgeSelected,
+    addTextNote, toggleTheme, resetView, zoomBy, undo, redo,
+  });
   usePasteUrl({ viewportRef, addBlockFromUrl });
 
   const handleOpenBlock = useCallback((block: Block) => {
@@ -55,14 +84,16 @@ export default function Canvas() {
   }, []);
 
   const handleDeleteBlock = useCallback((id: string) => {
+    pushSnapshot();
     deleteBlock(id);
     setSelectedIds(prev => { const n = new Set(prev); n.delete(id); return n; });
-  }, [deleteBlock, setSelectedIds]);
+  }, [deleteBlock, setSelectedIds, pushSnapshot]);
 
   const handleAddSubmit = useCallback((value: string, sx: number, sy: number) => {
     setAddPos(null);
     const trimmed = value.trim();
     if (!trimmed) return;
+    pushSnapshot();
     if (/^https?:\/\//i.test(trimmed)) {
       addBlockFromUrl(trimmed, sx, sy);
     } else {
@@ -70,7 +101,7 @@ export default function Canvas() {
       const { w, h } = BLOCK_SIZES.text;
       setBlocks(prev => [...prev, { id: uid(), type: 'text', content: trimmed, x: x - w / 2, y: y - h / 2 }]);
     }
-  }, [addBlockFromUrl, screenToCanvas, setBlocks]);
+  }, [addBlockFromUrl, screenToCanvas, setBlocks, pushSnapshot]);
 
   const navigateToBlock = useCallback((block: Block) => {
     setIsSearchOpen(false);
@@ -90,19 +121,20 @@ export default function Canvas() {
     onDelete: handleDeleteBlock,
     onMultiDragMove: handleMultiDragMove,
     onMultiDragEnd: handleMultiDragEnd,
-  }), [handleBlockSelect, handleBlockClickEnd, handleOpenBlock, updateBlock, handleDeleteBlock, handleMultiDragMove, handleMultiDragEnd]);
+    onBeforeDragCommit: pushSnapshot,
+  }), [handleBlockSelect, handleBlockClickEnd, handleOpenBlock, updateBlock, handleDeleteBlock, handleMultiDragMove, handleMultiDragEnd, pushSnapshot]);
 
   const toolbarActions = useMemo(() => ({
     zoomIn: () => zoomBy(ZOOM_STEP),
     zoomOut: () => zoomBy(1 / ZOOM_STEP),
     reset: resetView,
     addText: addTextNote,
-    clear: () => { if (window.confirm('Remove all blocks from the canvas?')) { clearBlocks(); setSelectedIds(new Set()); } },
+    clear: () => { if (window.confirm('Remove all blocks from the canvas?')) { pushSnapshot(); clearBlocks(); setSelectedIds(new Set()); } },
     toggleTheme,
     togglePanMode: () => setIsPanMode(p => !p),
     search: () => setIsSearchOpen(true),
     refresh: refreshEmbeds,
-  }), [zoomBy, resetView, addTextNote, clearBlocks, setSelectedIds, toggleTheme, setIsPanMode, refreshEmbeds]);
+  }), [zoomBy, resetView, addTextNote, clearBlocks, setSelectedIds, toggleTheme, setIsPanMode, refreshEmbeds, pushSnapshot]);
 
   const toolbarStatus = { scale, blockCount: blocks.length, isDark, isPanMode, hasRefreshable: blocks.some(b => b.type === 'link'), isRefreshing };
   const inPanMode = isPanMode || isPanning.current;
@@ -115,11 +147,12 @@ export default function Canvas() {
       style={{
         background: isDark ? '#161616' : '#f1f0ee',
         cursor: isPanning.current ? 'grabbing' : inPanMode ? 'grab' : 'default',
+        touchAction: 'none',
       }}
-      onMouseDown={onMouseDown}
-      onMouseMove={onMouseMove}
-      onMouseUp={onMouseUp}
-      onMouseLeave={onMouseUp}
+      onPointerDown={onPointerDown}
+      onPointerMove={onPointerMove}
+      onPointerUp={onPointerUp}
+      onPointerCancel={onPointerUp}
       onDoubleClick={onDoubleClick}
     >
       {/* Dot grid */}
@@ -183,7 +216,41 @@ export default function Canvas() {
         />
       )}
 
+      {isHelpOpen && (
+        <ShortcutsHelp isDark={isDark} onClose={() => setIsHelpOpen(false)} />
+      )}
+
       <Toolbar status={toolbarStatus} actions={toolbarActions} />
+
+      <button
+        className="absolute bottom-6 right-6 w-9 h-9 flex items-center justify-center rounded-2xl backdrop-blur-md border pointer-events-auto transition-all duration-150 hover:scale-105"
+        style={{
+          background: isDark ? 'rgba(30,30,30,0.95)' : 'rgba(255,255,255,0.95)',
+          borderColor: isDark ? 'rgba(255,255,255,0.06)' : 'rgba(0,0,0,0.06)',
+          boxShadow: isDark ? '0 8px 32px rgba(0,0,0,0.5)' : '0 8px 32px rgba(0,0,0,0.1)',
+          color: isDark ? '#888' : '#999',
+          fontSize: 14,
+          fontWeight: 500,
+        }}
+        onPointerDown={e => e.stopPropagation()}
+        onDoubleClick={e => e.stopPropagation()}
+        onClick={() => setIsHelpOpen(p => !p)}
+        onMouseEnter={e => {
+          const el = e.currentTarget;
+          el.style.background = isDark ? 'rgba(50,50,50,0.98)' : 'rgba(245,245,245,0.98)';
+          el.style.color = isDark ? '#ccc' : '#555';
+          el.style.boxShadow = isDark ? '0 12px 40px rgba(0,0,0,0.6)' : '0 12px 40px rgba(0,0,0,0.15)';
+        }}
+        onMouseLeave={e => {
+          const el = e.currentTarget;
+          el.style.background = isDark ? 'rgba(30,30,30,0.95)' : 'rgba(255,255,255,0.95)';
+          el.style.color = isDark ? '#888' : '#999';
+          el.style.boxShadow = isDark ? '0 8px 32px rgba(0,0,0,0.5)' : '0 8px 32px rgba(0,0,0,0.1)';
+        }}
+        title="Keyboard shortcuts (?)"
+      >
+        ?
+      </button>
 
       {blocks.length === 0 && !addPos && (
         <div className="absolute inset-0 flex flex-col items-center justify-center pointer-events-none select-none">
