@@ -1,6 +1,7 @@
 'use client';
 import { memo } from 'react';
-import type { Block } from '@/types';
+import { MessageCircle, Trash2 } from 'lucide-react';
+import type { Block } from '@/app/features/types';
 import type { BlockHandlers } from './types';
 import LinkPreview from './renderers/LinkPreview';
 import YoutubeEmbed from './renderers/YoutubeEmbed';
@@ -67,19 +68,36 @@ function BlockContainer({ block, scale, selected, isInMultiSelection, handlers }
         )}
       </div>
 
-      {/* Delete */}
-      <button
+      {/* Action toolbar pill */}
+      <div
         className={[
-          'absolute -top-2.5 -right-2.5 w-6 h-6 bg-gray-700 dark:bg-[#3a3a3a] text-white rounded-full text-sm leading-none flex items-center justify-center hover:bg-red-500 transition-colors z-10',
+          'absolute -top-8 right-0 flex items-center bg-gray-800/90 dark:bg-[#222]/90 backdrop-blur-sm rounded-full px-0.5 py-0.5 gap-0 z-10 transition-opacity duration-150',
           selected ? 'opacity-100' : 'opacity-0 group-hover:opacity-100',
         ].join(' ')}
-        style={{ cursor: 'default' }}
-        onClick={e => { e.stopPropagation(); handlers.onDelete(block.id); }}
-        onPointerDown={e => e.stopPropagation()}
-        title="Delete"
       >
-        ×
-      </button>
+        <button
+          className="flex items-center gap-1 px-2 py-1 rounded-full text-white/70 hover:text-white hover:bg-blue-500/80 transition-colors"
+          style={{ cursor: 'default' }}
+          onClick={e => { e.stopPropagation(); handlers.onOpenComments(block, { x: e.clientX, y: e.clientY }); }}
+          onPointerDown={e => e.stopPropagation()}
+          title="Comments"
+        >
+          <MessageCircle size={11} />
+          {(block.comments?.length ?? 0) > 0 && (
+            <span className="text-[10px] font-medium leading-none">{block.comments!.length}</span>
+          )}
+        </button>
+        <div className="w-px h-3 bg-white/10 mx-0.5" />
+        <button
+          className="flex items-center px-2 py-1 rounded-full text-white/70 hover:text-white hover:bg-red-500/80 transition-colors"
+          style={{ cursor: 'default' }}
+          onClick={e => { e.stopPropagation(); handlers.onDelete(block.id); }}
+          onPointerDown={e => e.stopPropagation()}
+          title="Delete"
+        >
+          <Trash2 size={11} />
+        </button>
+      </div>
     </div>
   );
 }

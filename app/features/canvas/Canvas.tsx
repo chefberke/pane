@@ -1,15 +1,17 @@
 'use client';
 import { useState, useRef, useCallback, useMemo, useEffect } from 'react';
-import type { Block } from '@/types';
+import type { Block } from '@/app/features/types';
 import BlockContainer from '../blocks/Block';
 import AddInput from '../add-input/AddInput';
 import Toolbar from '../toolbar/Toolbar';
 import SearchModal from '../search/SearchModal';
+import CommentsPopover from '../comments/CommentsPopover';
 import ShortcutsHelp from './ShortcutsHelp';
 import ShortcutsButton from './ShortcutsButton';
 import ZoomControls from './ZoomControls';
 import { ZOOM_STEP, BLOCK_SIZES, DOT_GRID_SIZE } from './constants';
 import { uid } from './utils';
+import { makeComment } from '../comments/utils';
 import { loadCanvasState } from './utils/storage';
 import { useViewport } from './hooks/useViewport';
 import { useTheme } from './hooks/useTheme';
@@ -39,6 +41,7 @@ export default function Canvas() {
   const [addPos, setAddPos] = useState<{ x: number; y: number } | null>(null);
   const [isSearchOpen, setIsSearchOpen] = useState(false);
   const [isHelpOpen, setIsHelpOpen] = useState(false);
+  const [commentTarget, setCommentTarget] = useState<{ blockId: string; x: number; y: number } | null>(null);
 
   useCanvasPersistence({ blocks, offset, scale });
   usePinchZoom({ viewportRef, setOffset, setScale, offsetRef, scaleRef });
@@ -89,7 +92,26 @@ export default function Canvas() {
     pushSnapshot();
     deleteBlock(id);
     setSelectedIds(prev => { const n = new Set(prev); n.delete(id); return n; });
+    setCommentTarget(prev => prev?.blockId === id ? null : prev);
   }, [deleteBlock, setSelectedIds, pushSnapshot]);
+
+  const handleOpenComments = useCallback((block: Block, anchor: { x: number; y: number }) => {
+    setCommentTarget(prev => prev?.blockId === block.id ? null : { blockId: block.id, x: anchor.x, y: anchor.y });
+  }, []);
+
+  const handleAddComment = useCallback((blockId: string, text: string) => {
+    pushSnapshot();
+    const block = blocksRef.current.find(b => b.id === blockId);
+    if (!block) return;
+    updateBlock(blockId, { comments: [...(block.comments ?? []), makeComment(text)] });
+  }, [pushSnapshot, updateBlock, blocksRef]);
+
+  const handleDeleteComment = useCallback((blockId: string, commentId: string) => {
+    pushSnapshot();
+    const block = blocksRef.current.find(b => b.id === blockId);
+    if (!block) return;
+    updateBlock(blockId, { comments: (block.comments ?? []).filter(c => c.id !== commentId) });
+  }, [pushSnapshot, updateBlock, blocksRef]);
 
   const handleAddSubmit = useCallback((value: string, sx: number, sy: number) => {
     setAddPos(null);
@@ -116,15 +138,16 @@ export default function Canvas() {
   }, [setOffset, setScale, setSelectedIds]);
 
   const blockHandlers = useMemo(() => ({
-    onSelect: handleBlockSelect,
+    onSelect: (id: string, shiftKey: boolean) => { setCommentTarget(null); handleBlockSelect(id, shiftKey); },
     onClickEnd: handleBlockClickEnd,
     onOpen: handleOpenBlock,
     onUpdate: updateBlock,
     onDelete: handleDeleteBlock,
+    onOpenComments: handleOpenComments,
     onMultiDragMove: handleMultiDragMove,
     onMultiDragEnd: handleMultiDragEnd,
     onBeforeDragCommit: pushSnapshot,
-  }), [handleBlockSelect, handleBlockClickEnd, handleOpenBlock, updateBlock, handleDeleteBlock, handleMultiDragMove, handleMultiDragEnd, pushSnapshot]);
+  }), [handleBlockSelect, handleBlockClickEnd, handleOpenBlock, updateBlock, handleDeleteBlock, handleOpenComments, handleMultiDragMove, handleMultiDragEnd, pushSnapshot]);
 
   const toolbarActions = useMemo(() => ({
     addText: addTextNote,
@@ -205,6 +228,18 @@ export default function Canvas() {
           y={addPos.y}
           onSubmit={val => handleAddSubmit(val, addPos.x, addPos.y)}
           onClose={() => setAddPos(null)}
+        />
+      )}
+
+      {commentTarget && (
+        <CommentsPopover
+          blockId={commentTarget.blockId}
+          comments={blocks.find(b => b.id === commentTarget.blockId)?.comments ?? []}
+          x={commentTarget.x}
+          y={commentTarget.y}
+          onAdd={handleAddComment}
+          onDelete={handleDeleteComment}
+          onClose={() => setCommentTarget(null)}
         />
       )}
 
