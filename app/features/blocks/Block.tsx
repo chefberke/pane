@@ -9,6 +9,7 @@ import TwitterEmbed from './renderers/TwitterEmbed';
 import ImageEmbed from './renderers/ImageEmbed';
 import TextNote from './renderers/TextNote';
 import { useBlockDrag } from './hooks/useBlockDrag';
+import CommentBubble from '../comments/CommentBubble';
 
 interface Props {
   block: Block;
@@ -21,6 +22,8 @@ interface Props {
 /** Draggable block container — renders the appropriate embed and delegates interaction via handlers. */
 function BlockContainer({ block, scale, selected, isInMultiSelection, handlers }: Props) {
   const [isEditingText, setIsEditingText] = useState(false);
+  const [isHovered, setIsHovered] = useState(false);
+  const lastComment = (block.comments?.length ?? 0) > 0 ? block.comments![block.comments!.length - 1] : null;
 
   const { containerRef, overlayRef, onPointerDown } = useBlockDrag({
     block,
@@ -39,6 +42,8 @@ function BlockContainer({ block, scale, selected, isInMultiSelection, handlers }
       ref={containerRef}
       data-block-id={block.id}
       className="absolute group"
+      onMouseEnter={() => setIsHovered(true)}
+      onMouseLeave={() => setIsHovered(false)}
       style={{
         left: block.x,
         top: block.y,
@@ -58,6 +63,11 @@ function BlockContainer({ block, scale, selected, isInMultiSelection, handlers }
     >
       {/* Overlay blocks iframe pointer events while dragging */}
       <div ref={overlayRef} className="absolute inset-0 z-20" style={{ display: 'none' }} />
+
+      {/* Comment bubble */}
+      {lastComment && (
+        <CommentBubble comment={lastComment} visible={isHovered && !selected} />
+      )}
 
       {/* Card */}
       <div
