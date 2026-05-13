@@ -21,21 +21,31 @@ export function useViewport(viewportRef: RefObject<HTMLDivElement | null>) {
     if (!el) return;
     const onWheel = (e: WheelEvent) => {
       e.preventDefault();
-      const rect = el.getBoundingClientRect();
-      const cx = e.clientX - rect.left;
-      const cy = e.clientY - rect.top;
-      const factor = e.deltaY < 0 ? 1.08 : 0.92;
-      const prev = scaleRef.current;
-      const next = Math.min(MAX_SCALE, Math.max(MIN_SCALE, prev * factor));
-      const ratio = next / prev;
-      const nextOffset = {
-        x: cx - (cx - offsetRef.current.x) * ratio,
-        y: cy - (cy - offsetRef.current.y) * ratio,
-      };
-      scaleRef.current = next;
-      offsetRef.current = nextOffset;
-      setScale(next);
-      setOffset(nextOffset);
+      // ctrlKey is set by the browser for pinch-zoom gestures on trackpads
+      if (e.ctrlKey) {
+        const rect = el.getBoundingClientRect();
+        const cx = e.clientX - rect.left;
+        const cy = e.clientY - rect.top;
+        const factor = e.deltaY < 0 ? 1.08 : 0.92;
+        const prev = scaleRef.current;
+        const next = Math.min(MAX_SCALE, Math.max(MIN_SCALE, prev * factor));
+        const ratio = next / prev;
+        const nextOffset = {
+          x: cx - (cx - offsetRef.current.x) * ratio,
+          y: cy - (cy - offsetRef.current.y) * ratio,
+        };
+        scaleRef.current = next;
+        offsetRef.current = nextOffset;
+        setScale(next);
+        setOffset(nextOffset);
+      } else {
+        const nextOffset = {
+          x: offsetRef.current.x - e.deltaX,
+          y: offsetRef.current.y - e.deltaY,
+        };
+        offsetRef.current = nextOffset;
+        setOffset(nextOffset);
+      }
     };
     el.addEventListener('wheel', onWheel, { passive: false });
     return () => el.removeEventListener('wheel', onWheel);

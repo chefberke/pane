@@ -23,10 +23,12 @@ export function usePinchZoom({
     if (!el) return;
 
     const onDown = (e: PointerEvent) => {
+      if (e.pointerType !== 'touch') return;
       pointers.current.set(e.pointerId, { x: e.clientX, y: e.clientY });
     };
 
     const onMove = (e: PointerEvent) => {
+      if (e.pointerType !== 'touch') return;
       if (!pointers.current.has(e.pointerId)) return;
       pointers.current.set(e.pointerId, { x: e.clientX, y: e.clientY });
 
@@ -57,6 +59,7 @@ export function usePinchZoom({
     };
 
     const onUp = (e: PointerEvent) => {
+      if (e.pointerType !== 'touch') return;
       pointers.current.delete(e.pointerId);
       if (pointers.current.size < 2) lastDist.current = null;
     };
