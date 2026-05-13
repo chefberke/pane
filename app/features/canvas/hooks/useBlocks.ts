@@ -1,4 +1,4 @@
-import { useState, useCallback, useEffect, type Dispatch, type SetStateAction } from 'react';
+import { useState, useCallback, type Dispatch, type SetStateAction } from 'react';
 import type { Block, LinkBlock } from '@/app/features/types';
 import { uid, detectType, extractYouTubeId, extractTweetId } from '../utils';
 import { BLOCK_SIZES } from '../constants';

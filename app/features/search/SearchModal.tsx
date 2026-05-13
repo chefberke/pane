@@ -41,7 +41,6 @@ export default function SearchModal({ blocks, isDark, onClose, onNavigate }: Pro
       : blocks,
   [blocks, query]);
 
-  useEffect(() => { setActiveIdx(0); }, [query]);
   useEffect(() => { inputRef.current?.focus(); }, []);
 
   const scrollActiveIntoView = useCallback((idx: number) => {
@@ -91,7 +90,7 @@ export default function SearchModal({ blocks, isDark, onClose, onNavigate }: Pro
             ref={inputRef}
             type="text"
             value={query}
-            onChange={e => setQuery(e.target.value)}
+            onChange={e => { setQuery(e.target.value); setActiveIdx(0); }}
             placeholder="Search..."
             className="flex-1 bg-transparent outline-none text-[13px]"
             style={{ color: isDark ? '#e0e0e0' : '#111' }}

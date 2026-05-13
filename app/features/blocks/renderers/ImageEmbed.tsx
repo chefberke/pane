@@ -5,6 +5,7 @@ import type { ImageBlock } from '@/app/features/types';
 export default function ImageEmbed({ block }: { block: ImageBlock }) {
   return (
     <div className="w-72 bg-[#f5f5f5] dark:bg-[#242424]">
+      {/* eslint-disable-next-line @next/next/no-img-element -- arbitrary user-pasted URLs */}
       <img
         src={block.url}
         alt={block.alt ?? ''}

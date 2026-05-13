@@ -157,7 +157,7 @@ export default function Canvas() {
     refresh: refreshEmbeds,
     undo,
     redo,
-  }), [zoomBy, resetView, addTextNote, toggleTheme, setIsPanMode, refreshEmbeds, pushSnapshot, undo, redo]);
+  }), [addTextNote, toggleTheme, setIsPanMode, refreshEmbeds, undo, redo]);
 
   const toolbarStatus = { isDark, isPanMode, hasRefreshable: blocks.some(b => b.type === 'link'), isRefreshing, canUndo, canRedo };
   const inPanMode = isPanMode || isPanning.current;

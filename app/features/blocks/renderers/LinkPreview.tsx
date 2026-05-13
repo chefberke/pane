@@ -35,6 +35,7 @@ export default function LinkPreview({ block }: { block: LinkBlock }) {
     >
       {showImage && (
         <div className="h-36 overflow-hidden bg-gray-50 dark:bg-[#2e2e2e] flex-shrink-0">
+          {/* eslint-disable-next-line @next/next/no-img-element -- arbitrary user-pasted URLs */}
           <img
             src={image}
             alt={title ?? ''}
@@ -56,6 +57,7 @@ export default function LinkPreview({ block }: { block: LinkBlock }) {
         )}
         <div className="flex items-center gap-1.5 pt-0.5">
           {favicon && (
+            // eslint-disable-next-line @next/next/no-img-element -- arbitrary user-pasted URLs
             <img
               src={favicon}
               alt=""

@@ -1,5 +1,5 @@
 'use client';
-import { useState, useEffect } from 'react';
+import { useState } from 'react';
 import { motion, LayoutGroup } from 'framer-motion';
 import { MousePointer2, Hand, Search, Type, Sun, Moon, RefreshCw } from 'lucide-react';
 import type { ToolbarStatus, ToolbarActions } from './types';
@@ -8,13 +8,10 @@ import { Btn, Sep } from './Btn';
 
 /** Floating bottom toolbar with mode toggles and canvas actions. */
 export default function Toolbar({ status, actions }: { status: ToolbarStatus; actions: ToolbarActions }) {
-  const { isDark, isPanMode, hasRefreshable, isRefreshing, canUndo, canRedo } = status;
-  const { addText, toggleTheme, togglePanMode, search, refresh, undo, redo } = actions;
+  const { isDark, isPanMode, hasRefreshable, isRefreshing } = status;
+  const { addText, toggleTheme, togglePanMode, search, refresh } = actions;
 
   const [rotation, setRotation] = useState(0);
-  useEffect(() => {
-    if (isRefreshing) setRotation(r => r + 360);
-  }, [isRefreshing]);
 
   return (
     <div
@@ -89,7 +86,7 @@ export default function Toolbar({ status, actions }: { status: ToolbarStatus; ac
           <Sep />
           <Tip label="Refresh embeds">
             <button
-              onClick={() => { if (!isRefreshing) refresh(); }}
+              onClick={() => { if (!isRefreshing) { setRotation(r => r + 360); refresh(); } }}
               className="w-8 h-8 flex items-center justify-center rounded-xl text-gray-500 dark:text-[#888] hover:bg-gray-100 dark:hover:bg-[#2e2e2e] hover:text-gray-800 dark:hover:text-[#ccc] transition-colors disabled:opacity-40"
               disabled={isRefreshing}
             >
