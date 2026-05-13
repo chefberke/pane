@@ -2,11 +2,13 @@ import { useState, useCallback, useEffect } from 'react';
 
 /** Manages dark/light theme state with localStorage persistence and system-preference detection. */
 export function useTheme() {
-  const [isDark, setIsDark] = useState(() => {
-    if (typeof window === 'undefined') return false;
+  const [isDark, setIsDark] = useState(false);
+
+  useEffect(() => {
     const saved = localStorage.getItem('termal-theme');
-    return saved ? saved === 'dark' : window.matchMedia('(prefers-color-scheme: dark)').matches;
-  });
+    const initial = saved ? saved === 'dark' : window.matchMedia('(prefers-color-scheme: dark)').matches;
+    setIsDark(initial);
+  }, []);
 
   useEffect(() => {
     document.documentElement.classList.toggle('dark', isDark);
