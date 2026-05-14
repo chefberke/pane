@@ -27,6 +27,8 @@ import { useHistory } from './hooks/useHistory';
 import { useCanvasPersistence } from './hooks/useCanvasPersistence';
 import { usePinchZoom } from './hooks/usePinchZoom';
 import { useLatestRef } from './hooks/useLatestRef';
+import { AnimatePresence } from 'framer-motion';
+import EmptyState from './EmptyState';
 
 /** Infinite pan/zoom canvas — orchestrates viewport, blocks, selection, and keyboard shortcuts. */
 export default function Canvas() {
@@ -290,12 +292,9 @@ export default function Canvas() {
 
       <MenuButton isDark={isDark} themeChoice={themeChoice} onSetTheme={setTheme} />
 
-      {blocks.length === 0 && !addPos && (
-        <div className="absolute inset-0 flex flex-col items-center justify-center pointer-events-none select-none">
-          <p className="text-gray-400 dark:text-[#4a4a4a] text-base font-medium">Double-click anywhere to add content</p>
-          <p className="text-gray-300 dark:text-[#363636] text-sm mt-1">Or paste a URL to place it on the canvas</p>
-        </div>
-      )}
+      <AnimatePresence>
+        {blocks.length === 0 && !addPos && <EmptyState key="empty" isDark={isDark} />}
+      </AnimatePresence>
     </div>
   );
 }
