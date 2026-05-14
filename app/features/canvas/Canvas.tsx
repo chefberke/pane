@@ -11,6 +11,7 @@ import ShortcutsButton from './ShortcutsButton';
 import ZoomControls from './ZoomControls';
 import ItemsButton from '../items-panel/ItemsButton';
 import ItemsSheet from '../items-panel/ItemsSheet';
+import MenuButton from '../menu-panel/MenuButton';
 import { ZOOM_STEP, BLOCK_SIZES, DOT_GRID_SIZE } from './constants';
 import { uid } from './utils';
 import { makeComment } from '../comments/utils';
@@ -31,7 +32,7 @@ import { useLatestRef } from './hooks/useLatestRef';
 export default function Canvas() {
   const viewportRef = useRef<HTMLDivElement>(null);
 
-  const { isDark, toggleTheme } = useTheme();
+  const { isDark, themeChoice, toggleTheme, setTheme } = useTheme();
   const { offset, scale, offsetRef, scaleRef, setOffset, setScale, screenToCanvas, zoomBy, resetView } = useViewport(viewportRef);
   const { blocks, setBlocks, isRefreshing, addBlockFromUrl, refreshEmbeds, updateBlock, deleteBlock } = useBlocks({ screenToCanvas });
 
@@ -156,13 +157,12 @@ export default function Canvas() {
 
   const toolbarActions = useMemo(() => ({
     addText: addTextNote,
-    toggleTheme,
     togglePanMode: () => setIsPanMode(p => !p),
     search: () => setIsSearchOpen(true),
     refresh: refreshEmbeds,
     undo,
     redo,
-  }), [addTextNote, toggleTheme, setIsPanMode, refreshEmbeds, undo, redo]);
+  }), [addTextNote, setIsPanMode, refreshEmbeds, undo, redo]);
 
   const toolbarStatus = { isDark, isPanMode, hasRefreshable: blocks.some(b => b.type === 'link'), isRefreshing, canUndo, canRedo };
   const inPanMode = isPanMode || isPanning.current;
@@ -287,6 +287,8 @@ export default function Canvas() {
       <ShortcutsButton isDark={isDark} onClick={() => setIsHelpOpen(p => !p)} />
 
       <ItemsButton isDark={isDark} count={blocks.length} onClick={() => setIsItemsOpen(p => !p)} />
+
+      <MenuButton isDark={isDark} themeChoice={themeChoice} onSetTheme={setTheme} />
 
       {blocks.length === 0 && !addPos && (
         <div className="absolute inset-0 flex flex-col items-center justify-center pointer-events-none select-none">

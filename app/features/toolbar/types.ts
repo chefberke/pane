@@ -11,7 +11,6 @@ export interface ToolbarStatus {
 /** Action callbacks consumed by the Toolbar component. */
 export interface ToolbarActions {
   addText: () => void;
-  toggleTheme: () => void;
   togglePanMode: () => void;
   search: () => void;
   refresh: () => void;

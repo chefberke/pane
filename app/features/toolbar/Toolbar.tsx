@@ -1,7 +1,7 @@
 'use client';
 import { useState } from 'react';
 import { motion, LayoutGroup } from 'framer-motion';
-import { MousePointer2, Hand, Search, Type, Sun, Moon, RefreshCw } from 'lucide-react';
+import { MousePointer2, Hand, Search, Type, RefreshCw } from 'lucide-react';
 import type { ToolbarStatus, ToolbarActions } from './types';
 import Tip from './Tip';
 import { Btn, Sep } from './Btn';
@@ -9,7 +9,7 @@ import { Btn, Sep } from './Btn';
 /** Floating bottom toolbar with mode toggles and canvas actions. */
 export default function Toolbar({ status, actions }: { status: ToolbarStatus; actions: ToolbarActions }) {
   const { isDark, isPanMode, hasRefreshable, isRefreshing } = status;
-  const { addText, toggleTheme, togglePanMode, search, refresh } = actions;
+  const { addText, togglePanMode, search, refresh } = actions;
 
   const [rotation, setRotation] = useState(0);
 
@@ -72,12 +72,6 @@ export default function Toolbar({ status, actions }: { status: ToolbarStatus; ac
       <Tip label="Text note" shortcut="T">
         <Btn onClick={addText}>
           <Type size={14} />
-        </Btn>
-      </Tip>
-
-      <Tip label={isDark ? 'Light mode' : 'Dark mode'} shortcut="D">
-        <Btn onClick={toggleTheme}>
-          {isDark ? <Sun size={14} /> : <Moon size={14} />}
         </Btn>
       </Tip>
 
