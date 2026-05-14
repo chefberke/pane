@@ -26,3 +26,27 @@ export function groupBlocksByType(blocks: Block[]): Array<{ type: Block['type'];
     .map(type => ({ type, items: blocks.filter(b => b.type === type) }))
     .filter(g => g.items.length > 0);
 }
+
+/** Returns blocks whose searchable fields contain the query (case-insensitive). */
+export function searchBlocks(blocks: Block[], query: string): Block[] {
+  const q = query.toLowerCase().trim();
+  if (!q) return blocks;
+  return blocks.filter(block => {
+    if (block.type === 'link') {
+      return [block.url, block.title, block.description].some(v => v?.toLowerCase().includes(q));
+    }
+    if (block.type === 'youtube') {
+      return [block.title, block.videoId].some(v => v?.toLowerCase().includes(q));
+    }
+    if (block.type === 'twitter') {
+      return [block.url, block.tweetId].some(v => v?.toLowerCase().includes(q));
+    }
+    if (block.type === 'image') {
+      return [block.url, block.alt].some(v => v?.toLowerCase().includes(q));
+    }
+    if (block.type === 'text') {
+      return block.content?.toLowerCase().includes(q);
+    }
+    return false;
+  });
+}

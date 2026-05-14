@@ -10,6 +10,10 @@
   box-sizing: border-box;
 }
 
+.items-search-input::placeholder {
+  color: var(--placeholder-color, #999);
+}
+
 html, body {
   margin: 0;
   padding: 0;
