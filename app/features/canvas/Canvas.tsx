@@ -9,6 +9,8 @@ import CommentsPopover from '../comments/CommentsPopover';
 import ShortcutsHelp from './ShortcutsHelp';
 import ShortcutsButton from './ShortcutsButton';
 import ZoomControls from './ZoomControls';
+import ItemsButton from '../items-panel/ItemsButton';
+import ItemsSheet from '../items-panel/ItemsSheet';
 import { ZOOM_STEP, BLOCK_SIZES, DOT_GRID_SIZE } from './constants';
 import { uid } from './utils';
 import { makeComment } from '../comments/utils';
@@ -41,6 +43,7 @@ export default function Canvas() {
   const [addPos, setAddPos] = useState<{ x: number; y: number } | null>(null);
   const [isSearchOpen, setIsSearchOpen] = useState(false);
   const [isHelpOpen, setIsHelpOpen] = useState(false);
+  const [isItemsOpen, setIsItemsOpen] = useState(false);
   const [commentTarget, setCommentTarget] = useState<{ blockId: string; x: number; y: number } | null>(null);
 
   useCanvasPersistence({ blocks, offset, scale });
@@ -130,6 +133,7 @@ export default function Canvas() {
 
   const navigateToBlock = useCallback((block: Block) => {
     setIsSearchOpen(false);
+    setIsItemsOpen(false);
     setSelectedIds(new Set([block.id]));
     const el = viewportRef.current;
     if (!el) return;
@@ -256,6 +260,16 @@ export default function Canvas() {
         <ShortcutsHelp isDark={isDark} onClose={() => setIsHelpOpen(false)} />
       )}
 
+      {isItemsOpen && (
+        <ItemsSheet
+          blocks={blocks}
+          isDark={isDark}
+          onClose={() => setIsItemsOpen(false)}
+          onNavigate={navigateToBlock}
+          onDelete={handleDeleteBlock}
+        />
+      )}
+
       <Toolbar status={toolbarStatus} actions={toolbarActions} />
 
       <ZoomControls
@@ -271,6 +285,8 @@ export default function Canvas() {
       />
 
       <ShortcutsButton isDark={isDark} onClick={() => setIsHelpOpen(p => !p)} />
+
+      <ItemsButton isDark={isDark} count={blocks.length} onClick={() => setIsItemsOpen(p => !p)} />
 
       {blocks.length === 0 && !addPos && (
         <div className="absolute inset-0 flex flex-col items-center justify-center pointer-events-none select-none">

@@ -1,0 +1,28 @@
+import type { Block } from '@/app/features/types';
+
+/** Human-readable labels for each block type. */
+export const TYPE_LABELS: Record<Block['type'], string> = {
+  link: 'Link',
+  youtube: 'YouTube',
+  twitter: 'Tweet',
+  image: 'Image',
+  text: 'Note',
+};
+
+/** Returns a human-readable label for a block, used for search and display. */
+export function getBlockLabel(block: Block): string {
+  if (block.type === 'link') return block.title || block.url;
+  if (block.type === 'youtube') return block.title || 'YouTube video';
+  if (block.type === 'twitter') return `Tweet · ${block.url}`;
+  if (block.type === 'image') return block.alt || block.url;
+  if (block.type === 'text') return block.content || 'Empty note';
+  return '';
+}
+
+/** Groups blocks by type in a fixed display order, omitting empty groups. */
+export function groupBlocksByType(blocks: Block[]): Array<{ type: Block['type']; items: Block[] }> {
+  const order: Block['type'][] = ['link', 'youtube', 'twitter', 'image', 'text'];
+  return order
+    .map(type => ({ type, items: blocks.filter(b => b.type === type) }))
+    .filter(g => g.items.length > 0);
+}

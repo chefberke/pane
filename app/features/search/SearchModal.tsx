@@ -2,6 +2,7 @@
 import { useEffect, useMemo, useRef, useState, useCallback } from 'react';
 import { Search } from 'lucide-react';
 import type { Block } from '@/app/features/types';
+import { getBlockLabel, TYPE_LABELS } from '@/app/features/blocks/utils';
 
 /** Props for the ⌘K search modal. */
 interface Props {
@@ -10,24 +11,6 @@ interface Props {
   onClose: () => void;
   onNavigate: (block: Block) => void;
 }
-
-/** Returns a human-readable label for a block, used for search and display. */
-function getBlockLabel(block: Block): string {
-  if (block.type === 'link') return block.title || block.url;
-  if (block.type === 'youtube') return block.title || 'YouTube video';
-  if (block.type === 'twitter') return `Tweet · ${block.url}`;
-  if (block.type === 'image') return block.alt || block.url;
-  if (block.type === 'text') return block.content || 'Empty note';
-  return '';
-}
-
-const TYPE_LABELS: Record<Block['type'], string> = {
-  link: 'Link',
-  youtube: 'YouTube',
-  twitter: 'Tweet',
-  image: 'Image',
-  text: 'Note',
-};
 
 export default function SearchModal({ blocks, isDark, onClose, onNavigate }: Props) {
   const [query, setQuery] = useState('');
