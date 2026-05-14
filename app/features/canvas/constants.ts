@@ -32,6 +32,7 @@ export const SHORTCUTS: Shortcut[] = [
   { keys: ['T'],         label: 'Add text note',      category: 'Blocks' },
   { keys: ['⌘D'],        label: 'Duplicate selected', category: 'Blocks' },
   { keys: ['⌘A'],        label: 'Select all',         category: 'Blocks' },
+  { keys: ['Esc'],       label: 'Deselect / close',   category: 'Edit' },
   { keys: ['Del / ⌫'],   label: 'Delete selected',    category: 'Edit' },
   { keys: ['⌘Z'],        label: 'Undo',               category: 'Edit' },
   { keys: ['⌘⇧Z'],       label: 'Redo',               category: 'Edit' },
