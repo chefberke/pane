@@ -8,20 +8,28 @@ import { Btn, Sep } from './Btn';
 
 /** Floating bottom toolbar with mode toggles and canvas actions. */
 export default function Toolbar({ status, actions }: { status: ToolbarStatus; actions: ToolbarActions }) {
-  const { isDark, isPanMode, hasRefreshable, isRefreshing } = status;
+  const { isPanMode, hasRefreshable, isRefreshing } = status;
   const { addText, togglePanMode, search, refresh } = actions;
 
   const [rotation, setRotation] = useState(0);
 
   return (
     <div
-      className="absolute bottom-6 left-1/2 -translate-x-1/2 flex items-center gap-0.5 bg-white/95 dark:bg-[#1e1e1e]/95 backdrop-blur-md rounded-2xl shadow-lg shadow-black/10 dark:shadow-black/50 border border-black/[0.06] dark:border-white/[0.06] px-2 py-2 pointer-events-auto"
+      className="absolute bottom-6 left-1/2 -translate-x-1/2 flex items-center gap-0.5 backdrop-blur-md rounded-2xl px-2 py-2 pointer-events-auto"
+      style={{
+        background: 'var(--color-surface-raised)',
+        border: '1px solid var(--color-border-default)',
+        boxShadow: 'var(--shadow-float)',
+      }}
       onDoubleClick={e => e.stopPropagation()}
       onPointerDown={e => e.stopPropagation()}
     >
       {/* Mode: segmented control */}
       <LayoutGroup>
-        <div className="flex items-center bg-gray-100 dark:bg-[#2a2a2a] rounded-[11px] p-0.5 gap-0.5">
+        <div
+          className="flex items-center rounded-[11px] p-0.5 gap-0.5"
+          style={{ background: 'var(--color-surface-sunken)' }}
+        >
           <Tip label="Select" shortcut="V">
             <button
               onClick={() => { if (isPanMode) togglePanMode(); }}
@@ -30,11 +38,15 @@ export default function Toolbar({ status, actions }: { status: ToolbarStatus; ac
               {!isPanMode && (
                 <motion.div
                   layoutId="mode-pill"
-                  className="absolute inset-0 bg-white dark:bg-[#444] rounded-[9px] shadow-sm"
+                  className="absolute inset-0 rounded-[9px] shadow-sm"
+                  style={{ background: 'var(--color-surface-control-active)' }}
                   transition={{ type: 'spring', stiffness: 500, damping: 35 }}
                 />
               )}
-              <span className={['relative z-10 transition-colors duration-100', !isPanMode ? 'text-gray-800 dark:text-[#eee]' : 'text-gray-400 dark:text-[#555]'].join(' ')}>
+              <span
+                className="relative z-10 transition-colors duration-100"
+                style={{ color: !isPanMode ? 'var(--color-text-primary)' : 'var(--color-text-muted)' }}
+              >
                 <MousePointer2 size={13} />
               </span>
             </button>
@@ -47,11 +59,15 @@ export default function Toolbar({ status, actions }: { status: ToolbarStatus; ac
               {isPanMode && (
                 <motion.div
                   layoutId="mode-pill"
-                  className="absolute inset-0 bg-white dark:bg-[#444] rounded-[9px] shadow-sm"
+                  className="absolute inset-0 rounded-[9px] shadow-sm"
+                  style={{ background: 'var(--color-surface-control-active)' }}
                   transition={{ type: 'spring', stiffness: 500, damping: 35 }}
                 />
               )}
-              <span className={['relative z-10 transition-colors duration-100', isPanMode ? 'text-gray-800 dark:text-[#eee]' : 'text-gray-400 dark:text-[#555]'].join(' ')}>
+              <span
+                className="relative z-10 transition-colors duration-100"
+                style={{ color: isPanMode ? 'var(--color-text-primary)' : 'var(--color-text-muted)' }}
+              >
                 <Hand size={13} />
               </span>
             </button>
@@ -81,8 +97,17 @@ export default function Toolbar({ status, actions }: { status: ToolbarStatus; ac
           <Tip label="Refresh embeds">
             <button
               onClick={() => { if (!isRefreshing) { setRotation(r => r + 360); refresh(); } }}
-              className="w-8 h-8 flex items-center justify-center rounded-xl text-gray-500 dark:text-[#888] hover:bg-gray-100 dark:hover:bg-[#2e2e2e] hover:text-gray-800 dark:hover:text-[#ccc] transition-colors disabled:opacity-40 cursor-pointer disabled:cursor-default"
+              className="w-8 h-8 flex items-center justify-center rounded-xl transition-colors cursor-pointer disabled:opacity-40 disabled:cursor-default"
+              style={{ color: 'var(--color-text-tertiary)' }}
               disabled={isRefreshing}
+              onMouseEnter={e => {
+                (e.currentTarget as HTMLButtonElement).style.background = 'var(--color-bg-hover)';
+                (e.currentTarget as HTMLButtonElement).style.color = 'var(--color-text-secondary)';
+              }}
+              onMouseLeave={e => {
+                (e.currentTarget as HTMLButtonElement).style.background = '';
+                (e.currentTarget as HTMLButtonElement).style.color = 'var(--color-text-tertiary)';
+              }}
             >
               <motion.span
                 className="inline-flex"

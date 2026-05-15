@@ -34,7 +34,7 @@ import EmptyState from './EmptyState';
 export default function Canvas() {
   const viewportRef = useRef<HTMLDivElement>(null);
 
-  const { isDark, themeChoice, toggleTheme, setTheme } = useTheme();
+  const { themeChoice, toggleTheme, setTheme } = useTheme();
   const { offset, scale, offsetRef, scaleRef, setOffset, setScale, screenToCanvas, zoomBy, resetView } = useViewport(viewportRef);
   const { blocks, setBlocks, isRefreshing, addBlockFromUrl, refreshEmbeds, updateBlock, deleteBlock } = useBlocks({ screenToCanvas });
 
@@ -166,7 +166,7 @@ export default function Canvas() {
     redo,
   }), [addTextNote, setIsPanMode, refreshEmbeds, undo, redo]);
 
-  const toolbarStatus = { isDark, isPanMode, hasRefreshable: blocks.some(b => b.type === 'link'), isRefreshing, canUndo, canRedo };
+  const toolbarStatus = { isPanMode, hasRefreshable: blocks.some(b => b.type === 'link'), isRefreshing, canUndo, canRedo };
   const inPanMode = isPanMode || isPanning.current;
   const gridSize = DOT_GRID_SIZE * scale;
 
@@ -175,7 +175,7 @@ export default function Canvas() {
       ref={viewportRef}
       className="relative w-full h-full overflow-hidden select-none"
       style={{
-        background: isDark ? '#161616' : '#f1f0ee',
+        background: 'var(--color-canvas)',
         cursor: isPanning.current ? 'grabbing' : inPanMode ? 'grab' : 'default',
         touchAction: 'none',
       }}
@@ -189,7 +189,7 @@ export default function Canvas() {
       <div
         className="absolute inset-0 pointer-events-none"
         style={{
-          backgroundImage: `radial-gradient(circle, ${isDark ? '#2e2e2e' : '#c8c5bf'} 1px, transparent 1px)`,
+          backgroundImage: `radial-gradient(circle, var(--color-grid-dot) 1px, transparent 1px)`,
           backgroundSize: `${gridSize}px ${gridSize}px`,
           backgroundPosition: `${offset.x % gridSize}px ${offset.y % gridSize}px`,
         }}
@@ -221,8 +221,8 @@ export default function Canvas() {
             top: marquee.y1,
             width: marquee.x2 - marquee.x1,
             height: marquee.y2 - marquee.y1,
-            border: `1.5px solid ${isDark ? 'rgba(255,255,255,0.3)' : 'rgba(0,0,0,0.25)'}`,
-            background: isDark ? 'rgba(255,255,255,0.04)' : 'rgba(0,0,0,0.04)',
+            border: '1.5px solid var(--color-marquee-border)',
+            background: 'var(--color-marquee-bg)',
             borderRadius: 3,
           }}
         />
@@ -252,20 +252,18 @@ export default function Canvas() {
       {isSearchOpen && (
         <SearchModal
           blocks={blocks}
-          isDark={isDark}
           onClose={() => setIsSearchOpen(false)}
           onNavigate={navigateToBlock}
         />
       )}
 
       {isHelpOpen && (
-        <ShortcutsHelp isDark={isDark} onClose={() => setIsHelpOpen(false)} />
+        <ShortcutsHelp onClose={() => setIsHelpOpen(false)} />
       )}
 
       {isItemsOpen && (
         <ItemsSheet
           blocks={blocks}
-          isDark={isDark}
           onClose={() => setIsItemsOpen(false)}
           onNavigate={navigateToBlock}
           onDelete={handleDeleteBlock}
@@ -276,7 +274,6 @@ export default function Canvas() {
 
       <ZoomControls
         scale={scale}
-        isDark={isDark}
         onZoomIn={() => zoomBy(ZOOM_STEP)}
         onZoomOut={() => zoomBy(1 / ZOOM_STEP)}
         onReset={resetView}
@@ -286,14 +283,14 @@ export default function Canvas() {
         onRedo={redo}
       />
 
-      <ShortcutsButton isDark={isDark} onClick={() => setIsHelpOpen(p => !p)} />
+      <ShortcutsButton onClick={() => setIsHelpOpen(p => !p)} />
 
-      <ItemsButton isDark={isDark} count={blocks.length} onClick={() => setIsItemsOpen(p => !p)} />
+      <ItemsButton count={blocks.length} onClick={() => setIsItemsOpen(p => !p)} />
 
-      <MenuButton isDark={isDark} themeChoice={themeChoice} onSetTheme={setTheme} />
+      <MenuButton themeChoice={themeChoice} onSetTheme={setTheme} />
 
       <AnimatePresence>
-        {blocks.length === 0 && !addPos && <EmptyState key="empty" isDark={isDark} />}
+        {blocks.length === 0 && !addPos && <EmptyState key="empty" />}
       </AnimatePresence>
     </div>
   );

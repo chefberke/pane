@@ -73,10 +73,12 @@ function BlockContainer({ block, scale, selected, isInMultiSelection, handlers }
       <div
         className={[
           'rounded-2xl overflow-hidden transition-shadow duration-150',
-          selected
-            ? 'shadow-xl ring-2 ring-blue-400/60 dark:ring-white/20 ring-offset-1 dark:ring-offset-[#161616]'
-            : 'shadow-md hover:shadow-lg dark:shadow-black/50',
+          selected ? 'shadow-xl' : 'shadow-md hover:shadow-lg',
         ].join(' ')}
+        style={selected ? {
+          outline: '2px solid var(--color-ring-selection)',
+          outlineOffset: '1px',
+        } : undefined}
       >
         {block.type === 'link' && <LinkPreview block={block} />}
         {block.type === 'youtube' && <YoutubeEmbed block={block} />}
@@ -95,13 +97,14 @@ function BlockContainer({ block, scale, selected, isInMultiSelection, handlers }
       {/* Action toolbar pill */}
       <div
         className={[
-          'absolute -top-8 right-0 flex items-center bg-gray-800/90 dark:bg-[#222]/90 backdrop-blur-sm rounded-full px-0.5 py-0.5 gap-0 z-10 transition-opacity duration-150',
+          'absolute -top-8 right-0 flex items-center backdrop-blur-sm rounded-full px-0.5 py-0.5 gap-0 z-10 transition-opacity duration-150',
           selected ? 'opacity-100' : 'opacity-0 group-hover:opacity-100',
         ].join(' ')}
+        style={{ background: 'var(--color-surface-action)' }}
       >
         <button
-          className="flex items-center gap-1 px-2 py-1 rounded-full text-white/70 hover:text-white hover:bg-blue-500/80 transition-colors"
-          style={{ cursor: 'default' }}
+          className="flex items-center gap-1 px-2 py-1 rounded-full transition-colors hover:bg-blue-500/80"
+          style={{ color: 'var(--color-text-on-action)', cursor: 'default' }}
           onClick={e => { e.stopPropagation(); handlers.onOpenComments(block, { x: e.clientX, y: e.clientY }); }}
           onPointerDown={e => e.stopPropagation()}
           title="Comments"
@@ -111,10 +114,10 @@ function BlockContainer({ block, scale, selected, isInMultiSelection, handlers }
             <span className="text-[10px] font-medium leading-none">{block.comments!.length}</span>
           )}
         </button>
-        <div className="w-px h-3 bg-white/10 mx-0.5" />
+        <div className="w-px h-3 mx-0.5" style={{ background: 'var(--color-border-subtle)' }} />
         <button
-          className="flex items-center px-2 py-1 rounded-full text-white/70 hover:text-white hover:bg-red-500/80 transition-colors"
-          style={{ cursor: 'default' }}
+          className="flex items-center px-2 py-1 rounded-full transition-colors hover:bg-red-500/80"
+          style={{ color: 'var(--color-text-on-action)', cursor: 'default' }}
           onClick={e => { e.stopPropagation(); handlers.onDelete(block.id); }}
           onPointerDown={e => e.stopPropagation()}
           title="Delete"

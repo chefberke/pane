@@ -7,12 +7,11 @@ import { getBlockLabel, TYPE_LABELS } from '@/app/features/blocks/utils';
 /** Props for the ⌘K search modal. */
 interface Props {
   blocks: Block[];
-  isDark: boolean;
   onClose: () => void;
   onNavigate: (block: Block) => void;
 }
 
-export default function SearchModal({ blocks, isDark, onClose, onNavigate }: Props) {
+export default function SearchModal({ blocks, onClose, onNavigate }: Props) {
   const [query, setQuery] = useState('');
   const [activeIdx, setActiveIdx] = useState(0);
   const inputRef = useRef<HTMLInputElement>(null);
@@ -54,21 +53,29 @@ export default function SearchModal({ blocks, isDark, onClose, onNavigate }: Pro
   return (
     <div
       className="fixed inset-0 z-[200] flex items-start justify-center"
-      style={{ paddingTop: '16vh', background: isDark ? 'rgba(0,0,0,0.5)' : 'rgba(0,0,0,0.15)', backdropFilter: 'blur(4px)' }}
+      style={{
+        paddingTop: '16vh',
+        background: 'var(--color-overlay-search)',
+        backdropFilter: 'blur(4px)',
+      }}
       onMouseDown={e => { if (e.target === e.currentTarget) onClose(); }}
     >
       <div
-        className="w-[480px] max-w-[calc(100vw-32px)] overflow-hidden rounded-2xl"
+        className="max-w-[calc(100vw-32px)] overflow-hidden rounded-2xl"
         style={{
-          background: isDark ? '#161616' : '#fff',
-          border: `1px solid ${isDark ? 'rgba(255,255,255,0.07)' : 'rgba(0,0,0,0.07)'}`,
-          boxShadow: isDark ? '0 20px 60px rgba(0,0,0,0.8)' : '0 20px 60px rgba(0,0,0,0.1)',
+          width: 'var(--panel-width-modal)',
+          background: 'var(--color-surface)',
+          border: '1px solid var(--color-border-default)',
+          boxShadow: 'var(--shadow-modal)',
         }}
         onMouseDown={e => e.stopPropagation()}
       >
         {/* Input */}
-        <div className="flex items-center gap-2.5 px-4" style={{ height: 48, borderBottom: `1px solid ${isDark ? 'rgba(255,255,255,0.05)' : 'rgba(0,0,0,0.05)'}` }}>
-          <Search size={14} style={{ color: isDark ? '#444' : '#bbb', flexShrink: 0 }} />
+        <div
+          className="flex items-center gap-2.5 px-4"
+          style={{ height: 48, borderBottom: '1px solid var(--color-border-subtle)' }}
+        >
+          <Search size={14} style={{ color: 'var(--color-text-muted)', flexShrink: 0 }} />
           <input
             ref={inputRef}
             type="text"
@@ -76,10 +83,13 @@ export default function SearchModal({ blocks, isDark, onClose, onNavigate }: Pro
             onChange={e => { setQuery(e.target.value); setActiveIdx(0); }}
             placeholder="Search..."
             className="flex-1 bg-transparent outline-none text-[13px]"
-            style={{ color: isDark ? '#e0e0e0' : '#111' }}
+            style={{ color: 'var(--color-text-primary)' }}
           />
           {query && (
-            <button onClick={() => setQuery('')} style={{ color: isDark ? '#444' : '#ccc', fontSize: 11 }}>
+            <button
+              onClick={() => setQuery('')}
+              style={{ color: 'var(--color-text-muted)', fontSize: 11 }}
+            >
               Clear
             </button>
           )}
@@ -88,7 +98,10 @@ export default function SearchModal({ blocks, isDark, onClose, onNavigate }: Pro
         {/* List */}
         <div ref={listRef} style={{ overflowY: 'auto', maxHeight: 300 }}>
           {results.length === 0 ? (
-            <div className="flex items-center justify-center text-[12px]" style={{ height: 80, color: isDark ? '#3a3a3a' : '#ccc' }}>
+            <div
+              className="flex items-center justify-center text-[12px]"
+              style={{ height: 80, color: 'var(--color-text-muted)' }}
+            >
               No results
             </div>
           ) : (
@@ -98,15 +111,18 @@ export default function SearchModal({ blocks, isDark, onClose, onNavigate }: Pro
                 className="w-full flex items-center gap-3 px-4 text-left"
                 style={{
                   height: 40,
-                  background: i === activeIdx ? (isDark ? 'rgba(255,255,255,0.04)' : 'rgba(0,0,0,0.03)') : 'transparent',
+                  background: i === activeIdx ? 'var(--color-bg-hover)' : 'transparent',
                 }}
                 onMouseEnter={() => setActiveIdx(i)}
                 onClick={() => onNavigate(block)}
               >
-                <span className="flex-1 truncate text-[13px]" style={{ color: isDark ? '#d0d0d0' : '#111', fontWeight: i === activeIdx ? 500 : 400 }}>
+                <span
+                  className="flex-1 truncate text-[13px]"
+                  style={{ color: 'var(--color-text-primary)', fontWeight: i === activeIdx ? 500 : 400 }}
+                >
                   {getBlockLabel(block)}
                 </span>
-                <span className="text-[10px] flex-shrink-0" style={{ color: isDark ? '#333' : '#ccc' }}>
+                <span className="text-[10px] flex-shrink-0" style={{ color: 'var(--color-text-muted)' }}>
                   {TYPE_LABELS[block.type]}
                 </span>
               </button>
@@ -118,7 +134,11 @@ export default function SearchModal({ blocks, isDark, onClose, onNavigate }: Pro
         {results.length > 0 && (
           <div
             className="flex items-center px-4 text-[10px]"
-            style={{ height: 32, borderTop: `1px solid ${isDark ? 'rgba(255,255,255,0.04)' : 'rgba(0,0,0,0.04)'}`, color: isDark ? '#2e2e2e' : '#d0d0d0' }}
+            style={{
+              height: 32,
+              borderTop: '1px solid var(--color-border-subtle)',
+              color: 'var(--color-text-muted)',
+            }}
           >
             <span>↑↓ navigate · ↵ jump</span>
             <span className="ml-auto">{results.length} block{results.length !== 1 ? 's' : ''}</span>

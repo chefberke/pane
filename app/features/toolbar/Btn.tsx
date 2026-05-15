@@ -13,12 +13,27 @@ export function Btn({ onClick, active = false, children, className = '' }: BtnPr
     <button
       onClick={onClick}
       className={[
-        'w-8 h-8 flex items-center justify-center rounded-xl transition-colors duration-100 cursor-pointer',
-        active
-          ? 'bg-gray-900 dark:bg-white text-white dark:text-gray-900'
-          : 'text-gray-500 dark:text-[#888] hover:bg-gray-100 dark:hover:bg-[#2e2e2e] hover:text-gray-800 dark:hover:text-[#ccc]',
+        'w-8 h-8 flex items-center justify-center rounded-xl transition-colors duration-[var(--duration-fast)] cursor-pointer',
         className,
       ].join(' ')}
+      style={active ? {
+        background: 'var(--color-text-primary)',
+        color: 'var(--color-canvas)',
+      } : {
+        color: 'var(--color-text-tertiary)',
+      }}
+      onMouseEnter={e => {
+        if (!active) {
+          (e.currentTarget as HTMLButtonElement).style.background = 'var(--color-bg-hover)';
+          (e.currentTarget as HTMLButtonElement).style.color = 'var(--color-text-secondary)';
+        }
+      }}
+      onMouseLeave={e => {
+        if (!active) {
+          (e.currentTarget as HTMLButtonElement).style.background = '';
+          (e.currentTarget as HTMLButtonElement).style.color = 'var(--color-text-tertiary)';
+        }
+      }}
     >
       {children}
     </button>
@@ -27,5 +42,10 @@ export function Btn({ onClick, active = false, children, className = '' }: BtnPr
 
 /** 1px vertical divider between toolbar sections. */
 export function Sep() {
-  return <div className="w-px h-4 bg-gray-200 dark:bg-[#333] mx-0.5 flex-shrink-0" />;
+  return (
+    <div
+      className="w-px h-4 mx-0.5 flex-shrink-0"
+      style={{ background: 'var(--color-border-default)' }}
+    />
+  );
 }

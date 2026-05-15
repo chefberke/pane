@@ -21,14 +21,22 @@ export default function CommentBubble({ comment, visible }: Props) {
           className="absolute z-30 pointer-events-none"
           style={{ bottom: 'calc(100% + 10px)', left: 0, maxWidth: 180 }}
         >
-          <div className="relative bg-gray-800/90 dark:bg-[#1c1c1e]/95 backdrop-blur-md text-white rounded-2xl px-3 py-2 shadow-xl">
-            <p className="text-[11px] leading-snug line-clamp-2 text-white/90">{comment.text}</p>
+          <div
+            className="relative backdrop-blur-md rounded-2xl px-3 py-2 shadow-xl"
+            style={{ background: 'var(--color-surface-action)' }}
+          >
+            <p
+              className="text-[11px] leading-snug line-clamp-2"
+              style={{ color: 'var(--color-text-on-action)' }}
+            >
+              {comment.text}
+            </p>
             <span
               className="absolute left-4 -bottom-[5px] w-0 h-0"
               style={{
                 borderLeft: '5px solid transparent',
                 borderRight: '5px solid transparent',
-                borderTop: '5px solid rgba(40,40,42,0.92)',
+                borderTop: '5px solid var(--color-surface-action)',
               }}
             />
           </div>

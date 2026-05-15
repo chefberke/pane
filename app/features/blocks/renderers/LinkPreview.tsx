@@ -14,11 +14,14 @@ export default function LinkPreview({ block }: { block: LinkBlock }) {
 
   if (loading) {
     return (
-      <div className="w-72 bg-white dark:bg-[#242424] flex flex-col gap-2 p-3 animate-pulse">
-        <div className="h-32 bg-gray-100 dark:bg-[#2e2e2e] rounded-lg" />
-        <div className="h-3 bg-gray-100 dark:bg-[#2e2e2e] rounded w-3/4" />
-        <div className="h-3 bg-gray-100 dark:bg-[#2e2e2e] rounded w-1/2" />
-        <div className="h-3 bg-gray-100 dark:bg-[#2e2e2e] rounded w-1/3" />
+      <div
+        className="w-72 flex flex-col gap-2 p-3 animate-pulse"
+        style={{ background: 'var(--color-surface-embed)' }}
+      >
+        <div className="h-32 rounded-lg" style={{ background: 'var(--color-surface-sunken)' }} />
+        <div className="h-3 rounded w-3/4" style={{ background: 'var(--color-surface-sunken)' }} />
+        <div className="h-3 rounded w-1/2" style={{ background: 'var(--color-surface-sunken)' }} />
+        <div className="h-3 rounded w-1/3" style={{ background: 'var(--color-surface-sunken)' }} />
       </div>
     );
   }
@@ -30,11 +33,15 @@ export default function LinkPreview({ block }: { block: LinkBlock }) {
       href={url}
       target="_blank"
       rel="noopener noreferrer"
-      className="w-72 flex flex-col bg-white dark:bg-[#242424] no-underline group/link"
+      className="w-72 flex flex-col no-underline group/link"
+      style={{ background: 'var(--color-surface-embed)' }}
       onClick={e => e.stopPropagation()}
     >
       {showImage && (
-        <div className="h-36 overflow-hidden bg-gray-50 dark:bg-[#2e2e2e] flex-shrink-0">
+        <div
+          className="h-36 overflow-hidden flex-shrink-0"
+          style={{ background: 'var(--color-surface-sunken)' }}
+        >
           {/* eslint-disable-next-line @next/next/no-img-element -- arbitrary user-pasted URLs */}
           <img
             src={image}
@@ -46,12 +53,18 @@ export default function LinkPreview({ block }: { block: LinkBlock }) {
       )}
       <div className="p-3 flex flex-col gap-1.5">
         {title && (
-          <p className="text-sm font-semibold text-gray-900 dark:text-[#e8e8e8] line-clamp-2 leading-snug">
+          <p
+            className="text-sm font-semibold line-clamp-2 leading-snug"
+            style={{ color: 'var(--color-text-primary)' }}
+          >
             {title}
           </p>
         )}
         {description && (
-          <p className="text-xs text-gray-400 dark:text-[#666] line-clamp-2 leading-relaxed">
+          <p
+            className="text-xs line-clamp-2 leading-relaxed"
+            style={{ color: 'var(--color-text-tertiary)' }}
+          >
             {description}
           </p>
         )}
@@ -65,7 +78,12 @@ export default function LinkPreview({ block }: { block: LinkBlock }) {
               onError={e => { (e.target as HTMLImageElement).style.display = 'none'; }}
             />
           )}
-          <span className="text-xs text-gray-400 dark:text-[#555] truncate">{domain}</span>
+          <span
+            className="text-xs truncate"
+            style={{ color: 'var(--color-text-tertiary)' }}
+          >
+            {domain}
+          </span>
         </div>
       </div>
     </a>

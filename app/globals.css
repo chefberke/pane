@@ -1,17 +1,263 @@
 @import "tailwindcss";
 
+/* ─── Tailwind theme extensions ─────────────────────────────────────── */
 @theme inline {
+  /* Typography */
   --font-sans: var(--font-geist), system-ui, sans-serif;
+  --font-mono: ui-monospace, Menlo, monospace;
+
+  /* Font-size extras (below Tailwind's default xs=12px) */
+  --text-3xs: 0.5625rem; /* 9px  — tooltip kbd  */
+  --text-2xs: 0.625rem;  /* 10px — labels, timestamps */
+
+  /* Border radius */
+  --radius-xs:   1px;
+  --radius-sm:   4px;
+  --radius-md:   6px;
+  --radius-lg:   8px;
+  --radius-xl:   9px;
+  --radius-2xl:  11px;
+  --radius-3xl:  12px;
+  --radius-4xl:  16px;
+  --radius-5xl:  20px;
+  --radius-full: 9999px;
+
+  /* Motion */
+  --duration-fast:     100ms;
+  --duration-base:     150ms;
+  --duration-slow:     300ms;
+  --ease-out-soft:     cubic-bezier(0.22, 1, 0.36, 1);
 }
 
+/* ─── Dark mode variant ──────────────────────────────────────────────── */
 @variant dark (&:where(.dark, .dark *));
 
+/* ─── Color primitives ───────────────────────────────────────────────── */
+/* Raw values. Never reference these from components — use semantic tokens. */
+:root {
+  /* Brand */
+  --brand-from:     #ff7a59;
+  --brand-to:       #ff3d68;
+  --brand-gradient: linear-gradient(135deg, var(--brand-from), var(--brand-to));
+
+  /* Neutral — light scale */
+  --neutral-0:   #ffffff;
+  --neutral-50:  #f5f5f5;
+  --neutral-75:  #f1f0ee;
+  --neutral-100: #f0f0f0;
+  --neutral-150: #e8e8e8;
+  --neutral-200: #e0e0e0;
+  --neutral-300: #cccccc;
+  --neutral-400: #bbbbbb;
+  --neutral-500: #999999;
+  --neutral-600: #555555;
+  --neutral-700: #333333;
+  --neutral-800: #1f1f1f;
+  --neutral-900: #111111;
+
+  /* Neutral — dark scale */
+  --neutral-d-0:   #161616;
+  --neutral-d-50:  #1a1a1a;
+  --neutral-d-100: #1c1c1e;
+  --neutral-d-150: #1e1e1e;
+  --neutral-d-200: #222222;
+  --neutral-d-250: #242424;
+  --neutral-d-300: #2a2a2a;
+  --neutral-d-350: #2e2e2e;
+  --neutral-d-400: #333333;
+  --neutral-d-500: #444444;
+  --neutral-d-600: #555555;
+  --neutral-d-700: #888888;
+  --neutral-d-800: #aaaaaa;
+  --neutral-d-850: #cccccc;
+  --neutral-d-900: #d8d8d8;
+  --neutral-d-950: #e8e8e8;
+
+  /* Accent & status */
+  --accent-blue:    #60a5fa;
+  --accent-blue-bg: rgba(59, 130, 246, 0.8);
+  --danger:         #ef4444;
+  --danger-bg:      rgba(239, 68, 68, 0.1);
+
+  /* Special / one-off */
+  --grid-dot-light:              #c8c5bf;
+  --grid-dot-dark:               #2e2e2e;
+  --text-note-light:             #fef9c3;
+  --text-note-dark:              #252218;
+  --text-note-placeholder-light: rgba(202, 138, 4, 0.6);
+  --text-note-placeholder-dark:  #5a5030;
+}
+
+/* ─── Semantic tokens — light mode (default) ─────────────────────────── */
+/* These flip under .dark. Components reference only these. */
+:root {
+  /* Surfaces */
+  --color-canvas:          var(--neutral-75);
+  --color-surface:         var(--neutral-0);
+  --color-surface-raised:  rgba(255, 255, 255, 0.95);
+  --color-surface-sunken:  var(--neutral-100);
+  --color-surface-input:   rgba(0, 0, 0, 0.04);
+  --color-surface-embed:   var(--neutral-50);
+  --color-surface-action:  rgba(40, 40, 42, 0.92); /* constant across themes */
+  --color-bg-hover:        rgba(0, 0, 0, 0.03);
+  --color-bg-active:       rgba(0, 0, 0, 0.06);
+  --color-bg-hint:         rgba(0, 0, 0, 0.025);
+
+  /* Text */
+  --color-text-primary:   var(--neutral-900);
+  --color-text-secondary: var(--neutral-600);
+  --color-text-tertiary:  var(--neutral-500);
+  --color-text-muted:     var(--neutral-400);
+  --color-text-on-action: rgba(255, 255, 255, 0.9); /* constant across themes */
+
+  /* Borders */
+  --color-border-subtle:  rgba(0, 0, 0, 0.04);
+  --color-border-default: rgba(0, 0, 0, 0.06);
+  --color-border-strong:  rgba(0, 0, 0, 0.08);
+
+  /* Overlays */
+  --color-overlay-modal:  rgba(0, 0, 0, 0.2);
+  --color-overlay-search: rgba(0, 0, 0, 0.15);
+  --color-overlay-sheet:  rgba(0, 0, 0, 0.1);
+
+  /* Focus / selection */
+  --color-ring-selection: rgba(96, 165, 250, 0.6);
+
+  /* Danger (theme-agnostic) */
+  --color-text-danger:     var(--danger);
+  --color-bg-danger-hover: var(--danger-bg);
+
+  /* Canvas dot grid */
+  --color-grid-dot: var(--grid-dot-light);
+
+  /* Text note (sticky) */
+  --color-surface-note:          var(--text-note-light);
+  --color-text-note-placeholder: var(--text-note-placeholder-light);
+
+  /* Shadows */
+  --shadow-float-sm:   0 4px 6px -4px rgba(0, 0, 0, 0.1);
+  --shadow-float:      0 10px 15px -3px rgba(0, 0, 0, 0.1), 0 4px 6px -4px rgba(0, 0, 0, 0.1);
+  --shadow-float-hover:0 10px 15px -3px rgba(0, 0, 0, 0.15), 0 4px 6px -4px rgba(0, 0, 0, 0.15);
+  --shadow-card:       0 4px 12px rgba(0, 0, 0, 0.05);
+  --shadow-card-hover: 0 12px 24px rgba(0, 0, 0, 0.08);
+  --shadow-modal:      0 20px 40px rgba(0, 0, 0, 0.08), 0 4px 12px rgba(0, 0, 0, 0.05);
+  --shadow-modal-lg:   0 24px 64px rgba(0, 0, 0, 0.12);
+  --shadow-sheet:      -20px 0 40px rgba(0, 0, 0, 0.06);
+  --shadow-brand-logo: 0 4px 14px rgba(255, 61, 104, 0.2);
+
+  /* Marquee selection */
+  --color-marquee-border: rgba(0, 0, 0, 0.25);
+  --color-marquee-bg:     rgba(0, 0, 0, 0.04);
+
+  /* Float button hover surface */
+  --color-surface-raised-hover: rgba(245, 245, 245, 0.98);
+
+  /* Segmented control active pill */
+  --color-surface-control-active: #ffffff;
+}
+
+/* ─── Semantic tokens — dark mode overrides ──────────────────────────── */
+.dark {
+  /* Surfaces */
+  --color-canvas:         var(--neutral-d-0);
+  --color-surface:        var(--neutral-d-50);
+  --color-surface-raised: rgba(30, 30, 30, 0.95);
+  --color-surface-sunken: var(--neutral-d-300);
+  --color-surface-input:  rgba(255, 255, 255, 0.05);
+  --color-surface-embed:  var(--neutral-d-250);
+  /* --color-surface-action intentionally unchanged */
+  --color-bg-hover:       rgba(255, 255, 255, 0.04);
+  --color-bg-active:      rgba(255, 255, 255, 0.08);
+  --color-bg-hint:        rgba(255, 255, 255, 0.03);
+
+  /* Text */
+  --color-text-primary:   var(--neutral-d-900);
+  --color-text-secondary: var(--neutral-d-800);
+  --color-text-tertiary:  var(--neutral-d-700);
+  --color-text-muted:     var(--neutral-d-500);
+
+  /* Borders */
+  --color-border-subtle:  rgba(255, 255, 255, 0.04);
+  --color-border-default: rgba(255, 255, 255, 0.06);
+  --color-border-strong:  rgba(255, 255, 255, 0.08);
+
+  /* Overlays */
+  --color-overlay-modal:  rgba(0, 0, 0, 0.6);
+  --color-overlay-search: rgba(0, 0, 0, 0.5);
+  --color-overlay-sheet:  rgba(0, 0, 0, 0.3);
+
+  /* Focus / selection */
+  --color-ring-selection: rgba(255, 255, 255, 0.2);
+
+  /* Canvas dot grid */
+  --color-grid-dot: var(--grid-dot-dark);
+
+  /* Text note (sticky) */
+  --color-surface-note:          var(--text-note-dark);
+  --color-text-note-placeholder: var(--text-note-placeholder-dark);
+
+  /* Shadows */
+  --shadow-float-sm:    0 4px 6px -4px rgba(0, 0, 0, 0.5);
+  --shadow-float:       0 10px 15px -3px rgba(0, 0, 0, 0.5), 0 4px 6px -4px rgba(0, 0, 0, 0.5);
+  --shadow-float-hover: 0 10px 15px -3px rgba(0, 0, 0, 0.6), 0 4px 6px -4px rgba(0, 0, 0, 0.6);
+  --shadow-card:        0 4px 12px rgba(0, 0, 0, 0.4);
+  --shadow-card-hover:  0 12px 24px rgba(0, 0, 0, 0.5);
+  --shadow-modal:       0 20px 40px rgba(0, 0, 0, 0.6), 0 4px 12px rgba(0, 0, 0, 0.4);
+  --shadow-modal-lg:    0 24px 64px rgba(0, 0, 0, 0.8);
+  --shadow-sheet:       -20px 0 40px rgba(0, 0, 0, 0.6);
+  --shadow-brand-logo:  0 4px 14px rgba(255, 61, 104, 0.25);
+
+  /* Marquee selection */
+  --color-marquee-border: rgba(255, 255, 255, 0.3);
+  --color-marquee-bg:     rgba(255, 255, 255, 0.04);
+
+  /* Float button hover surface */
+  --color-surface-raised-hover: rgba(50, 50, 50, 0.98);
+
+  /* Segmented control active pill */
+  --color-surface-control-active: #444444;
+}
+
+/* ─── Component tokens (theme-agnostic sizing) ───────────────────────── */
+:root {
+  /* Button sizes */
+  --btn-float-size:   36px;
+  --btn-toolbar-size: 32px;
+  --btn-mode-size:    28px;
+
+  /* Input / row */
+  --input-height: 32px;
+  --row-height:   36px;
+
+  /* Panel / modal widths */
+  --panel-width-menu:  280px;
+  --panel-width-sheet: 320px;
+  --panel-width-modal: 480px;
+  --popover-width:     320px;
+
+  /* Spacing aliases */
+  --space-row-y:  0.625rem; /* 10px */
+  --space-panel-x: 1rem;    /* 16px */
+  --space-stack:  0.625rem; /* 10px */
+
+  /* Z-index ladder */
+  --z-base:           1;
+  --z-block-action:   10;
+  --z-comment-bubble: 30;
+  --z-floating:       50;
+  --z-block-selected: 100;
+  --z-menu-panel:     200;
+  --z-items-sheet:    250;
+  --z-shortcuts:      300;
+}
+
+/* ─── Global reset ───────────────────────────────────────────────────── */
 *, *::before, *::after {
   box-sizing: border-box;
 }
 
 .items-search-input::placeholder {
-  color: var(--placeholder-color, #999);
+  color: var(--color-text-tertiary);
 }
 
 html, body {

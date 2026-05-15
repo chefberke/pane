@@ -1,6 +1,5 @@
 /** Display state consumed by the Toolbar component. */
 export interface ToolbarStatus {
-  isDark: boolean;
   isPanMode: boolean;
   hasRefreshable: boolean;
   isRefreshing: boolean;

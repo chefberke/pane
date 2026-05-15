@@ -25,8 +25,15 @@ export default function AddInput({ x, y, onSubmit, onClose }: Props) {
 
   return (
     <div
-      className="absolute z-50 bg-white/95 dark:bg-[#1e1e1e]/95 backdrop-blur-md rounded-2xl shadow-2xl border border-gray-100 dark:border-white/[0.06] overflow-hidden w-80"
-      style={{ left: x, top: y, transform: 'translate(-50%, -50%)' }}
+      className="absolute z-50 backdrop-blur-md rounded-2xl overflow-hidden w-80"
+      style={{
+        left: x,
+        top: y,
+        transform: 'translate(-50%, -50%)',
+        background: 'var(--color-surface-raised)',
+        border: '1px solid var(--color-border-default)',
+        boxShadow: 'var(--shadow-modal)',
+      }}
       onClick={e => e.stopPropagation()}
       onMouseDown={e => e.stopPropagation()}
       onPointerDown={e => e.stopPropagation()}
@@ -35,16 +42,19 @@ export default function AddInput({ x, y, onSubmit, onClose }: Props) {
       <input
         ref={ref}
         type="text"
-        className="w-full text-sm px-4 py-3.5 outline-none text-gray-800 dark:text-[#e8e8e8] placeholder:text-gray-300 dark:placeholder:text-[#555] bg-transparent"
+        className="w-full text-sm px-4 py-3.5 outline-none bg-transparent"
+        style={{
+          color: 'var(--color-text-primary)',
+        }}
         placeholder="Paste a URL or type a note..."
         value={value}
         onChange={e => setValue(e.target.value)}
         onKeyDown={handleKeyDown}
       />
       <div className="px-4 pb-3 flex items-center justify-between">
-        <span className="text-xs text-gray-300 dark:text-[#4a4a4a]">Enter to add · Esc to cancel</span>
+        <span className="text-xs" style={{ color: 'var(--color-text-muted)' }}>Enter to add · Esc to cancel</span>
         <button
-          className="text-xs text-blue-500 hover:text-blue-400 dark:text-[#aaa] dark:hover:text-[#ccc] font-medium transition-colors"
+          className="text-xs font-medium transition-colors text-blue-500 hover:text-blue-400"
           onClick={() => onSubmit(value)}
         >
           Add

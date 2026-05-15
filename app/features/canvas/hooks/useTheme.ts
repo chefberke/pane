@@ -57,5 +57,5 @@ export function useTheme() {
     window.dispatchEvent(new Event('termal-theme-change'));
   }, []);
 
-  return { isDark, themeChoice, toggleTheme, setTheme };
+  return { themeChoice, toggleTheme, setTheme };
 }

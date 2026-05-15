@@ -9,22 +9,14 @@ import { APP_NAME, PANEL_WIDTH } from './constants';
 import type { ThemeChoice } from '../canvas/hooks/useTheme';
 
 interface Props {
-  isDark: boolean;
   themeChoice: ThemeChoice;
   onSetTheme: (choice: ThemeChoice) => void;
   onClose: () => void;
 }
 
 /** Anchored dropdown menu panel that opens below the MenuButton. */
-export default function MenuPanel({ isDark, themeChoice, onSetTheme, onClose }: Props) {
+export default function MenuPanel({ themeChoice, onSetTheme, onClose }: Props) {
   const ref = useRef<HTMLDivElement>(null);
-
-  const bg = isDark ? '#161616' : '#fff';
-  const border = isDark ? 'rgba(255,255,255,0.06)' : 'rgba(0,0,0,0.06)';
-  const textPrimary = isDark ? '#d8d8d8' : '#111';
-  const textMuted = isDark ? '#444' : '#ccc';
-  const hoverBg = isDark ? 'rgba(255,255,255,0.04)' : 'rgba(0,0,0,0.03)';
-  const segBg = isDark ? '#2a2a2a' : '#f0f0f0';
 
   useEffect(() => {
     const onKey = (e: KeyboardEvent) => { if (e.key === 'Escape') { e.preventDefault(); onClose(); } };
@@ -40,19 +32,16 @@ export default function MenuPanel({ isDark, themeChoice, onSetTheme, onClose }: 
     return () => document.removeEventListener('mousedown', onDown);
   }, [onClose]);
 
-
   return (
     <motion.div
       ref={ref}
       className="absolute top-full left-0 mt-2 z-[200] overflow-hidden"
       style={{
         width: PANEL_WIDTH,
-        background: bg,
-        border: `1px solid ${border}`,
-        borderRadius: 16,
-        boxShadow: isDark
-          ? '0 20px 40px rgba(0,0,0,0.6), 0 4px 12px rgba(0,0,0,0.4)'
-          : '0 20px 40px rgba(0,0,0,0.08), 0 4px 12px rgba(0,0,0,0.05)',
+        background: 'var(--color-surface)',
+        border: '1px solid var(--color-border-default)',
+        borderRadius: 'var(--radius-4xl)',
+        boxShadow: 'var(--shadow-modal)',
       }}
       initial={{ opacity: 0, y: -6, scale: 0.98 }}
       animate={{ opacity: 1, y: 0, scale: 1 }}
@@ -64,16 +53,19 @@ export default function MenuPanel({ isDark, themeChoice, onSetTheme, onClose }: 
       {/* Brand row */}
       <div
         className="flex items-center gap-2.5 px-3"
-        style={{ height: 44, borderBottom: `1px solid ${border}` }}
+        style={{ height: 44, borderBottom: '1px solid var(--color-border-default)' }}
       >
         <div
           style={{
-            width: 18, height: 18, borderRadius: 5,
-            background: 'linear-gradient(135deg, #ff7a59, #ff3d68)',
+            width: 18, height: 18, borderRadius: 'var(--radius-md)',
+            background: 'var(--brand-gradient)',
             flexShrink: 0,
           }}
         />
-        <span className="text-[13px] font-semibold tracking-tight" style={{ color: textPrimary }}>
+        <span
+          className="text-[13px] font-semibold tracking-tight"
+          style={{ color: 'var(--color-text-primary)' }}
+        >
           {APP_NAME}
         </span>
       </div>
@@ -82,39 +74,39 @@ export default function MenuPanel({ isDark, themeChoice, onSetTheme, onClose }: 
       <button
         type="button"
         className="w-full flex items-center gap-2.5 px-3 cursor-pointer"
-        style={{ height: 56, borderBottom: `1px solid ${border}` }}
-        onMouseEnter={e => { (e.currentTarget as HTMLButtonElement).style.background = hoverBg; }}
+        style={{ height: 56, borderBottom: '1px solid var(--color-border-default)' }}
+        onMouseEnter={e => { (e.currentTarget as HTMLButtonElement).style.background = 'var(--color-bg-hover)'; }}
         onMouseLeave={e => { (e.currentTarget as HTMLButtonElement).style.background = 'transparent'; }}
       >
         <div
           className="flex items-center justify-center flex-shrink-0"
           style={{
             width: 28, height: 28, borderRadius: '50%',
-            border: `1px dashed ${border}`,
-            color: textMuted,
+            border: '1px dashed var(--color-border-default)',
+            color: 'var(--color-text-muted)',
           }}
         >
           <User size={12} />
         </div>
         <div className="flex flex-col items-start flex-1 min-w-0">
-          <span className="text-[13px] font-medium leading-tight" style={{ color: textPrimary }}>Sign in</span>
-          <span className="text-[11px] leading-tight" style={{ color: textMuted }}>Save your canvas</span>
+          <span className="text-[13px] font-medium leading-tight" style={{ color: 'var(--color-text-primary)' }}>Sign in</span>
+          <span className="text-[11px] leading-tight" style={{ color: 'var(--color-text-muted)' }}>Save your canvas</span>
         </div>
-        <ChevronRight size={14} style={{ color: textMuted, flexShrink: 0 }} />
+        <ChevronRight size={14} style={{ color: 'var(--color-text-muted)', flexShrink: 0 }} />
       </button>
 
       {/* Theme section */}
       <div className="pt-2 pb-2">
         <div
           className="px-3 pb-1.5 text-[10px] font-medium uppercase tracking-widest"
-          style={{ color: textMuted }}
+          style={{ color: 'var(--color-text-muted)' }}
         >
           Theme
         </div>
         <LayoutGroup>
           <div
             className="mx-3 flex items-center p-0.5 gap-0.5"
-            style={{ background: segBg, borderRadius: 11 }}
+            style={{ background: 'var(--color-surface-sunken)', borderRadius: 'var(--radius-2xl)' }}
           >
             {([
               { choice: 'light' as ThemeChoice, Icon: Sun, label: 'Light' },
@@ -129,13 +121,11 @@ export default function MenuPanel({ isDark, themeChoice, onSetTheme, onClose }: 
                   className="relative flex-1 flex items-center justify-center gap-1 cursor-pointer"
                   style={{
                     height: 28,
-                    borderRadius: 9,
+                    borderRadius: 'var(--radius-xl)',
                     fontSize: 11,
                     fontWeight: 500,
-                    color: isActive
-                      ? (isDark ? '#eee' : '#1a1a1a')
-                      : (isDark ? '#555' : '#aaa'),
-                    transition: 'color 0.1s',
+                    color: isActive ? 'var(--color-text-primary)' : 'var(--color-text-tertiary)',
+                    transition: 'color var(--duration-fast)',
                   }}
                   onClick={() => onSetTheme(choice)}
                 >
@@ -144,9 +134,9 @@ export default function MenuPanel({ isDark, themeChoice, onSetTheme, onClose }: 
                       layoutId="theme-pill"
                       className="absolute inset-0"
                       style={{
-                        borderRadius: 9,
-                        background: isDark ? '#444' : '#fff',
-                        boxShadow: '0 1px 3px rgba(0,0,0,0.12)',
+                        borderRadius: 'var(--radius-xl)',
+                        background: 'var(--color-surface-control-active)',
+                        boxShadow: 'var(--shadow-float-sm)',
                       }}
                       transition={{ type: 'spring', stiffness: 500, damping: 35 }}
                     />
@@ -163,31 +153,23 @@ export default function MenuPanel({ isDark, themeChoice, onSetTheme, onClose }: 
       </div>
 
       {/* Canvas section */}
-      <div style={{ borderTop: `1px solid ${border}` }} className="py-2">
+      <div style={{ borderTop: '1px solid var(--color-border-default)' }} className="py-2">
         <div
           className="px-3 pb-1 text-[10px] font-medium uppercase tracking-widest"
-          style={{ color: textMuted }}
+          style={{ color: 'var(--color-text-muted)' }}
         >
           Canvas
         </div>
-        <Row icon={<Plus size={14} />} label="New canvas" hoverBg={hoverBg} textPrimary={textPrimary} textMuted={textMuted} isDark={isDark} />
-        <Row icon={<Upload size={14} />} label="Import" hoverBg={hoverBg} textPrimary={textPrimary} textMuted={textMuted} isDark={isDark} />
-        <Row icon={<Download size={14} />} label="Export" hoverBg={hoverBg} textPrimary={textPrimary} textMuted={textMuted} isDark={isDark} />
+        <Row icon={<Plus size={14} />} label="New canvas" />
+        <Row icon={<Upload size={14} />} label="Import" />
+        <Row icon={<Download size={14} />} label="Export" />
       </div>
 
       {/* Settings group */}
-      <div style={{ borderTop: `1px solid ${border}` }} className="py-2">
-        <Row icon={<Settings size={14} />} label="Settings" hoverBg={hoverBg} textPrimary={textPrimary} textMuted={textMuted} isDark={isDark} />
-        <Row
-          icon={<Command size={14} />}
-          label="Keyboard shortcuts"
-          hoverBg={hoverBg}
-          textPrimary={textPrimary}
-          textMuted={textMuted}
-          isDark={isDark}
-          shortcut="?"
-        />
-        <Row icon={<HelpCircle size={14} />} label="Help & feedback" hoverBg={hoverBg} textPrimary={textPrimary} textMuted={textMuted} isDark={isDark} />
+      <div style={{ borderTop: '1px solid var(--color-border-default)' }} className="py-2">
+        <Row icon={<Settings size={14} />} label="Settings" />
+        <Row icon={<Command size={14} />} label="Keyboard shortcuts" shortcut="?" />
+        <Row icon={<HelpCircle size={14} />} label="Help & feedback" />
       </div>
     </motion.div>
   );
@@ -196,30 +178,26 @@ export default function MenuPanel({ isDark, themeChoice, onSetTheme, onClose }: 
 interface RowProps {
   icon: React.ReactNode;
   label: string;
-  hoverBg: string;
-  textPrimary: string;
-  textMuted: string;
-  isDark: boolean;
   shortcut?: string;
 }
 
-function Row({ icon, label, hoverBg, textPrimary, textMuted, isDark, shortcut }: RowProps) {
+function Row({ icon, label, shortcut }: RowProps) {
   return (
     <button
       type="button"
       className="w-full flex items-center gap-2.5 px-3 cursor-pointer"
-      style={{ height: 36 }}
-      onMouseEnter={e => { (e.currentTarget as HTMLButtonElement).style.background = hoverBg; }}
+      style={{ height: 'var(--row-height)' }}
+      onMouseEnter={e => { (e.currentTarget as HTMLButtonElement).style.background = 'var(--color-bg-hover)'; }}
       onMouseLeave={e => { (e.currentTarget as HTMLButtonElement).style.background = 'transparent'; }}
     >
-      <span style={{ color: textMuted, flexShrink: 0, display: 'flex' }}>{icon}</span>
-      <span className="flex-1 text-left text-[13px]" style={{ color: textPrimary }}>{label}</span>
+      <span style={{ color: 'var(--color-text-muted)', flexShrink: 0, display: 'flex' }}>{icon}</span>
+      <span className="flex-1 text-left text-[13px]" style={{ color: 'var(--color-text-primary)' }}>{label}</span>
       {shortcut && (
         <span
           className="text-[10px] font-mono rounded px-1.5 py-0.5 leading-none flex-shrink-0"
           style={{
-            background: isDark ? 'rgba(255,255,255,0.08)' : 'rgba(0,0,0,0.06)',
-            color: textMuted,
+            background: 'var(--color-bg-active)',
+            color: 'var(--color-text-muted)',
           }}
         >
           {shortcut}
