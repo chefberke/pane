@@ -46,6 +46,27 @@ export interface TextBlock extends BaseBlock {
   content: string;
 }
 
-export type Block = LinkBlock | YouTubeBlock | TwitterBlock | ImageBlock | TextBlock;
+export interface PdfBlock extends BaseBlock {
+  type: 'pdf';
+  url: string;
+  title?: string;
+  source: 'url' | 'upload';
+  filePath?: string;
+}
+
+export interface SpotifyBlock extends BaseBlock {
+  type: 'spotify';
+  spotifyType: 'track' | 'album' | 'playlist' | 'episode';
+  spotifyId: string;
+  url: string;
+}
+
+export interface MapBlock extends BaseBlock {
+  type: 'map';
+  embedUrl: string;
+  title?: string;
+}
+
+export type Block = LinkBlock | YouTubeBlock | TwitterBlock | ImageBlock | TextBlock | PdfBlock | SpotifyBlock | MapBlock;
 
 export type AlignMode = 'distributeH' | 'distributeV';

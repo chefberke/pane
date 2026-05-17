@@ -28,6 +28,7 @@ import { usePinchZoom } from './hooks/usePinchZoom';
 import { useLatestRef } from './hooks/useLatestRef';
 import { AnimatePresence } from 'framer-motion';
 import EmptyState from './EmptyState';
+import { db } from '@/app/lib/db';
 
 /** Infinite pan/zoom canvas — orchestrates viewport, blocks, selection, and keyboard shortcuts. */
 export default function Canvas({ initialState, onSave }: CanvasProps) {
@@ -126,6 +127,9 @@ export default function Canvas({ initialState, onSave }: CanvasProps) {
     let url: string | null = null;
     if (block.type === 'link' || block.type === 'twitter' || block.type === 'image') url = block.url;
     if (block.type === 'youtube') url = `https://www.youtube.com/watch?v=${block.videoId}`;
+    if (block.type === 'spotify') url = block.url;
+    if (block.type === 'map') url = block.embedUrl;
+    if (block.type === 'pdf') url = block.url;
     if (url) window.open(url, '_blank', 'noopener,noreferrer');
   }, []);
 
@@ -159,7 +163,7 @@ export default function Canvas({ initialState, onSave }: CanvasProps) {
     const trimmed = value.trim();
     if (!trimmed) return;
     pushSnapshot();
-    if (/^https?:\/\//i.test(trimmed)) {
+    if (/^https?:\/\//i.test(trimmed) || trimmed.startsWith('<iframe')) {
       addBlockFromUrl(trimmed, sx, sy);
     } else {
       const { x, y } = screenToCanvas(sx, sy);
@@ -167,6 +171,25 @@ export default function Canvas({ initialState, onSave }: CanvasProps) {
       setBlocks(prev => [...prev, { id: uid(), type: 'text', content: trimmed, x: x - w / 2, y: y - h / 2 }]);
     }
   }, [addBlockFromUrl, screenToCanvas, setBlocks, pushSnapshot]);
+
+  const handleUploadPdf = useCallback(async (file: File, sx: number, sy: number) => {
+    setAddPos(null);
+    const path = `pdfs/${uid()}-${file.name}`;
+    try {
+      await db.storage.uploadFile(path, file);
+      const downloadData = await db.storage.getDownloadUrl(path);
+      const url: string = typeof downloadData === 'string' ? downloadData : downloadData?.data?.url ?? path;
+      const pos = screenToCanvas(sx, sy);
+      const { w, h } = BLOCK_SIZES.pdf;
+      pushSnapshot();
+      setBlocks(prev => [...prev, {
+        id: uid(), type: 'pdf', url, source: 'upload', filePath: path,
+        title: file.name, x: pos.x - w / 2, y: pos.y - h / 2,
+      }]);
+    } catch (err) {
+      console.error('PDF upload failed', err);
+    }
+  }, [screenToCanvas, setBlocks, pushSnapshot]);
 
   const navigateToBlock = useCallback((block: Block) => {
     setIsSearchOpen(false);
@@ -269,6 +292,7 @@ export default function Canvas({ initialState, onSave }: CanvasProps) {
           x={addPos.x}
           y={addPos.y}
           onSubmit={val => handleAddSubmit(val, addPos.x, addPos.y)}
+          onUploadPdf={file => handleUploadPdf(file, addPos.x, addPos.y)}
           onClose={() => setAddPos(null)}
         />
       )}

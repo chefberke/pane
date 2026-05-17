@@ -6,15 +6,45 @@ export function uid(): string {
   return Math.random().toString(36).slice(2, 10);
 }
 
-/** Infers block type from a URL by inspecting hostname and file extension. */
-export function detectType(url: string): Block['type'] {
+/** Infers block type from a URL (or iframe HTML snippet) by inspecting hostname and file extension. */
+export function detectType(input: string): Block['type'] {
+  const trimmed = input.trim();
+  if (trimmed.startsWith('<iframe')) {
+    const src = (trimmed.match(/\bsrc="([^"]+)"/) ?? [])[1];
+    if (src && src.includes('google.com/maps/embed')) return 'map';
+    return 'link';
+  }
   try {
-    const u = new URL(url);
+    const u = new URL(trimmed);
     if (u.hostname.includes('youtube.com') || u.hostname.includes('youtu.be')) return 'youtube';
     if (u.hostname.includes('twitter.com') || u.hostname.includes('x.com')) return 'twitter';
+    if (u.hostname === 'open.spotify.com') return 'spotify';
+    if (u.hostname.includes('google.com') && u.pathname.startsWith('/maps/embed')) return 'map';
     if (/\.(png|jpg|jpeg|gif|webp|svg|avif)(\?.*)?$/i.test(u.pathname)) return 'image';
+    if (/\.pdf(\?.*)?$/i.test(u.pathname)) return 'pdf';
   } catch { /* not a URL */ }
   return 'link';
+}
+
+/** Extracts Spotify embed type and ID from an open.spotify.com URL. */
+export function extractSpotifyInfo(url: string): { spotifyType: 'track' | 'album' | 'playlist' | 'episode'; spotifyId: string } | null {
+  const m = url.match(/open\.spotify\.com\/(track|album|playlist|episode)\/([a-zA-Z0-9]+)/);
+  if (!m) return null;
+  return { spotifyType: m[1] as 'track' | 'album' | 'playlist' | 'episode', spotifyId: m[2] };
+}
+
+/** Validates and returns a Google Maps embed URL. Accepts both the raw URL and a full iframe HTML snippet. */
+export function extractMapEmbedUrl(input: string): string | null {
+  const trimmed = input.trim();
+  const candidate = trimmed.startsWith('<iframe')
+    ? (trimmed.match(/\bsrc="([^"]+)"/) ?? [])[1] ?? null
+    : trimmed;
+  if (!candidate) return null;
+  try {
+    const u = new URL(candidate);
+    if (u.hostname.includes('google.com') && u.pathname.startsWith('/maps/embed')) return candidate;
+  } catch { /* ignore */ }
+  return null;
 }
 
 /** Extracts the 11-character video ID from any YouTube URL format. */

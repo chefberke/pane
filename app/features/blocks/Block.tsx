@@ -8,6 +8,9 @@ import YoutubeEmbed from './renderers/YoutubeEmbed';
 import TwitterEmbed from './renderers/TwitterEmbed';
 import ImageEmbed from './renderers/ImageEmbed';
 import TextNote from './renderers/TextNote';
+import SpotifyEmbed from './renderers/SpotifyEmbed';
+import MapEmbed from './renderers/MapEmbed';
+import PdfEmbed from './renderers/PdfEmbed';
 import { useBlockDrag } from './hooks/useBlockDrag';
 import CommentBubble from '../comments/CommentBubble';
 
@@ -84,6 +87,9 @@ function BlockContainer({ block, scale, selected, isInMultiSelection, handlers }
         {block.type === 'youtube' && <YoutubeEmbed block={block} />}
         {block.type === 'twitter' && <TwitterEmbed block={block} />}
         {block.type === 'image' && <ImageEmbed block={block} />}
+        {block.type === 'spotify' && <SpotifyEmbed block={block} />}
+        {block.type === 'map' && <MapEmbed block={block} />}
+        {block.type === 'pdf' && <PdfEmbed block={block} />}
         {block.type === 'text' && (
           <TextNote
             block={block}

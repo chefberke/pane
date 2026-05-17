@@ -14,7 +14,7 @@ export function usePasteUrl({
   useEffect(() => {
     const onPaste = (e: ClipboardEvent) => {
       const text = e.clipboardData?.getData('text')?.trim();
-      if (!text || !/^https?:\/\//i.test(text)) return;
+      if (!text || (!/^https?:\/\//i.test(text) && !text.startsWith('<iframe'))) return;
       e.preventDefault();
       const el = viewportRef.current;
       addBlockFromUrlRef.current(text, el ? el.clientWidth / 2 : 400, el ? el.clientHeight / 2 : 300);

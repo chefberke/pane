@@ -7,6 +7,9 @@ export const TYPE_LABELS: Record<Block['type'], string> = {
   twitter: 'Tweet',
   image: 'Image',
   text: 'Note',
+  pdf: 'PDF',
+  spotify: 'Spotify',
+  map: 'Map',
 };
 
 /** Returns a human-readable label for a block, used for search and display. */
@@ -16,12 +19,15 @@ export function getBlockLabel(block: Block): string {
   if (block.type === 'twitter') return `Tweet · ${block.url}`;
   if (block.type === 'image') return block.alt || block.url;
   if (block.type === 'text') return block.content || 'Empty note';
+  if (block.type === 'pdf') return block.title || block.url.split('/').pop()?.split('?')[0] || 'PDF';
+  if (block.type === 'spotify') return `Spotify ${block.spotifyType}`;
+  if (block.type === 'map') return block.title || 'Map';
   return '';
 }
 
 /** Groups blocks by type in a fixed display order, omitting empty groups. */
 export function groupBlocksByType(blocks: Block[]): Array<{ type: Block['type']; items: Block[] }> {
-  const order: Block['type'][] = ['link', 'youtube', 'twitter', 'image', 'text'];
+  const order: Block['type'][] = ['youtube', 'spotify', 'twitter', 'image', 'pdf', 'link', 'map', 'text'];
   return order
     .map(type => ({ type, items: blocks.filter(b => b.type === type) }))
     .filter(g => g.items.length > 0);
@@ -46,6 +52,15 @@ export function searchBlocks(blocks: Block[], query: string): Block[] {
     }
     if (block.type === 'text') {
       return block.content?.toLowerCase().includes(q);
+    }
+    if (block.type === 'pdf') {
+      return [block.url, block.title].some(v => v?.toLowerCase().includes(q));
+    }
+    if (block.type === 'spotify') {
+      return [block.url, block.spotifyType, block.spotifyId].some(v => v?.toLowerCase().includes(q));
+    }
+    if (block.type === 'map') {
+      return [block.embedUrl, block.title].some(v => v?.toLowerCase().includes(q));
     }
     return false;
   });

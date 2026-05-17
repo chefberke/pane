@@ -1,6 +1,6 @@
 import { useState, useCallback, type Dispatch, type SetStateAction } from 'react';
 import type { Block, LinkBlock } from '@/app/features/types';
-import { uid, detectType, extractYouTubeId, extractTweetId } from '../utils';
+import { uid, detectType, extractYouTubeId, extractTweetId, extractSpotifyInfo, extractMapEmbedUrl } from '../utils';
 import { BLOCK_SIZES } from '../constants';
 
 async function hydrateLinkBlock(
@@ -49,6 +49,25 @@ export function useBlocks({ screenToCanvas }: {
     if (type === 'image') {
       const { w, h } = BLOCK_SIZES.image;
       setBlocks(prev => [...prev, { id: uid(), type: 'image', url, x: pos.x - w / 2, y: pos.y - h / 2 }]);
+      return;
+    }
+    if (type === 'spotify') {
+      const info = extractSpotifyInfo(url);
+      if (!info) return;
+      const { w, h } = BLOCK_SIZES.spotify;
+      setBlocks(prev => [...prev, { id: uid(), type: 'spotify', ...info, url, x: pos.x - w / 2, y: pos.y - h / 2 }]);
+      return;
+    }
+    if (type === 'map') {
+      const embedUrl = extractMapEmbedUrl(url);
+      if (!embedUrl) return;
+      const { w, h } = BLOCK_SIZES.map;
+      setBlocks(prev => [...prev, { id: uid(), type: 'map', embedUrl, x: pos.x - w / 2, y: pos.y - h / 2 }]);
+      return;
+    }
+    if (type === 'pdf') {
+      const { w, h } = BLOCK_SIZES.pdf;
+      setBlocks(prev => [...prev, { id: uid(), type: 'pdf', url, source: 'url', x: pos.x - w / 2, y: pos.y - h / 2 }]);
       return;
     }
 
