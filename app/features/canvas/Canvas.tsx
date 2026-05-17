@@ -83,8 +83,8 @@ export default function Canvas({ initialState, onSave }: CanvasProps) {
     offsetRef,
     setOffset,
     setSelectedIds,
-    onDoubleClickCanvas: (sx, sy) => setAddPos({ x: sx, y: sy }),
-    onCanvasClick: () => setAddPos(null),
+    onDoubleClickCanvas: (sx, sy) => { setCommentTarget(null); setAddPos({ x: sx, y: sy }); },
+    onCanvasClick: () => { setAddPos(null); setCommentTarget(null); },
   });
 
   useCanvasKeyboard({

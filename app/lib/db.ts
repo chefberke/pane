@@ -14,4 +14,4 @@ if (!APP_ID && typeof window !== 'undefined') {
  * Falls back to a placeholder app ID so the build does not crash; real network
  * calls will fail until a valid `NEXT_PUBLIC_INSTANT_APP_ID` is provided.
  */
-export const db = init({ appId: APP_ID || 'missing-instant-app-id', schema });
+export const db = init({ appId: APP_ID || 'missing-instant-app-id', schema, devtool: false });
