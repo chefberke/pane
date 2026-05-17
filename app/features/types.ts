@@ -47,3 +47,5 @@ export interface TextBlock extends BaseBlock {
 }
 
 export type Block = LinkBlock | YouTubeBlock | TwitterBlock | ImageBlock | TextBlock;
+
+export type AlignMode = 'distributeH' | 'distributeV';

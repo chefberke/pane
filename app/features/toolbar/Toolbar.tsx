@@ -1,15 +1,16 @@
 'use client';
 import { useState } from 'react';
 import { motion, LayoutGroup } from 'framer-motion';
-import { MousePointer2, Hand, Search, Type, RefreshCw } from 'lucide-react';
+import { MousePointer2, Hand, Search, Type, RefreshCw, Maximize2 } from 'lucide-react';
 import type { ToolbarStatus, ToolbarActions } from './types';
 import Tip from './Tip';
 import { Btn, Sep } from './Btn';
+import AlignGroup from './AlignGroup';
 
 /** Floating bottom toolbar with mode toggles and canvas actions. */
 export default function Toolbar({ status, actions }: { status: ToolbarStatus; actions: ToolbarActions }) {
-  const { isPanMode, hasRefreshable, isRefreshing } = status;
-  const { addText, togglePanMode, search, refresh } = actions;
+  const { isPanMode, hasRefreshable, isRefreshing, selectedCount } = status;
+  const { addText, togglePanMode, search, refresh, alignSelected, zoomToFit } = actions;
 
   const [rotation, setRotation] = useState(0);
 
@@ -82,6 +83,16 @@ export default function Toolbar({ status, actions }: { status: ToolbarStatus; ac
           <Search size={14} />
         </Btn>
       </Tip>
+
+      <Tip label="Zoom to fit">
+        <Btn onClick={zoomToFit}>
+          <Maximize2 size={14} />
+        </Btn>
+      </Tip>
+
+      <Sep />
+
+      <AlignGroup selectedCount={selectedCount} onAlign={alignSelected} />
 
       <Sep />
 

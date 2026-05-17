@@ -13,7 +13,7 @@ import ZoomControls from './ZoomControls';
 import ItemsButton from '../items-panel/ItemsButton';
 import ItemsSheet from '../items-panel/ItemsSheet';
 import MenuButton from '../menu-panel/MenuButton';
-import { ZOOM_STEP, BLOCK_SIZES, DOT_GRID_SIZE } from './constants';
+import { ZOOM_STEP, BLOCK_SIZES, DOT_GRID_SIZE, MIN_SCALE, MAX_SCALE } from './constants';
 import { uid } from './utils';
 import { makeComment } from '../comments/utils';
 import { useViewport } from './hooks/useViewport';
@@ -40,7 +40,7 @@ export default function Canvas({ initialState, onSave }: CanvasProps) {
   const blocksRef = useLatestRef(blocks);
   const { pushSnapshot, undo, redo, canUndo, canRedo } = useHistory({ setBlocks, blocksRef });
 
-  const { selectedIds, setSelectedIds, handleBlockSelect, handleBlockClickEnd, handleMultiDragMove, handleMultiDragEnd, deleteSelected, duplicateSelected, selectAll, nudgeSelected } = useSelection({ blocks, setBlocks, pushSnapshot });
+  const { selectedIds, setSelectedIds, handleBlockSelect, handleBlockClickEnd, handleMultiDragMove, handleMultiDragEnd, deleteSelected, duplicateSelected, selectAll, nudgeSelected, alignSelected } = useSelection({ blocks, setBlocks, pushSnapshot });
 
   const [addPos, setAddPos] = useState<{ x: number; y: number } | null>(null);
   const [isSearchOpen, setIsSearchOpen] = useState(false);
@@ -67,6 +67,34 @@ export default function Canvas({ initialState, onSave }: CanvasProps) {
     saveTimer.current = setTimeout(() => { onSave({ blocks, offset, scale }); }, 150);
     return () => { if (saveTimer.current) clearTimeout(saveTimer.current); };
   }, [blocks, offset, scale, onSave]);
+
+  const zoomToFit = useCallback(() => {
+    const el = viewportRef.current;
+    if (!el || blocks.length === 0) return;
+    const PADDING = 64;
+    let minX = Infinity, minY = Infinity, maxX = -Infinity, maxY = -Infinity;
+    for (const b of blocks) {
+      const w = b.width ?? BLOCK_SIZES[b.type].w;
+      const h = b.height ?? BLOCK_SIZES[b.type].h;
+      if (b.x < minX) minX = b.x;
+      if (b.y < minY) minY = b.y;
+      if (b.x + w > maxX) maxX = b.x + w;
+      if (b.y + h > maxY) maxY = b.y + h;
+    }
+    const bboxW = maxX - minX;
+    const bboxH = maxY - minY;
+    const newScale = Math.min(
+      (el.clientWidth - PADDING * 2) / bboxW,
+      (el.clientHeight - PADDING * 2) / bboxH,
+      1,
+    );
+    const clampedScale = Math.max(MIN_SCALE, Math.min(MAX_SCALE, newScale));
+    setScale(clampedScale);
+    setOffset({
+      x: el.clientWidth / 2 - ((minX + maxX) / 2) * clampedScale,
+      y: el.clientHeight / 2 - ((minY + maxY) / 2) * clampedScale,
+    });
+  }, [blocks, viewportRef, setScale, setOffset]);
 
   const addTextNote = useCallback(() => {
     const el = viewportRef.current;
@@ -170,9 +198,11 @@ export default function Canvas({ initialState, onSave }: CanvasProps) {
     refresh: refreshEmbeds,
     undo,
     redo,
-  }), [addTextNote, setIsPanMode, refreshEmbeds, undo, redo]);
+    alignSelected,
+    zoomToFit,
+  }), [addTextNote, setIsPanMode, refreshEmbeds, undo, redo, alignSelected, zoomToFit]);
 
-  const toolbarStatus = { isPanMode, hasRefreshable: blocks.some(b => b.type === 'link'), isRefreshing, canUndo, canRedo };
+  const toolbarStatus = { isPanMode, hasRefreshable: blocks.some(b => b.type === 'link'), isRefreshing, canUndo, canRedo, selectedCount: selectedIds.size };
   const inPanMode = isPanMode || isPanning.current;
   const gridSize = DOT_GRID_SIZE * scale;
 

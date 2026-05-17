@@ -1,7 +1,7 @@
 import { useState, useCallback, type Dispatch, type SetStateAction } from 'react';
-import type { Block } from '@/app/features/types';
+import type { Block, AlignMode } from '@/app/features/types';
 import { useLatestRef } from './useLatestRef';
-import { uid } from '../utils';
+import { uid, alignBlocks } from '../utils';
 
 /** Manages block selection state, multi-select toggling, group drag commits, deletion, and duplication. */
 export function useSelection({
@@ -97,10 +97,17 @@ export function useSelection({
     ));
   }, [setBlocks, selectedIdsRef, pushSnapshot]);
 
+  /** Aligns all selected blocks according to the given mode relative to their collective bounding box. */
+  const alignSelected = useCallback((mode: AlignMode) => {
+    if (selectedIdsRef.current.size < 2) return;
+    pushSnapshot();
+    setBlocks(prev => alignBlocks(prev, selectedIdsRef.current, mode));
+  }, [setBlocks, selectedIdsRef, pushSnapshot]);
+
   return {
     selectedIds, setSelectedIds,
     handleBlockSelect, handleBlockClickEnd,
     handleMultiDragMove, handleMultiDragEnd,
-    deleteSelected, duplicateSelected, selectAll, nudgeSelected,
+    deleteSelected, duplicateSelected, selectAll, nudgeSelected, alignSelected,
   };
 }

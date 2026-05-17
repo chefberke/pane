@@ -3,17 +3,20 @@
 interface BtnProps {
   onClick?: () => void;
   active?: boolean;
+  disabled?: boolean;
   children: React.ReactNode;
   className?: string;
 }
 
 /** Icon-only square toolbar button with active/inactive visual states. */
-export function Btn({ onClick, active = false, children, className = '' }: BtnProps) {
+export function Btn({ onClick, active = false, disabled = false, children, className = '' }: BtnProps) {
   return (
     <button
       onClick={onClick}
+      disabled={disabled}
       className={[
-        'w-8 h-8 flex items-center justify-center rounded-xl transition-colors duration-[var(--duration-fast)] cursor-pointer',
+        'w-8 h-8 flex items-center justify-center rounded-xl transition-colors duration-[var(--duration-fast)]',
+        disabled ? 'opacity-30 cursor-default' : 'cursor-pointer',
         className,
       ].join(' ')}
       style={active ? {
@@ -23,13 +26,13 @@ export function Btn({ onClick, active = false, children, className = '' }: BtnPr
         color: 'var(--color-text-tertiary)',
       }}
       onMouseEnter={e => {
-        if (!active) {
+        if (!active && !disabled) {
           (e.currentTarget as HTMLButtonElement).style.background = 'var(--color-bg-hover)';
           (e.currentTarget as HTMLButtonElement).style.color = 'var(--color-text-secondary)';
         }
       }}
       onMouseLeave={e => {
-        if (!active) {
+        if (!active && !disabled) {
           (e.currentTarget as HTMLButtonElement).style.background = '';
           (e.currentTarget as HTMLButtonElement).style.color = 'var(--color-text-tertiary)';
         }
