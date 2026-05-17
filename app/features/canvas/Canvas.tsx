@@ -1,6 +1,7 @@
 'use client';
 import { useState, useRef, useCallback, useMemo, useEffect } from 'react';
 import type { Block } from '@/app/features/types';
+import type { CanvasProps } from './types';
 import BlockContainer from '../blocks/Block';
 import AddInput from '../add-input/AddInput';
 import Toolbar from '../toolbar/Toolbar';
@@ -15,7 +16,6 @@ import MenuButton from '../menu-panel/MenuButton';
 import { ZOOM_STEP, BLOCK_SIZES, DOT_GRID_SIZE } from './constants';
 import { uid } from './utils';
 import { makeComment } from '../comments/utils';
-import { loadCanvasState } from './utils/storage';
 import { useViewport } from './hooks/useViewport';
 import { useTheme } from './hooks/useTheme';
 import { useBlocks } from './hooks/useBlocks';
@@ -24,14 +24,13 @@ import { useMarquee } from './hooks/useMarquee';
 import { useCanvasKeyboard } from './hooks/useCanvasKeyboard';
 import { usePasteUrl } from './hooks/usePasteUrl';
 import { useHistory } from './hooks/useHistory';
-import { useCanvasPersistence } from './hooks/useCanvasPersistence';
 import { usePinchZoom } from './hooks/usePinchZoom';
 import { useLatestRef } from './hooks/useLatestRef';
 import { AnimatePresence } from 'framer-motion';
 import EmptyState from './EmptyState';
 
 /** Infinite pan/zoom canvas — orchestrates viewport, blocks, selection, and keyboard shortcuts. */
-export default function Canvas() {
+export default function Canvas({ initialState, onSave }: CanvasProps) {
   const viewportRef = useRef<HTMLDivElement>(null);
 
   const { themeChoice, toggleTheme, setTheme } = useTheme();
@@ -49,18 +48,25 @@ export default function Canvas() {
   const [isItemsOpen, setIsItemsOpen] = useState(false);
   const [commentTarget, setCommentTarget] = useState<{ blockId: string; x: number; y: number } | null>(null);
 
-  useCanvasPersistence({ blocks, offset, scale });
   usePinchZoom({ viewportRef, setOffset, setScale, offsetRef, scaleRef });
 
-  // Restore persisted state after hydration (client-only, runs once)
+  // Hydrate from initialState on first mount only
   useEffect(() => {
-    const saved = loadCanvasState();
-    if (!saved) return;
-    if (saved.blocks.length) setBlocks(saved.blocks);
-    if (saved.scale !== 1) setScale(saved.scale);
-    if (saved.offset.x !== 0 || saved.offset.y !== 0) setOffset(saved.offset);
+    if (!initialState) return;
+    if (initialState.blocks.length) setBlocks(initialState.blocks);
+    if (initialState.scale !== 1) setScale(initialState.scale);
+    if (initialState.offset.x !== 0 || initialState.offset.y !== 0) setOffset(initialState.offset);
   // eslint-disable-next-line react-hooks/exhaustive-deps
   }, []);
+
+  // Debounced save — calls onSave whenever canvas state changes
+  const saveTimer = useRef<ReturnType<typeof setTimeout> | null>(null);
+  useEffect(() => {
+    if (!onSave) return;
+    if (saveTimer.current) clearTimeout(saveTimer.current);
+    saveTimer.current = setTimeout(() => { onSave({ blocks, offset, scale }); }, 150);
+    return () => { if (saveTimer.current) clearTimeout(saveTimer.current); };
+  }, [blocks, offset, scale, onSave]);
 
   const addTextNote = useCallback(() => {
     const el = viewportRef.current;

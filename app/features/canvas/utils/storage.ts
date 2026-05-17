@@ -1,20 +1,17 @@
-import type { Block } from '@/app/features/types';
+import type { CanvasState } from '../types';
 
 const KEY = 'pane-canvas-v1';
 const LEGACY_KEY = 'termal-blocks';
 
-export interface CanvasState {
-  blocks: Block[];
-  offset: { x: number; y: number };
-  scale: number;
-}
+export type { CanvasState };
 
 /** Loads canvas state from localStorage, migrating legacy key if present. */
 export function loadCanvasState(): CanvasState | null {
   try {
     const legacy = localStorage.getItem(LEGACY_KEY);
     if (legacy) {
-      const blocks: Block[] = JSON.parse(legacy);
+      // eslint-disable-next-line @typescript-eslint/no-explicit-any
+      const blocks: any[] = JSON.parse(legacy);
       localStorage.removeItem(LEGACY_KEY);
       const state: CanvasState = { blocks, offset: { x: 0, y: 0 }, scale: 1 };
       localStorage.setItem(KEY, JSON.stringify(state));
