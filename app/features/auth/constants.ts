@@ -12,6 +12,12 @@ export const DEFAULT_NEXT_PATH = '/w';
 /** Path of the OAuth redirect callback. */
 export const OAUTH_CALLBACK_PATH = '/auth/callback';
 
+/** Static copy for the left branding panel. */
+export const SIDE_PANEL_COPY = {
+  wordmark: 'Pane',
+  tagline: 'An infinite visual workspace for saving and organizing internet content.',
+} as const;
+
 /** Copy for the sign-in and sign-up pages. */
 export const COPY: Record<AuthMode, {
   title: string;
