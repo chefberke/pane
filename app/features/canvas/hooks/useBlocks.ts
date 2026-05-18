@@ -1,7 +1,32 @@
 import { useState, useCallback, type Dispatch, type SetStateAction } from 'react';
 import type { Block, LinkBlock } from '@/app/features/types';
-import { uid, detectType, extractYouTubeId, extractTweetId, extractSpotifyInfo, extractMapEmbedUrl } from '../utils';
+import { uid, detectType, extractYouTubeId, extractTweetId, extractSpotifyInfo, extractMapEmbedUrl, extractGitHubRepo } from '../utils';
 import { BLOCK_SIZES } from '../constants';
+
+async function hydrateGitHubBlock(
+  id: string,
+  owner: string,
+  repo: string,
+  setBlocks: Dispatch<SetStateAction<Block[]>>,
+) {
+  try {
+    const res = await fetch(`https://api.github.com/repos/${owner}/${repo}`);
+    if (!res.ok) { setBlocks(prev => prev.map(b => b.id === id ? { ...b, loading: false } : b)); return; }
+    const data = await res.json();
+    setBlocks(prev => prev.map(b => b.id === id ? {
+      ...b,
+      loading: false,
+      description: data.description ?? undefined,
+      stars: data.stargazers_count,
+      forks: data.forks_count,
+      language: data.language ?? undefined,
+      license: data.license?.spdx_id ?? undefined,
+      topics: data.topics ?? [],
+    } : b));
+  } catch {
+    setBlocks(prev => prev.map(b => b.id === id ? { ...b, loading: false } : b));
+  }
+}
 
 async function hydrateLinkBlock(
   id: string,
@@ -63,6 +88,15 @@ export function useBlocks({ screenToCanvas }: {
       if (!embedUrl) return;
       const { w, h } = BLOCK_SIZES.map;
       setBlocks(prev => [...prev, { id: uid(), type: 'map', embedUrl, x: pos.x - w / 2, y: pos.y - h / 2 }]);
+      return;
+    }
+    if (type === 'github') {
+      const info = extractGitHubRepo(url);
+      if (!info) return;
+      const id = uid();
+      const { w, h } = BLOCK_SIZES.github;
+      setBlocks(prev => [...prev, { id, type: 'github', ...info, url, loading: true, x: pos.x - w / 2, y: pos.y - h / 2 }]);
+      await hydrateGitHubBlock(id, info.owner, info.repo, setBlocks);
       return;
     }
     if (type === 'pdf') {

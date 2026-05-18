@@ -130,6 +130,7 @@ export default function Canvas({ initialState, onSave }: CanvasProps) {
     if (block.type === 'spotify') url = block.url;
     if (block.type === 'map') url = block.embedUrl;
     if (block.type === 'pdf') url = block.url;
+    if (block.type === 'github') url = block.url;
     if (url) window.open(url, '_blank', 'noopener,noreferrer');
   }, []);
 

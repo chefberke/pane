@@ -20,6 +20,7 @@ export function detectType(input: string): Block['type'] {
     if (u.hostname.includes('twitter.com') || u.hostname.includes('x.com')) return 'twitter';
     if (u.hostname === 'open.spotify.com') return 'spotify';
     if (u.hostname.includes('google.com') && u.pathname.startsWith('/maps/embed')) return 'map';
+    if (u.hostname === 'github.com' && /^\/[^/]+\/[^/]+\/?$/.test(u.pathname)) return 'github';
     if (/\.(png|jpg|jpeg|gif|webp|svg|avif)(\?.*)?$/i.test(u.pathname)) return 'image';
     if (/\.pdf(\?.*)?$/i.test(u.pathname)) return 'pdf';
   } catch { /* not a URL */ }
@@ -62,6 +63,13 @@ export function extractYouTubeId(url: string): string | null {
 /** Extracts the numeric tweet ID from a twitter.com or x.com status URL. */
 export function extractTweetId(url: string): string | null {
   return url.match(/(?:twitter\.com|x\.com)\/\w+\/status\/(\d+)/)?.[1] ?? null;
+}
+
+/** Extracts owner and repo name from a github.com URL. */
+export function extractGitHubRepo(url: string): { owner: string; repo: string } | null {
+  const m = url.match(/github\.com\/([^/]+)\/([^/?#]+)/);
+  if (!m) return null;
+  return { owner: m[1], repo: m[2] };
 }
 
 const ARRANGE_GAP = 24;

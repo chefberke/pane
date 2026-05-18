@@ -17,6 +17,7 @@ export const BLOCK_SIZES: Record<Block['type'], { w: number; h: number }> = {
   pdf:     { w: 400, h: 520 },
   spotify: { w: 320, h: 380 },
   map:     { w: 400, h: 300 },
+  github:  { w: 320, h: 180 },
 };
 
 export interface Shortcut {

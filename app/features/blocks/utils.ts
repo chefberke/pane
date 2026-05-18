@@ -10,6 +10,7 @@ export const TYPE_LABELS: Record<Block['type'], string> = {
   pdf: 'PDF',
   spotify: 'Spotify',
   map: 'Map',
+  github: 'GitHub',
 };
 
 /** Returns a human-readable label for a block, used for search and display. */
@@ -22,12 +23,13 @@ export function getBlockLabel(block: Block): string {
   if (block.type === 'pdf') return block.title || block.url.split('/').pop()?.split('?')[0] || 'PDF';
   if (block.type === 'spotify') return `Spotify ${block.spotifyType}`;
   if (block.type === 'map') return block.title || 'Map';
+  if (block.type === 'github') return `${block.owner}/${block.repo}`;
   return '';
 }
 
 /** Groups blocks by type in a fixed display order, omitting empty groups. */
 export function groupBlocksByType(blocks: Block[]): Array<{ type: Block['type']; items: Block[] }> {
-  const order: Block['type'][] = ['youtube', 'spotify', 'twitter', 'image', 'pdf', 'link', 'map', 'text'];
+  const order: Block['type'][] = ['youtube', 'spotify', 'twitter', 'image', 'pdf', 'link', 'map', 'github', 'text'];
   return order
     .map(type => ({ type, items: blocks.filter(b => b.type === type) }))
     .filter(g => g.items.length > 0);
@@ -61,6 +63,9 @@ export function searchBlocks(blocks: Block[], query: string): Block[] {
     }
     if (block.type === 'map') {
       return [block.embedUrl, block.title].some(v => v?.toLowerCase().includes(q));
+    }
+    if (block.type === 'github') {
+      return [block.owner, block.repo, block.description, block.language].some(v => v?.toLowerCase().includes(q));
     }
     return false;
   });

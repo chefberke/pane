@@ -67,6 +67,20 @@ export interface MapBlock extends BaseBlock {
   title?: string;
 }
 
-export type Block = LinkBlock | YouTubeBlock | TwitterBlock | ImageBlock | TextBlock | PdfBlock | SpotifyBlock | MapBlock;
+export interface GitHubBlock extends BaseBlock {
+  type: 'github';
+  owner: string;
+  repo: string;
+  url: string;
+  description?: string;
+  stars?: number;
+  forks?: number;
+  language?: string;
+  license?: string;
+  topics?: string[];
+  loading?: boolean;
+}
+
+export type Block = LinkBlock | YouTubeBlock | TwitterBlock | ImageBlock | TextBlock | PdfBlock | SpotifyBlock | MapBlock | GitHubBlock;
 
 export type AlignMode = 'distributeH' | 'distributeV';
