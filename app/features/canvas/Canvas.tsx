@@ -6,7 +6,7 @@ import BlockContainer from '../blocks/Block';
 import AddInput from '../add-input/AddInput';
 import Toolbar from '../toolbar/Toolbar';
 import SearchModal from '../search/SearchModal';
-import CommentsPopover from '../comments/CommentsPopover';
+import DetailPanel from '../detail-panel/DetailPanel';
 import ShortcutsHelp from './ShortcutsHelp';
 import ShortcutsButton from './ShortcutsButton';
 import ZoomControls from './ZoomControls';
@@ -47,7 +47,7 @@ export default function Canvas({ initialState, onSave }: CanvasProps) {
   const [isSearchOpen, setIsSearchOpen] = useState(false);
   const [isHelpOpen, setIsHelpOpen] = useState(false);
   const [isItemsOpen, setIsItemsOpen] = useState(false);
-  const [commentTarget, setCommentTarget] = useState<{ blockId: string; x: number; y: number } | null>(null);
+  const [detailBlockId, setDetailBlockId] = useState<string | null>(null);
 
   usePinchZoom({ viewportRef, setOffset, setScale, offsetRef, scaleRef });
 
@@ -112,8 +112,8 @@ export default function Canvas({ initialState, onSave }: CanvasProps) {
     offsetRef,
     setOffset,
     setSelectedIds,
-    onDoubleClickCanvas: (sx, sy) => { setCommentTarget(null); setAddPos({ x: sx, y: sy }); },
-    onCanvasClick: () => { setAddPos(null); setCommentTarget(null); },
+    onDoubleClickCanvas: (sx, sy) => { setDetailBlockId(null); setAddPos({ x: sx, y: sy }); },
+    onCanvasClick: () => { setAddPos(null); setDetailBlockId(null); },
   });
 
   useCanvasKeyboard({
@@ -138,11 +138,11 @@ export default function Canvas({ initialState, onSave }: CanvasProps) {
     pushSnapshot();
     deleteBlock(id);
     setSelectedIds(prev => { const n = new Set(prev); n.delete(id); return n; });
-    setCommentTarget(prev => prev?.blockId === id ? null : prev);
+    setDetailBlockId(prev => prev === id ? null : prev);
   }, [deleteBlock, setSelectedIds, pushSnapshot]);
 
-  const handleOpenComments = useCallback((block: Block, anchor: { x: number; y: number }) => {
-    setCommentTarget(prev => prev?.blockId === block.id ? null : { blockId: block.id, x: anchor.x, y: anchor.y });
+  const handleOpenComments = useCallback((block: Block) => {
+    setDetailBlockId(prev => prev === block.id ? null : block.id);
   }, []);
 
   const handleAddComment = useCallback((blockId: string, text: string) => {
@@ -204,8 +204,8 @@ export default function Canvas({ initialState, onSave }: CanvasProps) {
   }, [setOffset, setScale, setSelectedIds]);
 
   const blockHandlers = useMemo(() => ({
-    onSelect: (id: string, shiftKey: boolean) => { setCommentTarget(null); handleBlockSelect(id, shiftKey); },
-    onClickEnd: handleBlockClickEnd,
+    onSelect: (id: string, shiftKey: boolean) => { if (shiftKey) setDetailBlockId(null); handleBlockSelect(id, shiftKey); },
+    onClickEnd: (id: string, wasDragged: boolean) => { handleBlockClickEnd(id, wasDragged); if (!wasDragged) setDetailBlockId(id); },
     onOpen: handleOpenBlock,
     onUpdate: updateBlock,
     onDelete: handleDeleteBlock,
@@ -298,17 +298,17 @@ export default function Canvas({ initialState, onSave }: CanvasProps) {
         />
       )}
 
-      {commentTarget && (
-        <CommentsPopover
-          blockId={commentTarget.blockId}
-          comments={blocks.find(b => b.id === commentTarget.blockId)?.comments ?? []}
-          x={commentTarget.x}
-          y={commentTarget.y}
-          onAdd={handleAddComment}
-          onDelete={handleDeleteComment}
-          onClose={() => setCommentTarget(null)}
-        />
-      )}
+      <AnimatePresence>
+        {detailBlockId && blocks.find(b => b.id === detailBlockId) && (
+          <DetailPanel
+            key={detailBlockId}
+            block={blocks.find(b => b.id === detailBlockId)!}
+            onClose={() => setDetailBlockId(null)}
+            onAddComment={handleAddComment}
+            onDeleteComment={handleDeleteComment}
+          />
+        )}
+      </AnimatePresence>
 
       {isSearchOpen && (
         <SearchModal

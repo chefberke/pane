@@ -113,7 +113,7 @@ function BlockContainer({ block, scale, selected, isInMultiSelection, handlers }
         <button
           className="flex items-center gap-1 px-2 py-1 rounded-full transition-colors hover:bg-blue-500/80"
           style={{ color: 'var(--color-text-on-action)', cursor: 'default' }}
-          onClick={e => { e.stopPropagation(); handlers.onOpenComments(block, { x: e.clientX, y: e.clientY }); }}
+          onClick={e => { e.stopPropagation(); handlers.onOpenComments(block); }}
           onPointerDown={e => e.stopPropagation()}
           title="Comments"
         >

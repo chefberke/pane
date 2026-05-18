@@ -1,0 +1,2 @@
+export const DETAIL_PANEL_WIDTH = 320;
+export const MAX_COMMENT_TEXTAREA_HEIGHT = 120;
