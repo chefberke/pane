@@ -6,7 +6,6 @@ import BlockContainer from '../blocks/Block';
 import AddInput from '../add-input/AddInput';
 import Toolbar from '../toolbar/Toolbar';
 import SearchModal from '../search/SearchModal';
-import DetailPanel from '../detail-panel/DetailPanel';
 import ShortcutsHelp from './ShortcutsHelp';
 import ShortcutsButton from './ShortcutsButton';
 import ZoomControls from './ZoomControls';
@@ -15,7 +14,6 @@ import ItemsSheet from '../items-panel/ItemsSheet';
 import MenuButton from '../menu-panel/MenuButton';
 import { ZOOM_STEP, BLOCK_SIZES, DOT_GRID_SIZE, MIN_SCALE, MAX_SCALE } from './constants';
 import { uid } from './utils';
-import { makeComment } from '../comments/utils';
 import { useViewport } from './hooks/useViewport';
 import { useTheme } from './hooks/useTheme';
 import { useBlocks } from './hooks/useBlocks';
@@ -47,7 +45,6 @@ export default function Canvas({ initialState, onSave }: CanvasProps) {
   const [isSearchOpen, setIsSearchOpen] = useState(false);
   const [isHelpOpen, setIsHelpOpen] = useState(false);
   const [isItemsOpen, setIsItemsOpen] = useState(false);
-  const [detailBlockId, setDetailBlockId] = useState<string | null>(null);
 
   usePinchZoom({ viewportRef, setOffset, setScale, offsetRef, scaleRef });
 
@@ -112,8 +109,8 @@ export default function Canvas({ initialState, onSave }: CanvasProps) {
     offsetRef,
     setOffset,
     setSelectedIds,
-    onDoubleClickCanvas: (sx, sy) => { setDetailBlockId(null); setAddPos({ x: sx, y: sy }); },
-    onCanvasClick: () => { setAddPos(null); setDetailBlockId(null); },
+    onDoubleClickCanvas: (sx, sy) => setAddPos({ x: sx, y: sy }),
+    onCanvasClick: () => setAddPos(null),
   });
 
   useCanvasKeyboard({
@@ -138,26 +135,7 @@ export default function Canvas({ initialState, onSave }: CanvasProps) {
     pushSnapshot();
     deleteBlock(id);
     setSelectedIds(prev => { const n = new Set(prev); n.delete(id); return n; });
-    setDetailBlockId(prev => prev === id ? null : prev);
   }, [deleteBlock, setSelectedIds, pushSnapshot]);
-
-  const handleOpenComments = useCallback((block: Block) => {
-    setDetailBlockId(prev => prev === block.id ? null : block.id);
-  }, []);
-
-  const handleAddComment = useCallback((blockId: string, text: string) => {
-    pushSnapshot();
-    const block = blocksRef.current.find(b => b.id === blockId);
-    if (!block) return;
-    updateBlock(blockId, { comments: [...(block.comments ?? []), makeComment(text)] });
-  }, [pushSnapshot, updateBlock, blocksRef]);
-
-  const handleDeleteComment = useCallback((blockId: string, commentId: string) => {
-    pushSnapshot();
-    const block = blocksRef.current.find(b => b.id === blockId);
-    if (!block) return;
-    updateBlock(blockId, { comments: (block.comments ?? []).filter(c => c.id !== commentId) });
-  }, [pushSnapshot, updateBlock, blocksRef]);
 
   const handleAddSubmit = useCallback((value: string, sx: number, sy: number) => {
     setAddPos(null);
@@ -204,16 +182,15 @@ export default function Canvas({ initialState, onSave }: CanvasProps) {
   }, [setOffset, setScale, setSelectedIds]);
 
   const blockHandlers = useMemo(() => ({
-    onSelect: (id: string, shiftKey: boolean) => { if (shiftKey) setDetailBlockId(null); handleBlockSelect(id, shiftKey); },
-    onClickEnd: (id: string, wasDragged: boolean) => { handleBlockClickEnd(id, wasDragged); if (!wasDragged) setDetailBlockId(id); },
+    onSelect: handleBlockSelect,
+    onClickEnd: handleBlockClickEnd,
     onOpen: handleOpenBlock,
     onUpdate: updateBlock,
     onDelete: handleDeleteBlock,
-    onOpenComments: handleOpenComments,
     onMultiDragMove: handleMultiDragMove,
     onMultiDragEnd: handleMultiDragEnd,
     onBeforeDragCommit: pushSnapshot,
-  }), [handleBlockSelect, handleBlockClickEnd, handleOpenBlock, updateBlock, handleDeleteBlock, handleOpenComments, handleMultiDragMove, handleMultiDragEnd, pushSnapshot]);
+  }), [handleBlockSelect, handleBlockClickEnd, handleOpenBlock, updateBlock, handleDeleteBlock, handleMultiDragMove, handleMultiDragEnd, pushSnapshot]);
 
   const toolbarActions = useMemo(() => ({
     addText: addTextNote,
@@ -297,18 +274,6 @@ export default function Canvas({ initialState, onSave }: CanvasProps) {
           onClose={() => setAddPos(null)}
         />
       )}
-
-      <AnimatePresence>
-        {detailBlockId && blocks.find(b => b.id === detailBlockId) && (
-          <DetailPanel
-            key={detailBlockId}
-            block={blocks.find(b => b.id === detailBlockId)!}
-            onClose={() => setDetailBlockId(null)}
-            onAddComment={handleAddComment}
-            onDeleteComment={handleDeleteComment}
-          />
-        )}
-      </AnimatePresence>
 
       {isSearchOpen && (
         <SearchModal
