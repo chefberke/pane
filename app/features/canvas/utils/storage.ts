@@ -27,3 +27,8 @@ export function loadCanvasState(): CanvasState | null {
 export function saveCanvasState(state: CanvasState): void {
   try { localStorage.setItem(KEY, JSON.stringify(state)); } catch { /* ignore */ }
 }
+
+/** Removes the anonymous canvas state from localStorage. */
+export function clearCanvasState(): void {
+  try { localStorage.removeItem(KEY); } catch { /* ignore */ }
+}

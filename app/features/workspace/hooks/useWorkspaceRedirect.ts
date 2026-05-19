@@ -2,13 +2,12 @@ import { useState, useRef, useEffect } from 'react';
 import { useRouter } from 'next/navigation';
 import { db } from '@/app/lib/db';
 import { useAuth } from '../../auth/hooks/useAuth';
-import { loadCanvasState } from '../../canvas/utils/storage';
+import { loadCanvasState, clearCanvasState } from '../../canvas/utils/storage';
 import { uid } from '../utils';
-import { SYNCED_UID_KEY } from '../constants';
 
 /**
  * Handles post-login workspace routing:
- * - Imports any unsynced localStorage data as a new workspace on first login from a device.
+ * - Imports any leftover anonymous localStorage canvas as a new workspace, then clears it.
  * - Creates a default empty workspace if the user has none.
  * - Redirects to the user's oldest workspace.
  */
@@ -37,27 +36,24 @@ export function useWorkspaceRedirect(): { status: 'loading' | 'error' } {
 
     (async () => {
       try {
-        const alreadySynced = localStorage.getItem(SYNCED_UID_KEY) === user.id;
         const existingWorkspaces = ((data as { workspaces?: { id: string; createdAt: number }[] }).workspaces) ?? [];
         let targetId: string | null = null;
 
-        if (!alreadySynced) {
-          const local = loadCanvasState();
-          if (local && local.blocks.length > 0) {
-            const wid = uid();
-            await db.transact(
-              db.tx.workspaces[wid].update({
-                userId: user.id,
-                name: 'My canvas',
-                stateJson: JSON.stringify(local),
-                createdAt: Date.now(),
-                updatedAt: Date.now(),
-              })
-            );
-            targetId = wid;
-          }
-          localStorage.setItem(SYNCED_UID_KEY, user.id);
+        const local = loadCanvasState();
+        if (local && local.blocks.length > 0) {
+          const wid = uid();
+          await db.transact(
+            db.tx.workspaces[wid].update({
+              userId: user.id,
+              name: 'My canvas',
+              stateJson: JSON.stringify(local),
+              createdAt: Date.now(),
+              updatedAt: Date.now(),
+            })
+          );
+          targetId = wid;
         }
+        clearCanvasState();
 
         if (!targetId) {
           if (existingWorkspaces.length > 0) {
