@@ -1,5 +1,5 @@
 'use client';
-import { Fragment, useEffect, useState } from 'react';
+import { Fragment, useSyncExternalStore } from 'react';
 import {
   LOGO_SIZE,
   PULSE_DURATION_MS,
@@ -34,14 +34,23 @@ function TipPart({ segment }: { segment: TipSegment }) {
   );
 }
 
+// Picked once per session on the client and reused across mounts so the tip is stable
+// after hydration. Kept outside the component so React's useSyncExternalStore snapshot
+// stays referentially identical between calls.
+let clientTipIndex: number | null = null;
+function getClientTipIndex(): number {
+  if (clientTipIndex === null) {
+    clientTipIndex = Math.floor(Math.random() * TIPS.length);
+  }
+  return clientTipIndex;
+}
+const subscribeNoop = () => () => {};
+
 /** Full-area branded loading screen — pulsing logo, wordmark, and a randomly-picked tip with key hints. */
 export default function LoadingScreen() {
-  // Start at 0 for SSR; pick a random tip on client mount and keep it for the session.
-  const [tipIndex, setTipIndex] = useState(0);
-
-  useEffect(() => {
-    setTipIndex(Math.floor(Math.random() * TIPS.length));
-  }, []);
+  // SSR and the first client paint render index 0 (matching markup → no hydration error).
+  // After hydration, React swaps in the client snapshot (a random tip) automatically.
+  const tipIndex = useSyncExternalStore(subscribeNoop, getClientTipIndex, () => 0);
 
   const tip = TIPS[tipIndex];
 

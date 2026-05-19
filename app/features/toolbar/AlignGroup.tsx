@@ -19,8 +19,15 @@ export default function AlignGroup({
   onAlign: (mode: AlignMode) => void;
 }) {
   const [open, setOpen] = useState(false);
+  const [prevActive, setPrevActive] = useState(selectedCount >= 2);
   const ref = useRef<HTMLDivElement>(null);
   const active = selectedCount >= 2;
+
+  // Adjust state during render when `active` flips false — avoids a setState-in-effect.
+  if (active !== prevActive) {
+    setPrevActive(active);
+    if (!active && open) setOpen(false);
+  }
 
   useEffect(() => {
     if (!open) return;
@@ -30,10 +37,6 @@ export default function AlignGroup({
     document.addEventListener('mousedown', handler);
     return () => document.removeEventListener('mousedown', handler);
   }, [open]);
-
-  useEffect(() => {
-    if (!active) setOpen(false);
-  }, [active]);
 
   return (
     <div ref={ref} className="relative">

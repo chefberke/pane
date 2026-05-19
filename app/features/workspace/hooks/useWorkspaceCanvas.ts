@@ -1,4 +1,4 @@
-import { useState, useRef, useCallback, useEffect } from 'react';
+import { useState, useRef, useCallback } from 'react';
 import { db } from '@/app/lib/db';
 import type { CanvasState } from '../../canvas/types';
 import { serializeState, deserializeState } from '../utils';
@@ -20,19 +20,19 @@ export function useWorkspaceCanvas(workspaceId: string): UseWorkspaceCanvasResul
     workspaces: { $: { where: { id: workspaceId } } },
   });
 
-  const readyRef = useRef(false);
   const [ready, setReady] = useState(false);
   const [initialState, setInitialState] = useState<CanvasState | null>(null);
 
-  useEffect(() => {
-    if (readyRef.current || queryLoading || !data) return;
-    readyRef.current = true;
+  // Hydrate initial state during render the first time the query resolves.
+  // This is the "adjust state while rendering" pattern from React docs — `ready`
+  // guards against re-running, so this won't loop.
+  if (!ready && !queryLoading && data) {
     const ws = (data as { workspaces?: { stateJson?: string }[] }).workspaces?.[0];
     if (ws?.stateJson) {
       setInitialState(deserializeState(ws.stateJson));
     }
     setReady(true);
-  }, [queryLoading, data]);
+  }
 
   const timerRef = useRef<ReturnType<typeof setTimeout> | null>(null);
   const handleSave = useCallback((state: CanvasState) => {
