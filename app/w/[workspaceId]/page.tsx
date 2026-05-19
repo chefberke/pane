@@ -2,6 +2,7 @@
 import { use } from 'react';
 import Link from 'next/link';
 import Canvas from '@/app/features/canvas/Canvas';
+import LoadingScreen from '@/app/features/loading/LoadingScreen';
 import { useWorkspaceCanvas } from '@/app/features/workspace/hooks/useWorkspaceCanvas';
 
 interface Props {
@@ -14,12 +15,7 @@ export default function WorkspacePage({ params }: Props) {
   const { initialState, isLoading, notFound, handleSave } = useWorkspaceCanvas(workspaceId);
 
   if (isLoading) {
-    return (
-      <div
-        className="w-full h-full"
-        style={{ background: 'var(--color-canvas)' }}
-      />
-    );
+    return <LoadingScreen />;
   }
 
   if (notFound) {

@@ -2,6 +2,7 @@
 import { useEffect } from 'react';
 import { useRouter } from 'next/navigation';
 import { useAuth } from '../features/auth/hooks/useAuth';
+import LoadingScreen from '../features/loading/LoadingScreen';
 
 /** Auth-guarded layout for all /w/* routes. */
 export default function WorkspaceLayout({ children }: { children: React.ReactNode }) {
@@ -14,10 +15,9 @@ export default function WorkspaceLayout({ children }: { children: React.ReactNod
 
   if (isLoading || !user) {
     return (
-      <div
-        className="w-screen h-screen"
-        style={{ background: 'var(--color-canvas)' }}
-      />
+      <div className="w-screen h-screen">
+        <LoadingScreen />
+      </div>
     );
   }
 
