@@ -11,6 +11,7 @@ export interface BaseBlock {
   width?: number;
   height?: number;
   comments?: Comment[];
+  pinned?: boolean;
 }
 
 export interface LinkBlock extends BaseBlock {
@@ -84,3 +85,18 @@ export interface GitHubBlock extends BaseBlock {
 export type Block = LinkBlock | YouTubeBlock | TwitterBlock | ImageBlock | TextBlock | PdfBlock | SpotifyBlock | MapBlock | GitHubBlock;
 
 export type AlignMode = 'distributeH' | 'distributeV';
+
+export type FrameColor = 'slate' | 'blue' | 'green' | 'amber' | 'rose' | 'violet';
+
+export interface Frame {
+  id: string;
+  title: string;
+  color: FrameColor;
+  x: number;
+  y: number;
+  width: number;
+  height: number;
+  collapsed: boolean;
+  parentFrameId?: string;
+  comments?: Comment[];
+}

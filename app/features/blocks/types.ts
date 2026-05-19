@@ -7,7 +7,9 @@ export interface BlockHandlers {
   onOpen: (block: Block) => void;
   onUpdate: (id: string, updates: Partial<Block>) => void;
   onDelete: (id: string) => void;
+  onOpenComments: (block: Block, anchor: { x: number; y: number }) => void;
   onMultiDragMove: (dx: number, dy: number) => void;
   onMultiDragEnd: (dx: number, dy: number) => void;
   onBeforeDragCommit: () => void;
+  onDragRect: (blockId: string, delta: { dx: number; dy: number } | null) => void;
 }

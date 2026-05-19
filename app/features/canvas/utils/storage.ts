@@ -13,7 +13,7 @@ export function loadCanvasState(): CanvasState | null {
       // eslint-disable-next-line @typescript-eslint/no-explicit-any
       const blocks: any[] = JSON.parse(legacy);
       localStorage.removeItem(LEGACY_KEY);
-      const state: CanvasState = { blocks, offset: { x: 0, y: 0 }, scale: 1 };
+      const state: CanvasState = { blocks, frames: [], offset: { x: 0, y: 0 }, scale: 1 };
       localStorage.setItem(KEY, JSON.stringify(state));
       return state;
     }

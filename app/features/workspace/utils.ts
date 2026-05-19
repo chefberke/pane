@@ -10,7 +10,18 @@ export function serializeState(state: CanvasState): string {
   return JSON.stringify(state);
 }
 
-/** Parses a stored JSON string back into canvas state. Returns null on failure. */
+/** Parses a stored JSON string back into canvas state. Returns null on failure. Defaults frames to [] for legacy payloads. */
 export function deserializeState(raw: string): CanvasState | null {
-  try { return JSON.parse(raw) as CanvasState; } catch { return null; }
+  try {
+    const parsed = JSON.parse(raw) as Partial<CanvasState>;
+    if (!parsed || !Array.isArray(parsed.blocks)) return null;
+    return {
+      blocks: parsed.blocks,
+      frames: Array.isArray(parsed.frames) ? parsed.frames : [],
+      offset: parsed.offset ?? { x: 0, y: 0 },
+      scale: typeof parsed.scale === 'number' ? parsed.scale : 1,
+    };
+  } catch {
+    return null;
+  }
 }

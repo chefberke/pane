@@ -4,8 +4,8 @@ import CommentList from './CommentList';
 import type { CommentsPopoverProps } from './types';
 import { POPOVER_WIDTH, MAX_TEXTAREA_HEIGHT } from './constants';
 
-/** Per-block comment thread popover — viewport-positioned, same pattern as AddInput. */
-export default function CommentsPopover({ blockId, comments, x, y, onAdd, onDelete, onClose }: CommentsPopoverProps) {
+/** Comment thread popover for a block or frame — viewport-positioned, same pattern as AddInput. */
+export default function CommentsPopover({ targetId, comments, x, y, onAdd, onDelete, onClose }: CommentsPopoverProps) {
   const [text, setText] = useState('');
   const textareaRef = useRef<HTMLTextAreaElement>(null);
 
@@ -14,7 +14,7 @@ export default function CommentsPopover({ blockId, comments, x, y, onAdd, onDele
   const submit = () => {
     const trimmed = text.trim();
     if (!trimmed) return;
-    onAdd(blockId, trimmed);
+    onAdd(targetId, trimmed);
     setText('');
     textareaRef.current?.focus();
   };
@@ -43,7 +43,7 @@ export default function CommentsPopover({ blockId, comments, x, y, onAdd, onDele
       onPointerDown={e => e.stopPropagation()}
     >
       {comments.length > 0 && (
-        <CommentList comments={comments} onDelete={id => onDelete(blockId, id)} />
+        <CommentList comments={comments} onDelete={id => onDelete(targetId, id)} />
       )}
 
       <textarea

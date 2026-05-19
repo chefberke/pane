@@ -1,9 +1,10 @@
-import type { Block } from '@/app/features/types';
+import type { Block, Frame } from '@/app/features/types';
 
 export type Marquee = { x1: number; y1: number; x2: number; y2: number };
 
 export interface CanvasState {
   blocks: Block[];
+  frames: Frame[];
   offset: { x: number; y: number };
   scale: number;
 }

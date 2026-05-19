@@ -12,12 +12,13 @@ interface UseBlockDragArgs {
   onMultiDragMove: (dx: number, dy: number) => void;
   onMultiDragEnd: (dx: number, dy: number) => void;
   onBeforeDragCommit: () => void;
+  onDragRect: (blockId: string, delta: { dx: number; dy: number } | null) => void;
 }
 
 /** Handles the drag gesture for a single block, supporting both solo and group drag via Pointer Events. */
 export function useBlockDrag({
   block, scale, isInMultiSelection,
-  onSelect, onClickEnd, onUpdate, onMultiDragMove, onMultiDragEnd, onBeforeDragCommit,
+  onSelect, onClickEnd, onUpdate, onMultiDragMove, onMultiDragEnd, onBeforeDragCommit, onDragRect,
 }: UseBlockDragArgs) {
   const containerRef = useRef<HTMLDivElement>(null);
   const overlayRef = useRef<HTMLDivElement>(null);
@@ -72,6 +73,7 @@ export function useBlockDrag({
         const el = containerRef.current;
         if (el) el.style.transform = `translate(${dx}px, ${dy}px)`;
       }
+      if (hasDragged.current) onDragRect(block.id, { dx, dy });
     };
 
     const onUp = () => {
@@ -88,6 +90,7 @@ export function useBlockDrag({
 
       if (!wasDragged) {
         if (el) el.style.transform = '';
+        onDragRect(block.id, null);
         return;
       }
 
@@ -102,6 +105,7 @@ export function useBlockDrag({
           y: dragStart.current.by + dragDelta.current.dy,
         } as Partial<Block>);
       }
+      onDragRect(block.id, null);
     };
 
     window.addEventListener('pointermove', onMove);
@@ -110,7 +114,7 @@ export function useBlockDrag({
       window.removeEventListener('pointermove', onMove);
       window.removeEventListener('pointerup', onUp);
     };
-  }, [block.id, onUpdate, onClickEnd, onMultiDragMove, onMultiDragEnd, onBeforeDragCommit]);
+  }, [block.id, onUpdate, onClickEnd, onMultiDragMove, onMultiDragEnd, onBeforeDragCommit, onDragRect]);
 
   return { containerRef, overlayRef, onPointerDown };
 }

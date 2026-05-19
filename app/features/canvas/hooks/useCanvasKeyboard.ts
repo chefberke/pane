@@ -18,6 +18,9 @@ export function useCanvasKeyboard({
   zoomBy,
   undo,
   redo,
+  groupSelected,
+  ungroupSelected,
+  clearFrameSelection,
 }: {
   setSelectedIds: Dispatch<SetStateAction<Set<string>>>;
   setAddPos: Dispatch<SetStateAction<{ x: number; y: number } | null>>;
@@ -34,6 +37,9 @@ export function useCanvasKeyboard({
   zoomBy: (factor: number) => void;
   undo: () => void;
   redo: () => void;
+  groupSelected: () => void;
+  ungroupSelected: () => void;
+  clearFrameSelection: () => void;
 }) {
   useEffect(() => {
     const onKey = (e: KeyboardEvent) => {
@@ -41,13 +47,26 @@ export function useCanvasKeyboard({
       const inInput = active?.tagName === 'INPUT' || active?.tagName === 'TEXTAREA';
       const meta = e.metaKey || e.ctrlKey;
 
-      if (e.key === 'Escape') { setSelectedIds(new Set()); setAddPos(null); setIsSearchOpen(false); setIsHelpOpen(false); return; }
+      if (e.key === 'Escape') {
+        setSelectedIds(new Set());
+        clearFrameSelection();
+        setAddPos(null);
+        setIsSearchOpen(false);
+        setIsHelpOpen(false);
+        return;
+      }
 
       if ((e.key === 'k' || e.key === 'K') && meta) { e.preventDefault(); setIsSearchOpen(prev => !prev); return; }
 
       if ((e.key === 'z' || e.key === 'Z') && meta) {
         e.preventDefault();
         if (e.shiftKey) redo(); else undo();
+        return;
+      }
+
+      if (meta && (e.key === 'g' || e.key === 'G')) {
+        e.preventDefault();
+        if (e.shiftKey) ungroupSelected(); else groupSelected();
         return;
       }
 
@@ -80,5 +99,6 @@ export function useCanvasKeyboard({
     setSelectedIds, setAddPos, setIsSearchOpen, setIsHelpOpen, setIsPanMode,
     deleteSelected, duplicateSelected, selectAll, nudgeSelected,
     addTextNote, toggleTheme, resetView, zoomBy, undo, redo,
+    groupSelected, ungroupSelected, clearFrameSelection,
   ]);
 }

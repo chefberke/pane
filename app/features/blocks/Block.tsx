@@ -1,6 +1,6 @@
 'use client';
 import { memo, useState } from 'react';
-import { Trash2 } from 'lucide-react';
+import { MessageCircle, Trash2 } from 'lucide-react';
 import type { Block } from '@/app/features/types';
 import type { BlockHandlers } from './types';
 import LinkPreview from './renderers/LinkPreview';
@@ -39,6 +39,7 @@ function BlockContainer({ block, scale, selected, isInMultiSelection, handlers }
     onMultiDragMove: handlers.onMultiDragMove,
     onMultiDragEnd: handlers.onMultiDragEnd,
     onBeforeDragCommit: handlers.onBeforeDragCommit,
+    onDragRect: handlers.onDragRect,
   });
 
   return (
@@ -110,6 +111,19 @@ function BlockContainer({ block, scale, selected, isInMultiSelection, handlers }
         ].join(' ')}
         style={{ background: 'var(--color-surface-action)' }}
       >
+        <button
+          className="flex items-center gap-1 px-2 py-1 rounded-full transition-colors hover:bg-blue-500/80"
+          style={{ color: 'var(--color-text-on-action)', cursor: 'default' }}
+          onClick={e => { e.stopPropagation(); handlers.onOpenComments(block, { x: e.clientX, y: e.clientY }); }}
+          onPointerDown={e => e.stopPropagation()}
+          title="Comments"
+        >
+          <MessageCircle size={11} />
+          {(block.comments?.length ?? 0) > 0 && (
+            <span className="text-[10px] font-medium leading-none">{block.comments!.length}</span>
+          )}
+        </button>
+        <div className="w-px h-3 mx-0.5" style={{ background: 'var(--color-border-subtle)' }} />
         <button
           className="flex items-center px-2 py-1 rounded-full transition-colors hover:bg-red-500/80"
           style={{ color: 'var(--color-text-on-action)', cursor: 'default' }}

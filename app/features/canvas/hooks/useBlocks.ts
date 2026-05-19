@@ -1,5 +1,5 @@
 import { useState, useCallback, type Dispatch, type SetStateAction } from 'react';
-import type { Block, LinkBlock } from '@/app/features/types';
+import type { Block, GitHubBlock, LinkBlock } from '@/app/features/types';
 import { uid, detectType, extractYouTubeId, extractTweetId, extractSpotifyInfo, extractMapEmbedUrl, extractGitHubRepo } from '../utils';
 import { BLOCK_SIZES } from '../constants';
 
@@ -111,13 +111,19 @@ export function useBlocks({ screenToCanvas }: {
     await hydrateLinkBlock(id, url, setBlocks);
   }, [screenToCanvas]);
 
-  /** Refreshes metadata for all link blocks on the canvas. */
+  /** Refreshes metadata for all link + github blocks on the canvas. */
   const refreshEmbeds = useCallback(async () => {
     const linkBlocks = blocks.filter(b => b.type === 'link') as LinkBlock[];
-    if (!linkBlocks.length) return;
+    const githubBlocks = blocks.filter(b => b.type === 'github') as GitHubBlock[];
+    if (!linkBlocks.length && !githubBlocks.length) return;
     setIsRefreshing(true);
-    setBlocks(prev => prev.map(b => b.type === 'link' ? { ...b, loading: true } : b));
-    await Promise.all(linkBlocks.map(b => hydrateLinkBlock(b.id, b.url, setBlocks)));
+    setBlocks(prev => prev.map(b =>
+      (b.type === 'link' || b.type === 'github') ? { ...b, loading: true } : b
+    ));
+    await Promise.all([
+      ...linkBlocks.map(b => hydrateLinkBlock(b.id, b.url, setBlocks)),
+      ...githubBlocks.map(b => hydrateGitHubBlock(b.id, b.owner, b.repo, setBlocks)),
+    ]);
     setIsRefreshing(false);
   }, [blocks]);
 
