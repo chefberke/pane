@@ -10,6 +10,11 @@
 !.yarn/releases
 !.yarn/versions
 
+# bun is the only supported package manager — block other lockfiles
+package-lock.json
+pnpm-lock.yaml
+yarn.lock
+
 # testing
 /coverage
 
