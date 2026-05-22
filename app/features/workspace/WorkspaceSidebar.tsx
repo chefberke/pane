@@ -1,6 +1,7 @@
+/* eslint-disable @typescript-eslint/no-explicit-any */
 'use client';
 import { useRouter, useParams } from 'next/navigation';
-import { Plus, LogOut } from 'lucide-react';
+import { Plus, LogOut, Users } from 'lucide-react';
 import { db } from '@/app/lib/db';
 import { useAuth } from '../auth/hooks/useAuth';
 import { useWorkspaces } from './hooks/useWorkspaces';
@@ -18,7 +19,18 @@ export default function WorkspaceSidebar() {
   const { user } = useAuth();
   const { data } = useWorkspaces(user?.id ?? '__unauthenticated__');
 
-  const workspaces: Workspace[] = ((data as { workspaces?: Workspace[] } | undefined)?.workspaces ?? [])
+  // Member workspaces — query memberships then fetch each workspace by id
+  // eslint-disable-next-line @typescript-eslint/no-explicit-any
+  const { data: memberData } = db.useQuery(
+    user ? { workspaceMembers: { $: { where: { userId: user.id } as any } } } : null,
+  );
+  const memberWorkspaceIds: string[] = (
+    ((memberData as any)?.workspaceMembers ?? []) as { workspaceId: string; role: string }[]
+  )
+    .filter(m => m.role !== 'owner')
+    .map(m => m.workspaceId);
+
+  const ownedWorkspaces: Workspace[] = ((data as { workspaces?: Workspace[] } | undefined)?.workspaces ?? [])
     .slice()
     .sort((a, b) => (a.createdAt ?? 0) - (b.createdAt ?? 0));
 
@@ -79,13 +91,28 @@ export default function WorkspaceSidebar() {
           Canvases
         </div>
 
-        {workspaces.map(ws => (
+        {ownedWorkspaces.map(ws => (
           <WorkspaceItem
             key={ws.id}
             workspace={ws}
             isActive={ws.id === activeId}
           />
         ))}
+
+        {memberWorkspaceIds.length > 0 && (
+          <>
+            <div
+              className="flex items-center gap-1.5 px-5 pt-3 pb-1.5 text-[10px] font-medium uppercase tracking-widest"
+              style={{ color: 'var(--color-text-muted)' }}
+            >
+              <Users size={9} />
+              Shared with me
+            </div>
+            {memberWorkspaceIds.map(wid => (
+              <MemberWorkspaceItem key={wid} workspaceId={wid} isActive={wid === activeId} />
+            ))}
+          </>
+        )}
 
         <button
           type="button"
@@ -135,5 +162,32 @@ export default function WorkspaceSidebar() {
         </button>
       </div>
     </aside>
+  );
+}
+
+/** Sidebar row for a workspace the user is a member of (not owner). Fetches its own name. */
+function MemberWorkspaceItem({ workspaceId, isActive }: { workspaceId: string; isActive: boolean }) {
+  // eslint-disable-next-line @typescript-eslint/no-explicit-any
+  const { data } = db.useQuery({ workspaces: { $: { where: { id: workspaceId } as any } } });
+  const ws = (data as any)?.workspaces?.[0];
+  const name = ws?.name ?? 'Shared canvas';
+
+  return (
+    <a
+      href={`/w/${workspaceId}`}
+      className="flex items-center gap-2 px-3 mx-2 rounded-lg cursor-pointer"
+      style={{
+        height: 32,
+        background: isActive ? 'var(--color-bg-active)' : 'transparent',
+        color: isActive ? 'var(--color-text-primary)' : 'var(--color-text-secondary)',
+        textDecoration: 'none',
+        transition: 'background 0.1s',
+      }}
+      onMouseEnter={e => { if (!isActive) (e.currentTarget as HTMLAnchorElement).style.background = 'var(--color-bg-hover)'; }}
+      onMouseLeave={e => { (e.currentTarget as HTMLAnchorElement).style.background = isActive ? 'var(--color-bg-active)' : 'transparent'; }}
+    >
+      <Users size={13} style={{ flexShrink: 0, color: 'var(--color-text-muted)' }} />
+      <span className="text-[13px] truncate flex-1">{name}</span>
+    </a>
   );
 }
