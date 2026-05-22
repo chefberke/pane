@@ -1,4 +1,4 @@
-import type { Block, Frame } from '@/app/features/types';
+import type { Block, Frame, RemotePresencePeer } from '@/app/features/types';
 
 export type Marquee = { x1: number; y1: number; x2: number; y2: number };
 
@@ -14,4 +14,14 @@ export interface CanvasProps {
   initialState?: CanvasState | null;
   /** Called after every debounced state change (150ms). Page decides where to persist. */
   onSave?: (state: CanvasState) => void;
+  /** If false, all mutating UI (toolbar, drag, keyboard shortcuts) is disabled. Default true. */
+  canEdit?: boolean;
+  /** Remote peers to render as cursors and selection outlines. */
+  peers?: RemotePresencePeer[];
+  /** Called on every pointermove with canvas-space coordinates. Use to publish cursor presence. */
+  onCursorMove?: (canvasX: number, canvasY: number) => void;
+  /** Called when block/frame selection changes. Use to publish selection presence. */
+  onSelectionChange?: (blockIds: string[], frameId: string | null) => void;
+  /** Extra nodes rendered in the top-right floating cluster (alongside the Items button). */
+  topRightSlot?: React.ReactNode;
 }

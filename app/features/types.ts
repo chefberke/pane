@@ -86,6 +86,15 @@ export type Block = LinkBlock | YouTubeBlock | TwitterBlock | ImageBlock | TextB
 
 export type AlignMode = 'distributeH' | 'distributeV';
 
+export interface RemotePresencePeer {
+  id: string;
+  name: string;
+  color: string;
+  cursor: { x: number; y: number } | null;
+  selection: { blockIds: string[]; frameId: string | null };
+  typing: boolean;
+}
+
 export type FrameColor = 'slate' | 'blue' | 'green' | 'amber' | 'rose' | 'violet';
 
 export interface Frame {

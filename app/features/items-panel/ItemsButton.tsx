@@ -21,7 +21,7 @@ export default function ItemsButton({ count, onClick }: Props) {
 
   return (
     <div
-      className="absolute top-6 right-6 pointer-events-auto"
+      className="relative"
       onMouseEnter={() => { timer.current = setTimeout(() => setTipVisible(true), 600); }}
       onMouseLeave={() => { if (timer.current) clearTimeout(timer.current); setTipVisible(false); }}
     >

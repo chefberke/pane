@@ -50,7 +50,14 @@ import EmptyState from './EmptyState';
 import { db } from '@/app/lib/db';
 
 /** Infinite pan/zoom canvas — orchestrates viewport, blocks, frames, selection, and keyboard shortcuts. */
-export default function Canvas({ initialState, onSave }: CanvasProps) {
+export default function Canvas({
+  initialState, onSave,
+  canEdit = true,
+  peers = [],
+  onCursorMove,
+  onSelectionChange,
+  topRightSlot,
+}: CanvasProps) {
   const viewportRef = useRef<HTMLDivElement>(null);
 
   const { themeChoice, toggleTheme, setTheme } = useTheme();
@@ -102,11 +109,19 @@ export default function Canvas({ initialState, onSave }: CanvasProps) {
   // Debounced save — calls onSave whenever canvas state changes
   const saveTimer = useRef<ReturnType<typeof setTimeout> | null>(null);
   useEffect(() => {
-    if (!onSave) return;
+    if (!onSave || !canEdit) return;
     if (saveTimer.current) clearTimeout(saveTimer.current);
     saveTimer.current = setTimeout(() => { onSave({ blocks, frames, offset, scale }); }, 150);
     return () => { if (saveTimer.current) clearTimeout(saveTimer.current); };
-  }, [blocks, frames, offset, scale, onSave]);
+  }, [blocks, frames, offset, scale, onSave, canEdit]);
+
+  // Publish selection changes to presence
+  useEffect(() => {
+    if (!onSelectionChange) return;
+    onSelectionChange(Array.from(selectedIds), selectedFrameId);
+  // selectedFrameId and selectedIds are reactive but eslint can't infer Set equality
+  // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [selectedIds, selectedFrameId, onSelectionChange]);
 
   const zoomToFit = useCallback(() => {
     const el = viewportRef.current;
@@ -652,10 +667,20 @@ export default function Canvas({ initialState, onSave }: CanvasProps) {
         touchAction: 'none',
       }}
       onPointerDown={onPointerDown}
-      onPointerMove={onPointerMove}
+      onPointerMove={e => {
+        onPointerMove(e);
+        if (onCursorMove) {
+          const rect = viewportRef.current?.getBoundingClientRect();
+          if (rect) {
+            const { x, y } = screenToCanvas(e.clientX - rect.left, e.clientY - rect.top);
+            onCursorMove(x, y);
+          }
+        }
+      }}
+      onPointerLeave={() => { /* caller can use onCursorMove(null) to hide — handled in usePresence */ }}
       onPointerUp={onPointerUp}
       onPointerCancel={onPointerUp}
-      onDoubleClick={onDoubleClick}
+      onDoubleClick={canEdit ? onDoubleClick : undefined}
     >
       {/* Dot grid */}
       <div
@@ -707,7 +732,83 @@ export default function Canvas({ initialState, onSave }: CanvasProps) {
             handlers={blockHandlers}
           />
         ))}
+
+        {/* Remote peer selection outlines (canvas-space, scale-correct) */}
+        {peers.map(peer =>
+          peer.selection.blockIds.map(bid => {
+            const block = blocks.find(b => b.id === bid);
+            if (!block) return null;
+            const w = block.width  ?? BLOCK_SIZES[block.type]?.w ?? 240;
+            const h = block.height ?? BLOCK_SIZES[block.type]?.h ?? 160;
+            return (
+              <div
+                key={`${peer.id}-${bid}`}
+                className="absolute pointer-events-none rounded-xl"
+                style={{
+                  left:    block.x - 3,
+                  top:     block.y - 3,
+                  width:   w + 6,
+                  height:  h + 6,
+                  outline: `2px solid ${peer.color}`,
+                  outlineOffset: 0,
+                }}
+              />
+            );
+          })
+        )}
+        {peers.map(peer => {
+          if (!peer.selection.frameId) return null;
+          const frame = frames.find(f => f.id === peer.selection.frameId);
+          if (!frame) return null;
+          return (
+            <div
+              key={`${peer.id}-frame-${frame.id}`}
+              className="absolute pointer-events-none rounded-xl"
+              style={{
+                left:    frame.x - 3,
+                top:     frame.y - 3,
+                width:   frame.width + 6,
+                height:  frame.height + 6,
+                outline: `2px solid ${peer.color}`,
+                outlineOffset: 0,
+              }}
+            />
+          );
+        })}
       </div>
+
+      {/* Remote peer cursors (screen-space, fixed pixel size) */}
+      {peers.map(peer => {
+        if (!peer.cursor) return null;
+        const sx = peer.cursor.x * scale + offset.x;
+        const sy = peer.cursor.y * scale + offset.y;
+        return (
+          <div
+            key={`cursor-${peer.id}`}
+            className="absolute pointer-events-none"
+            style={{ left: sx, top: sy, zIndex: 150 }}
+          >
+            {/* Figma-style cursor arrow */}
+            <svg width="14" height="17" viewBox="0 0 18 22" fill="none" style={{ display: 'block' }}>
+              <path
+                d="M1 1L1 17L5.5 13L8.5 20L10.5 19L7.5 12L13 12L1 1Z"
+                fill={peer.color}
+                stroke="white"
+                strokeWidth="1.5"
+                strokeLinejoin="round"
+              />
+            </svg>
+            {/* Name label */}
+            <div
+              className="absolute left-3 top-2.5 px-1.5 py-0.5 rounded text-[10px] font-medium whitespace-nowrap"
+              style={{ background: peer.color, color: '#ffffff' }}
+            >
+              {peer.name}
+              {peer.typing && <span style={{ opacity: 0.8 }}> · typing…</span>}
+            </div>
+          </div>
+        );
+      })}
 
       {/* Marquee selection box */}
       {marquee && (
@@ -725,7 +826,7 @@ export default function Canvas({ initialState, onSave }: CanvasProps) {
         />
       )}
 
-      {addPos && (
+      {canEdit && addPos && (
         <AddInput
           x={addPos.x}
           y={addPos.y}
@@ -775,7 +876,7 @@ export default function Canvas({ initialState, onSave }: CanvasProps) {
         />
       )}
 
-      <Toolbar status={toolbarStatus} actions={toolbarActions} />
+      {canEdit && <Toolbar status={toolbarStatus} actions={toolbarActions} />}
 
       <ZoomControls
         scale={scale}
@@ -790,7 +891,11 @@ export default function Canvas({ initialState, onSave }: CanvasProps) {
 
       <ShortcutsButton onClick={() => setIsHelpOpen(p => !p)} />
 
-      <ItemsButton count={blocks.length} onClick={() => setIsItemsOpen(p => !p)} />
+      {/* Top-right cluster: extra slot (Share / AvatarStack) + Items */}
+      <div className="absolute top-6 right-6 pointer-events-auto flex items-center gap-2">
+        {topRightSlot}
+        <ItemsButton count={blocks.length} onClick={() => setIsItemsOpen(p => !p)} />
+      </div>
 
       <MenuButton themeChoice={themeChoice} onSetTheme={setTheme} />
 

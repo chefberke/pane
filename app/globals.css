@@ -232,8 +232,9 @@
   /* Panel / modal widths */
   --panel-width-menu:  280px;
   --panel-width-sheet: 320px;
-  --panel-width-modal: 480px;
-  --popover-width:     320px;
+  --panel-width-modal:       480px;
+  --panel-width-modal-share: 520px;
+  --popover-width:           320px;
 
   /* Spacing aliases */
   --space-row-y:  0.625rem; /* 10px */
