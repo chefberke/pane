@@ -8,12 +8,14 @@ export function usePinchZoom({
   setScale,
   offsetRef,
   scaleRef,
+  disabled = false,
 }: {
   viewportRef: RefObject<HTMLDivElement | null>;
   setOffset: Dispatch<SetStateAction<{ x: number; y: number }>>;
   setScale: Dispatch<SetStateAction<number>>;
   offsetRef: RefObject<{ x: number; y: number }>;
   scaleRef: RefObject<number>;
+  disabled?: boolean;
 }) {
   const pointers = useRef(new Map<number, { x: number; y: number }>());
   const lastDist = useRef<number | null>(null);
@@ -29,6 +31,7 @@ export function usePinchZoom({
 
     const onMove = (e: PointerEvent) => {
       if (e.pointerType !== 'touch') return;
+      if (disabled) return;
       if (!pointers.current.has(e.pointerId)) return;
       pointers.current.set(e.pointerId, { x: e.clientX, y: e.clientY });
 
@@ -74,5 +77,5 @@ export function usePinchZoom({
       el.removeEventListener('pointerup', onUp);
       el.removeEventListener('pointercancel', onUp);
     };
-  }, [viewportRef, setOffset, setScale, offsetRef, scaleRef]);
+  }, [viewportRef, setOffset, setScale, offsetRef, scaleRef, disabled]);
 }

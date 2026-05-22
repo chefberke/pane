@@ -1,10 +1,12 @@
 /* eslint-disable @typescript-eslint/no-explicit-any */
 'use client';
-import { use, useCallback, useMemo } from 'react';
+import { use, useCallback, useMemo, useState, useEffect } from 'react';
+import { AnimatePresence } from 'framer-motion';
 import { db } from '@/app/lib/db';
 import Canvas from '@/app/features/canvas/Canvas';
 import LoadingScreen from '@/app/features/loading/LoadingScreen';
 import Share from '@/app/features/share/Share';
+import FollowOverlay from '@/app/features/share/FollowOverlay';
 import { usePresence } from '@/app/features/share/hooks/usePresence';
 import { guestName, colorForId } from '@/app/features/share/utils';
 import { deserializeState } from '@/app/features/workspace/utils';
@@ -104,7 +106,36 @@ function ShareCanvas({
   canEdit: boolean;
   identity: { id: string; name: string; color: string; role: string };
 }) {
-  const { peers, publishCursor, publishSelection } = usePresence(workspaceId, identity as any);
+  const { peers, publishCursor, publishSelection, publishViewport } = usePresence(workspaceId, identity as any);
+
+  const [followedPeerId, setFollowedPeerId] = useState<string | null>(null);
+  const followedPeer = peers.find(p => p.id === followedPeerId) ?? null;
+  const isFollowing = !!followedPeer && !!followedPeer.viewport;
+
+  // Auto-exit if followed peer leaves
+  useEffect(() => {
+    if (followedPeerId && !peers.some(p => p.id === followedPeerId)) setFollowedPeerId(null);
+  }, [peers, followedPeerId]);
+
+  // Esc to exit follow
+  useEffect(() => {
+    if (!followedPeerId) return;
+    const onKey = (e: KeyboardEvent) => { if (e.key === 'Escape') setFollowedPeerId(null); };
+    window.addEventListener('keydown', onKey);
+    return () => window.removeEventListener('keydown', onKey);
+  }, [followedPeerId]);
+
+  const handleSelectPeer = useCallback((id: string) => {
+    setFollowedPeerId(prev => (prev === id ? null : id));
+  }, []);
+
+  const handleViewportChange = useCallback((
+    offset: { x: number; y: number },
+    scale: number,
+    size: { w: number; h: number },
+  ) => {
+    publishViewport(offset, scale, size);
+  }, [publishViewport]);
 
   const handleSave = useCallback((state: CanvasState) => {
     if (!canEdit) return;
@@ -115,21 +146,38 @@ function ShareCanvas({
   }, [canEdit, workspaceId]);
 
   return (
-    <Canvas
-      initialState={initialState}
-      onSave={canEdit ? handleSave : undefined}
-      canEdit={canEdit}
-      peers={peers}
-      onCursorMove={publishCursor}
-      onSelectionChange={publishSelection}
-      topRightSlot={
-        <Share
-          workspaceId={workspaceId}
-          workspaceName={workspaceName}
-          isOwner={false}
-          peers={peers}
-        />
-      }
-    />
+    <>
+      <Canvas
+        initialState={initialState}
+        onSave={canEdit ? handleSave : undefined}
+        canEdit={canEdit}
+        peers={peers}
+        onCursorMove={publishCursor}
+        onSelectionChange={publishSelection}
+        onViewportChange={handleViewportChange}
+        isFollowing={isFollowing}
+        followTarget={followedPeer?.viewport ?? null}
+        topRightSlot={
+          <Share
+            workspaceId={workspaceId}
+            workspaceName={workspaceName}
+            isOwner={false}
+            peers={peers}
+            followedPeerId={followedPeerId}
+            onSelectPeer={handleSelectPeer}
+          />
+        }
+      />
+      <AnimatePresence>
+        {isFollowing && followedPeer && (
+          <FollowOverlay
+            key="follow"
+            name={followedPeer.name}
+            color={followedPeer.color}
+            onExit={() => setFollowedPeerId(null)}
+          />
+        )}
+      </AnimatePresence>
+    </>
   );
 }

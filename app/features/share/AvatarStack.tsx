@@ -5,12 +5,14 @@ import { initials } from './utils';
 
 interface Props {
   peers: RemotePresencePeer[];
+  followedPeerId?: string | null;
+  onSelectPeer?: (peerId: string) => void;
 }
 
 const MAX_VISIBLE = 4;
 
 /** Compact avatar row showing who's currently in the workspace. */
-export default function AvatarStack({ peers }: Props) {
+export default function AvatarStack({ peers, followedPeerId, onSelectPeer }: Props) {
   if (peers.length === 0) return null;
 
   const visible = peers.slice(0, MAX_VISIBLE);
@@ -19,7 +21,13 @@ export default function AvatarStack({ peers }: Props) {
   return (
     <div className="flex items-center" style={{ gap: -6 }}>
       {visible.map((peer, i) => (
-        <Avatar key={peer.id} peer={peer} zIndex={MAX_VISIBLE - i} />
+        <Avatar
+          key={peer.id}
+          peer={peer}
+          zIndex={MAX_VISIBLE - i}
+          isFollowing={followedPeerId === peer.id}
+          onSelect={onSelectPeer}
+        />
       ))}
       {overflow > 0 && (
         <div
@@ -38,7 +46,17 @@ export default function AvatarStack({ peers }: Props) {
   );
 }
 
-function Avatar({ peer, zIndex }: { peer: RemotePresencePeer; zIndex: number }) {
+function Avatar({
+  peer,
+  zIndex,
+  isFollowing,
+  onSelect,
+}: {
+  peer: RemotePresencePeer;
+  zIndex: number;
+  isFollowing: boolean;
+  onSelect?: (peerId: string) => void;
+}) {
   const [tip, setTip] = useState(false);
   const timer = useRef<ReturnType<typeof setTimeout> | null>(null);
 
@@ -63,14 +81,26 @@ function Avatar({ peer, zIndex }: { peer: RemotePresencePeer; zIndex: number }) 
           {peer.typing && (
             <span style={{ color: 'var(--color-text-muted)' }}> · typing…</span>
           )}
+          {onSelect && (
+            <span style={{ color: 'var(--color-text-muted)' }}>
+              {isFollowing ? ' · Following' : ' · Click to follow'}
+            </span>
+          )}
         </div>
       )}
       <div
+        role={onSelect ? 'button' : undefined}
+        tabIndex={onSelect ? 0 : undefined}
+        onClick={() => onSelect?.(peer.id)}
+        onKeyDown={e => { if (e.key === 'Enter' || e.key === ' ') onSelect?.(peer.id); }}
         className="w-8 h-8 rounded-full flex items-center justify-center text-[11px] font-bold border-2 select-none"
         style={{
           background:  peer.color,
-          borderColor: 'var(--color-canvas)',
+          borderColor: isFollowing ? peer.color : 'var(--color-canvas)',
           color:       '#ffffff',
+          cursor:      onSelect ? 'pointer' : 'default',
+          outline:     isFollowing ? `2px solid ${peer.color}` : 'none',
+          outlineOffset: '2px',
         }}
       >
         {initials(peer.name)}

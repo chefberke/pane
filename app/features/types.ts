@@ -93,6 +93,7 @@ export interface RemotePresencePeer {
   cursor: { x: number; y: number } | null;
   selection: { blockIds: string[]; frameId: string | null };
   typing: boolean;
+  viewport: { offset: { x: number; y: number }; scale: number; size: { w: number; h: number } } | null;
 }
 
 export type FrameColor = 'slate' | 'blue' | 'green' | 'amber' | 'rose' | 'violet';

@@ -1,5 +1,7 @@
 export const TOKEN_LENGTH = 22;
 
+export const FOLLOW_BORDER_WIDTH = 4;
+
 export const GUEST_NAME_PREFIX = 'Guest';
 
 /** Throttle interval for cursor presence updates (ms) — ~30 Hz. */

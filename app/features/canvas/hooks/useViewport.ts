@@ -2,7 +2,7 @@ import { useState, useCallback, useEffect, type RefObject } from 'react';
 import { MIN_SCALE, MAX_SCALE } from '../constants';
 import { useLatestRef } from './useLatestRef';
 /** Manages pan offset, zoom scale, wheel zoom, and coordinate conversion for the canvas viewport. */
-export function useViewport(viewportRef: RefObject<HTMLDivElement | null>) {
+export function useViewport(viewportRef: RefObject<HTMLDivElement | null>, disabled = false) {
   const [offset, setOffset] = useState({ x: 0, y: 0 });
   const [scale, setScale] = useState(1);
 
@@ -21,6 +21,7 @@ export function useViewport(viewportRef: RefObject<HTMLDivElement | null>) {
     if (!el) return;
     const onWheel = (e: WheelEvent) => {
       e.preventDefault();
+      if (disabled) return;
       // ctrlKey is set by the browser for pinch-zoom gestures on trackpads
       if (e.ctrlKey) {
         const rect = el.getBoundingClientRect();
@@ -49,7 +50,7 @@ export function useViewport(viewportRef: RefObject<HTMLDivElement | null>) {
     };
     el.addEventListener('wheel', onWheel, { passive: false });
     return () => el.removeEventListener('wheel', onWheel);
-  }, [viewportRef, scaleRef, offsetRef]);
+  }, [viewportRef, scaleRef, offsetRef, disabled]);
 
   /** Converts screen coordinates to canvas world coordinates. */
   const screenToCanvas = useCallback((sx: number, sy: number) => ({

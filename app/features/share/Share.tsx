@@ -16,15 +16,17 @@ interface Props {
   workspaceName: string;
   isOwner: boolean;
   peers: RemotePresencePeer[];
+  followedPeerId?: string | null;
+  onSelectPeer?: (peerId: string) => void;
 }
 
 /** Orchestrates ShareButton, ShareModal, and AvatarStack for a workspace. */
-export default function Share({ workspaceId, workspaceName, isOwner, peers }: Props) {
+export default function Share({ workspaceId, workspaceName, isOwner, peers, followedPeerId, onSelectPeer }: Props) {
   const [isOpen, setIsOpen] = useState(false);
 
   return (
     <>
-      <AvatarStack peers={peers} />
+      <AvatarStack peers={peers} followedPeerId={followedPeerId} onSelectPeer={onSelectPeer} />
       <ShareButton onClick={() => setIsOpen(true)} />
       {isOpen && (
         <ShareModal

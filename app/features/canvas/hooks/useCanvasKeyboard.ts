@@ -21,6 +21,7 @@ export function useCanvasKeyboard({
   groupSelected,
   ungroupSelected,
   clearFrameSelection,
+  disabled = false,
 }: {
   setSelectedIds: Dispatch<SetStateAction<Set<string>>>;
   setAddPos: Dispatch<SetStateAction<{ x: number; y: number } | null>>;
@@ -40,9 +41,11 @@ export function useCanvasKeyboard({
   groupSelected: () => void;
   ungroupSelected: () => void;
   clearFrameSelection: () => void;
+  disabled?: boolean;
 }) {
   useEffect(() => {
     const onKey = (e: KeyboardEvent) => {
+      if (disabled) return;
       const active = document.activeElement;
       const inInput = active?.tagName === 'INPUT' || active?.tagName === 'TEXTAREA';
       const meta = e.metaKey || e.ctrlKey;
@@ -99,6 +102,6 @@ export function useCanvasKeyboard({
     setSelectedIds, setAddPos, setIsSearchOpen, setIsHelpOpen, setIsPanMode,
     deleteSelected, duplicateSelected, selectAll, nudgeSelected,
     addTextNote, toggleTheme, resetView, zoomBy, undo, redo,
-    groupSelected, ungroupSelected, clearFrameSelection,
+    groupSelected, ungroupSelected, clearFrameSelection, disabled,
   ]);
 }

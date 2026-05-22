@@ -24,4 +24,10 @@ export interface CanvasProps {
   onSelectionChange?: (blockIds: string[], frameId: string | null) => void;
   /** Extra nodes rendered in the top-right floating cluster (alongside the Items button). */
   topRightSlot?: React.ReactNode;
+  /** When true, all editing chrome is hidden and input is disabled (follow-user mode). */
+  isFollowing?: boolean;
+  /** Followed peer's viewport to lerp toward. Only used when isFollowing is true. */
+  followTarget?: { offset: { x: number; y: number }; scale: number; size: { w: number; h: number } } | null;
+  /** Called with local viewport state so the page can publish it to presence. */
+  onViewportChange?: (offset: { x: number; y: number }, scale: number, size: { w: number; h: number }) => void;
 }

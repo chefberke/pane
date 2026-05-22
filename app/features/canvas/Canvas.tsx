@@ -17,6 +17,7 @@ import ItemsButton from '../items-panel/ItemsButton';
 import ItemsSheet from '../items-panel/ItemsSheet';
 import MenuButton from '../menu-panel/MenuButton';
 import { ZOOM_STEP, BLOCK_SIZES, DOT_GRID_SIZE, MIN_SCALE, MAX_SCALE } from './constants';
+import { useFollowViewport } from './hooks/useFollowViewport';
 import { uid } from './utils';
 import {
   blockRect,
@@ -57,11 +58,14 @@ export default function Canvas({
   onCursorMove,
   onSelectionChange,
   topRightSlot,
+  isFollowing = false,
+  followTarget,
+  onViewportChange,
 }: CanvasProps) {
   const viewportRef = useRef<HTMLDivElement>(null);
 
   const { themeChoice, toggleTheme, setTheme } = useTheme();
-  const { offset, scale, offsetRef, scaleRef, setOffset, setScale, screenToCanvas, zoomBy, resetView } = useViewport(viewportRef);
+  const { offset, scale, offsetRef, scaleRef, setOffset, setScale, screenToCanvas, zoomBy, resetView } = useViewport(viewportRef, isFollowing);
   const { blocks, setBlocks, isRefreshing, addBlockFromUrl, refreshEmbeds, updateBlock, deleteBlock } = useBlocks({ screenToCanvas });
   const {
     frames, setFrames, createFromSelection, updateFrame, deleteFrame,
@@ -94,7 +98,7 @@ export default function Canvas({
   } | null>(null);
   const selectedIdsRef = useLatestRef(selectedIds);
 
-  usePinchZoom({ viewportRef, setOffset, setScale, offsetRef, scaleRef });
+  usePinchZoom({ viewportRef, setOffset, setScale, offsetRef, scaleRef, disabled: isFollowing });
 
   // Hydrate from initialState on first mount only
   useEffect(() => {
@@ -218,8 +222,21 @@ export default function Canvas({
     deleteSelected: deleteSelectedAny, duplicateSelected, selectAll, nudgeSelected,
     addTextNote, toggleTheme, resetView, zoomBy, undo, redo,
     groupSelected, ungroupSelected, clearFrameSelection,
+    disabled: isFollowing,
   });
   usePasteUrl({ viewportRef, addBlockFromUrl });
+
+  // Publish own viewport to presence so others can follow us
+  useEffect(() => {
+    if (isFollowing || !onViewportChange) return;
+    const el = viewportRef.current;
+    if (!el) return;
+    onViewportChange(offset, scale, { w: el.clientWidth, h: el.clientHeight });
+  // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [offset, scale, isFollowing, onViewportChange]);
+
+  // Follow lerp — smoothly tracks peer viewport when isFollowing
+  useFollowViewport({ isFollowing, followTarget, viewportRef, offset, scale, setOffset, setScale });
 
   const handleOpenBlock = useCallback((block: Block) => {
     let url: string | null = null;
@@ -666,9 +683,9 @@ export default function Canvas({
         cursor: isPanning.current ? 'grabbing' : inPanMode ? 'grab' : 'default',
         touchAction: 'none',
       }}
-      onPointerDown={onPointerDown}
+      onPointerDown={isFollowing ? undefined : onPointerDown}
       onPointerMove={e => {
-        onPointerMove(e);
+        if (!isFollowing) onPointerMove(e);
         if (onCursorMove) {
           const rect = viewportRef.current?.getBoundingClientRect();
           if (rect) {
@@ -678,9 +695,9 @@ export default function Canvas({
         }
       }}
       onPointerLeave={() => { /* caller can use onCursorMove(null) to hide — handled in usePresence */ }}
-      onPointerUp={onPointerUp}
-      onPointerCancel={onPointerUp}
-      onDoubleClick={canEdit ? onDoubleClick : undefined}
+      onPointerUp={isFollowing ? undefined : onPointerUp}
+      onPointerCancel={isFollowing ? undefined : onPointerUp}
+      onDoubleClick={canEdit && !isFollowing ? onDoubleClick : undefined}
     >
       {/* Dot grid */}
       <div
@@ -826,7 +843,7 @@ export default function Canvas({
         />
       )}
 
-      {canEdit && addPos && (
+      {canEdit && !isFollowing && addPos && (
         <AddInput
           x={addPos.x}
           y={addPos.y}
@@ -836,7 +853,7 @@ export default function Canvas({
         />
       )}
 
-      {commentTarget && (
+      {!isFollowing && commentTarget && (
         <CommentsPopover
           targetId={commentTarget.id}
           comments={
@@ -852,7 +869,7 @@ export default function Canvas({
         />
       )}
 
-      {isSearchOpen && (
+      {!isFollowing && isSearchOpen && (
         <SearchModal
           blocks={blocks}
           onClose={() => setIsSearchOpen(false)}
@@ -860,11 +877,11 @@ export default function Canvas({
         />
       )}
 
-      {isHelpOpen && (
+      {!isFollowing && isHelpOpen && (
         <ShortcutsHelp onClose={() => setIsHelpOpen(false)} />
       )}
 
-      {isItemsOpen && (
+      {!isFollowing && isItemsOpen && (
         <ItemsSheet
           blocks={blocks}
           frames={frames}
@@ -876,28 +893,32 @@ export default function Canvas({
         />
       )}
 
-      {canEdit && <Toolbar status={toolbarStatus} actions={toolbarActions} />}
+      {canEdit && !isFollowing && <Toolbar status={toolbarStatus} actions={toolbarActions} />}
 
-      <ZoomControls
-        scale={scale}
-        onZoomIn={() => zoomBy(ZOOM_STEP)}
-        onZoomOut={() => zoomBy(1 / ZOOM_STEP)}
-        onReset={resetView}
-        canUndo={canUndo}
-        canRedo={canRedo}
-        onUndo={undo}
-        onRedo={redo}
-      />
+      {!isFollowing && (
+        <ZoomControls
+          scale={scale}
+          onZoomIn={() => zoomBy(ZOOM_STEP)}
+          onZoomOut={() => zoomBy(1 / ZOOM_STEP)}
+          onReset={resetView}
+          canUndo={canUndo}
+          canRedo={canRedo}
+          onUndo={undo}
+          onRedo={redo}
+        />
+      )}
 
-      <ShortcutsButton onClick={() => setIsHelpOpen(p => !p)} />
+      {!isFollowing && <ShortcutsButton onClick={() => setIsHelpOpen(p => !p)} />}
 
       {/* Top-right cluster: extra slot (Share / AvatarStack) + Items */}
-      <div className="absolute top-6 right-6 pointer-events-auto flex items-center gap-2">
-        {topRightSlot}
-        <ItemsButton count={blocks.length} onClick={() => setIsItemsOpen(p => !p)} />
-      </div>
+      {!isFollowing && (
+        <div className="absolute top-6 right-6 pointer-events-auto flex items-center gap-2">
+          {topRightSlot}
+          <ItemsButton count={blocks.length} onClick={() => setIsItemsOpen(p => !p)} />
+        </div>
+      )}
 
-      <MenuButton themeChoice={themeChoice} onSetTheme={setTheme} />
+      {!isFollowing && <MenuButton themeChoice={themeChoice} onSetTheme={setTheme} />}
 
       <AnimatePresence>
         {blocks.length === 0 && frames.length === 0 && !addPos && <EmptyState key="empty" />}
