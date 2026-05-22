@@ -1,4 +1,5 @@
 import { useState, useCallback, type Dispatch, type SetStateAction } from 'react';
+import { flushSync } from 'react-dom';
 import type { Block, AlignMode } from '@/app/features/types';
 import { useLatestRef } from './useLatestRef';
 import { uid, alignBlocks } from '../utils';
@@ -47,13 +48,15 @@ export function useSelection({
 
   /** Commits the group drag delta to block positions in state (snapshot taken by drag hook before this). */
   const handleMultiDragEnd = useCallback((dx: number, dy: number) => {
+    flushSync(() => {
+      setBlocks(prev => prev.map(b =>
+        selectedIdsRef.current.has(b.id) ? { ...b, x: b.x + dx, y: b.y + dy } as Block : b
+      ));
+    });
     selectedIdsRef.current.forEach(id => {
       const el = document.querySelector(`[data-block-id="${id}"]`) as HTMLElement | null;
       if (el) el.style.transform = '';
     });
-    setBlocks(prev => prev.map(b =>
-      selectedIdsRef.current.has(b.id) ? { ...b, x: b.x + dx, y: b.y + dy } as Block : b
-    ));
   }, [setBlocks, selectedIdsRef]);
 
   /** Deletes all currently selected blocks. */

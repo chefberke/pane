@@ -1,5 +1,6 @@
 'use client';
 import { useState, useRef, useCallback, useMemo, useEffect } from 'react';
+import { flushSync } from 'react-dom';
 import type { Block, Frame, FrameColor } from '@/app/features/types';
 import type { CanvasProps } from './types';
 import BlockContainer from '../blocks/Block';
@@ -30,7 +31,7 @@ import {
   pickDropTargetFrame,
   sortFramesByDepth,
 } from '../frames/utils';
-import { FRAME_MIN_H, FRAME_MIN_W } from '../frames/constants';
+import { FRAME_MIN_H, FRAME_MIN_W, FRAME_PADDING } from '../frames/constants';
 import type { Rect } from '../frames/types';
 import { useViewport } from './hooks/useViewport';
 import { useTheme } from './hooks/useTheme';
@@ -345,24 +346,85 @@ export default function Canvas({ initialState, onSave }: CanvasProps) {
     if (!frame) return;
     const descBlocks = frameDescendantBlocks(frame, blocksRef.current, framesRef.current);
     const descFrames = frameDescendantFrames(frame, framesRef.current, blocksRef.current);
-    const clear = (sel: string) => {
-      const el = document.querySelector(sel) as HTMLElement | null;
-      if (el) el.style.transform = '';
+
+    const collectEls = (): HTMLElement[] => {
+      const els: HTMLElement[] = [];
+      const fEl = document.querySelector(`[data-frame-id="${id}"]`) as HTMLElement | null;
+      if (fEl) els.push(fEl);
+      descFrames.forEach(fid => { const el = document.querySelector(`[data-frame-id="${fid}"]`) as HTMLElement | null; if (el) els.push(el); });
+      descBlocks.forEach(bid => { const el = document.querySelector(`[data-block-id="${bid}"]`) as HTMLElement | null; if (el) els.push(el); });
+      return els;
     };
-    clear(`[data-frame-id="${id}"]`);
-    descFrames.forEach(fid => clear(`[data-frame-id="${fid}"]`));
-    descBlocks.forEach(bid => clear(`[data-block-id="${bid}"]`));
-    if (dx === 0 && dy === 0) return;
-    setBlocks(prev => prev.map(b => descBlocks.has(b.id) ? { ...b, x: b.x + dx, y: b.y + dy } as Block : b));
-    setFrames(prev => prev.map(f =>
-      f.id === id ? { ...f, x: f.x + dx, y: f.y + dy } :
-      descFrames.has(f.id) ? { ...f, x: f.x + dx, y: f.y + dy } : f
-    ));
+
+    if (dx === 0 && dy === 0) {
+      collectEls().forEach(el => { el.style.transform = ''; });
+      return;
+    }
+
+    const els = collectEls();
+    // Suppress CSS left/top transitions so they don't fight the transform during commit.
+    els.forEach(el => { el.style.transition = 'none'; });
+    // Synchronously commit new positions so the DOM is updated before we clear transforms.
+    flushSync(() => {
+      setBlocks(prev => prev.map(b => descBlocks.has(b.id) ? { ...b, x: b.x + dx, y: b.y + dy } as Block : b));
+      setFrames(prev => prev.map(f =>
+        f.id === id ? { ...f, x: f.x + dx, y: f.y + dy } :
+        descFrames.has(f.id) ? { ...f, x: f.x + dx, y: f.y + dy } : f
+      ));
+    });
+    // Clear transforms — left/top is already at final position, so no snap.
+    els.forEach(el => { el.style.transform = ''; });
+    // Re-enable transitions after the browser has painted the committed frame.
+    requestAnimationFrame(() => { els.forEach(el => { el.style.transition = ''; }); });
   }, [blocksRef, framesRef, setBlocks, setFrames]);
 
   const handleFrameResize = useCallback((id: string, next: { x: number; y: number; width: number; height: number }) => {
-    updateFrame(id, next);
-  }, [updateFrame]);
+    const frame = framesRef.current.find(f => f.id === id);
+    if (!frame) return;
+
+    const { blockIds, childFrameIds } = frameMembers(frame, blocksRef.current, framesRef.current);
+    const hasContent = blockIds.size > 0 || childFrameIds.size > 0;
+
+    if (!hasContent) {
+      updateFrame(id, next);
+      return;
+    }
+
+    // Compute tight bounding box of all direct member content.
+    let contentLeft = Infinity, contentTop = Infinity;
+    let contentRight = -Infinity, contentBottom = -Infinity;
+    for (const b of blocksRef.current) {
+      if (!blockIds.has(b.id)) continue;
+      const r = blockRect(b);
+      contentLeft   = Math.min(contentLeft,   r.x);
+      contentTop    = Math.min(contentTop,     r.y);
+      contentRight  = Math.max(contentRight,  r.x + r.width);
+      contentBottom = Math.max(contentBottom, r.y + r.height);
+    }
+    for (const f of framesRef.current) {
+      if (!childFrameIds.has(f.id)) continue;
+      contentLeft   = Math.min(contentLeft,   f.x);
+      contentTop    = Math.min(contentTop,     f.y);
+      contentRight  = Math.max(contentRight,  f.x + f.width);
+      contentBottom = Math.max(contentBottom, f.y + f.height);
+    }
+
+    // Clamp resize so the frame can never shrink past content + padding on each side.
+    let { x: nx, y: ny, width: nw, height: nh } = next;
+    const origRight  = nx + nw;
+    const origBottom = ny + nh;
+
+    // Left edge can't encroach past content left edge.
+    if (nx > contentLeft - FRAME_PADDING) { nx = contentLeft - FRAME_PADDING; nw = origRight - nx; }
+    // Top edge can't encroach past content top edge.
+    if (ny > contentTop  - FRAME_PADDING) { ny = contentTop  - FRAME_PADDING; nh = origBottom - ny; }
+    // Right edge must stay at least past content right edge.
+    if (nx + nw < contentRight  + FRAME_PADDING) nw = contentRight  + FRAME_PADDING - nx;
+    // Bottom edge must stay at least past content bottom edge.
+    if (ny + nh < contentBottom + FRAME_PADDING) nh = contentBottom + FRAME_PADDING - ny;
+
+    updateFrame(id, { x: nx, y: ny, width: nw, height: nh });
+  }, [blocksRef, framesRef, updateFrame]);
 
   const handleFrameRename = useCallback((id: string, title: string) => {
     pushSnapshot();
