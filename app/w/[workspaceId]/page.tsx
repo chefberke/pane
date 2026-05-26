@@ -1,4 +1,3 @@
-/* eslint-disable @typescript-eslint/no-explicit-any */
 'use client';
 import { use, useState, useEffect, useCallback } from 'react';
 import Link from 'next/link';
@@ -34,11 +33,6 @@ export default function WorkspacePage({ params }: Props) {
   const [followedPeerId, setFollowedPeerId] = useState<string | null>(null);
   const followedPeer = peers.find(p => p.id === followedPeerId) ?? null;
   const isFollowing = !!followedPeer && !!followedPeer.viewport;
-
-  // Auto-exit if followed peer leaves
-  useEffect(() => {
-    if (followedPeerId && !peers.some(p => p.id === followedPeerId)) setFollowedPeerId(null);
-  }, [peers, followedPeerId]);
 
   // Esc to exit follow
   useEffect(() => {

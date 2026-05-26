@@ -20,7 +20,6 @@ export default function WorkspaceSidebar() {
   const { data } = useWorkspaces(user?.id ?? '__unauthenticated__');
 
   // Member workspaces — query memberships then fetch each workspace by id
-  // eslint-disable-next-line @typescript-eslint/no-explicit-any
   const { data: memberData } = db.useQuery(
     user ? { workspaceMembers: { $: { where: { userId: user.id } as any } } } : null,
   );
@@ -167,7 +166,6 @@ export default function WorkspaceSidebar() {
 
 /** Sidebar row for a workspace the user is a member of (not owner). Fetches its own name. */
 function MemberWorkspaceItem({ workspaceId, isActive }: { workspaceId: string; isActive: boolean }) {
-  // eslint-disable-next-line @typescript-eslint/no-explicit-any
   const { data } = db.useQuery({ workspaces: { $: { where: { id: workspaceId } as any } } });
   const ws = (data as any)?.workspaces?.[0];
   const name = ws?.name ?? 'Shared canvas';

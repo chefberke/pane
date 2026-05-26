@@ -76,7 +76,7 @@ export default function Canvas({
   const framesRef = useLatestRef(frames);
   const { pushSnapshot, undo, redo, canUndo, canRedo } = useHistory({ setBlocks, blocksRef, setFrames, framesRef });
 
-  const { selectedIds, setSelectedIds, handleBlockSelect, handleBlockClickEnd, handleMultiDragMove, handleMultiDragEnd, deleteSelected, duplicateSelected, selectAll, nudgeSelected, alignSelected } = useSelection({ blocks, setBlocks, pushSnapshot });
+  const { selectedIds, setSelectedIds, handleBlockSelect, handleBlockClickEnd, handleMultiDragMove, handleMultiDragEnd, duplicateSelected, selectAll, nudgeSelected, alignSelected } = useSelection({ blocks, setBlocks, pushSnapshot });
 
   const [selectedFrameId, setSelectedFrameId] = useState<string | null>(null);
   const [addPos, setAddPos] = useState<{ x: number; y: number } | null>(null);
@@ -123,8 +123,6 @@ export default function Canvas({
   useEffect(() => {
     if (!onSelectionChange) return;
     onSelectionChange(Array.from(selectedIds), selectedFrameId);
-  // selectedFrameId and selectedIds are reactive but eslint can't infer Set equality
-  // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [selectedIds, selectedFrameId, onSelectionChange]);
 
   const zoomToFit = useCallback(() => {
@@ -243,7 +241,6 @@ export default function Canvas({
     const el = viewportRef.current;
     if (!el) return;
     onViewportChange(offset, scale, { w: el.clientWidth, h: el.clientHeight });
-  // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [offset, scale, isFollowing, onViewportChange]);
 
   // Follow lerp — smoothly tracks peer viewport when isFollowing

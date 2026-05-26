@@ -92,7 +92,5 @@ export function useFollowViewport({
         rafRef.current = null;
       }
     };
-  // Re-run when followTarget changes so new target values are picked up
-  // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [isFollowing, followTarget, viewportRef, setOffset, setScale]);
 }

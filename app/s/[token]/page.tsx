@@ -22,7 +22,6 @@ export default function SharePage({ params }: Props) {
   const { user } = db.useAuth();
 
   // Resolve share link
-  // eslint-disable-next-line @typescript-eslint/no-explicit-any
   const { data: shareData, isLoading: shareLoading } = db.useQuery({
     workspaceShares: { $: { where: { token } as any } },
   });
@@ -30,7 +29,6 @@ export default function SharePage({ params }: Props) {
   const share = (shareData as any)?.workspaceShares?.[0];
 
   // Resolve workspace once we have the share
-  // eslint-disable-next-line @typescript-eslint/no-explicit-any
   const { data: wsData, isLoading: wsLoading } = db.useQuery(
     share && !share.revokedAt
       ? { workspaces: { $: { where: { id: share.workspaceId } as any } } }
@@ -111,11 +109,6 @@ function ShareCanvas({
   const [followedPeerId, setFollowedPeerId] = useState<string | null>(null);
   const followedPeer = peers.find(p => p.id === followedPeerId) ?? null;
   const isFollowing = !!followedPeer && !!followedPeer.viewport;
-
-  // Auto-exit if followed peer leaves
-  useEffect(() => {
-    if (followedPeerId && !peers.some(p => p.id === followedPeerId)) setFollowedPeerId(null);
-  }, [peers, followedPeerId]);
 
   // Esc to exit follow
   useEffect(() => {

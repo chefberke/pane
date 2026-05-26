@@ -22,7 +22,6 @@ export interface UseWorkspaceCanvasResult {
 export function useWorkspaceCanvas(workspaceId: string): UseWorkspaceCanvasResult {
   const { user } = db.useAuth();
 
-  // eslint-disable-next-line @typescript-eslint/no-explicit-any
   const { data, isLoading: queryLoading } = db.useQuery({
     workspaces: { $: { where: { id: workspaceId } as any } },
   });
