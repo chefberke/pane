@@ -20,4 +20,5 @@ export interface ToolbarActions {
   redo: () => void;
   alignSelected: (mode: AlignMode) => void;
   zoomToFit: () => void;
+  groupSelected: () => void;
 }

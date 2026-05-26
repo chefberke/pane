@@ -1,7 +1,7 @@
 'use client';
 import { useState } from 'react';
 import { motion, LayoutGroup } from 'framer-motion';
-import { MousePointer2, Hand, Search, Type, RefreshCw, Maximize2 } from 'lucide-react';
+import { MousePointer2, Hand, Search, Type, RefreshCw, Maximize2, Group } from 'lucide-react';
 import type { ToolbarStatus, ToolbarActions } from './types';
 import Tip from './Tip';
 import { Btn, Sep } from './Btn';
@@ -10,7 +10,7 @@ import AlignGroup from './AlignGroup';
 /** Floating bottom toolbar with mode toggles and canvas actions. */
 export default function Toolbar({ status, actions }: { status: ToolbarStatus; actions: ToolbarActions }) {
   const { isPanMode, hasRefreshable, isRefreshing, selectedCount } = status;
-  const { addText, togglePanMode, search, refresh, alignSelected, zoomToFit } = actions;
+  const { addText, togglePanMode, search, refresh, alignSelected, zoomToFit, groupSelected } = actions;
 
   const [rotation, setRotation] = useState(0);
 
@@ -93,6 +93,12 @@ export default function Toolbar({ status, actions }: { status: ToolbarStatus; ac
       <Sep />
 
       <AlignGroup selectedCount={selectedCount} onAlign={alignSelected} />
+
+      <Tip label="Group" shortcut="⌘G">
+        <Btn onClick={() => { if (selectedCount >= 2) groupSelected(); }} disabled={selectedCount < 2}>
+          <Group size={14} />
+        </Btn>
+      </Tip>
 
       <Sep />
 

@@ -641,7 +641,8 @@ export default function Canvas({
     redo,
     alignSelected,
     zoomToFit,
-  }), [addTextNote, setIsPanMode, refreshEmbeds, undo, redo, alignSelected, zoomToFit]);
+    groupSelected,
+  }), [addTextNote, setIsPanMode, refreshEmbeds, undo, redo, alignSelected, zoomToFit, groupSelected]);
 
   const toolbarStatus = { isPanMode, hasRefreshable: blocks.some(b => b.type === 'link' || b.type === 'github'), isRefreshing, canUndo, canRedo, selectedCount: selectedIds.size };
   const inPanMode = isPanMode || isPanning.current;
