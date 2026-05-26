@@ -128,6 +128,18 @@ function Frame({ frame, scale, selected, memberCount, descendantBlocks, handlers
         onDelete={() => handlers.onDelete(frame.id)}
       />
 
+      {/* Full-area drag zone — sits below blocks so they still receive pointer events, above nothing. */}
+      <div
+        style={{
+          position: 'absolute',
+          inset: 0,
+          pointerEvents: 'auto',
+          cursor: 'grab',
+          zIndex: 1,
+        }}
+        onPointerDown={onTitleDragPointerDown}
+      />
+
       {/* Invisible perimeter resize zones — 4 edges + 4 corners (corners overlap edges via higher z). */}
       <EdgeZone dir="n" onPointerDown={onHandlePointerDown('n')} />
       <EdgeZone dir="s" onPointerDown={onHandlePointerDown('s')} />
