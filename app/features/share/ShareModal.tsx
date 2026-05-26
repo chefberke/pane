@@ -352,7 +352,7 @@ function PeopleSection({
   peers: RemotePresencePeer[];
   userId: string;
 }) {
-  const { members, isLoading, updateRole, removeMember } = useMembers(workspaceId);
+  const { members, isLoading, updateRole, removeMember } = useMembers(workspaceId, isOwner);
   const onlinePeerIds = useMemo(() => new Set(peers.map(p => p.id)), [peers]);
 
   const guestPeers = peers.filter(p => !members.find(m => m.userId === p.id));

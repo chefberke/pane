@@ -72,6 +72,19 @@ export function extractGitHubRepo(url: string): { owner: string; repo: string } 
   return { owner: m[1], repo: m[2] };
 }
 
+/**
+ * Returns the URL string if it is a valid https:// URL, otherwise null.
+ * Use this before rendering any user-supplied URL in an iframe or img tag.
+ */
+export function assertHttpsUrl(raw: string): string | null {
+  try {
+    const u = new URL(raw);
+    return u.protocol === 'https:' ? u.toString() : null;
+  } catch {
+    return null;
+  }
+}
+
 const ARRANGE_GAP = 24;
 
 /** Returns a new block list with selected blocks arranged in a row or column with equal spacing. */

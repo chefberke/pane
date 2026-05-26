@@ -1,9 +1,35 @@
 # InstantDB Permission Rules for Workspace Sharing
 
-## ⚠ Required: Apply these rules in the InstantDB dashboard
+## Rules are now in code — `instant.perms.ts`
 
-Without these server-side rules, share tokens provide obscurity only — anyone who
-knows a workspace ID can read it directly. These rules make access authoritative.
+Rules live in `instant.perms.ts` at the repo root. Apply them with:
+
+```bash
+npx instant-cli@latest push perms
+```
+
+Then verify in the [InstantDB dashboard](https://www.instantdb.com/dash) under **Permissions**.
+
+---
+
+## Current limitations (requires schema links to fully resolve)
+
+Because `instant.schema.ts` has no `i.link()` definitions, cross-entity CEL rules
+(`data.ref()`) are unavailable. Two things that need schema links to fully lock down:
+
+1. **workspace.view** — should only allow members/share-token holders, not everyone
+2. **workspace.update** — anonymous share-page editors (no auth.id) cannot be
+   validated without an API-route canvas-save endpoint
+
+Until schema links are added, these remain intentionally open.
+
+---
+
+## Legacy JSON format (for reference / manual dashboard entry)
+
+The rules below were the originally intended full ruleset. They rely on cross-entity
+joins that require schema links. Use `instant.perms.ts` instead — the JSON here is
+kept for historical reference only.
 
 Go to your app in the [InstantDB dashboard](https://www.instantdb.com/dash), open
 **Permissions**, and set the following rules (JSON format):

@@ -1,12 +1,15 @@
 'use client';
-import { useState } from 'react';
+import { useState, useMemo } from 'react';
 import { ExternalLink, FileText } from 'lucide-react';
 import type { PdfBlock } from '@/app/features/types';
+import { assertHttpsUrl } from '@/app/features/canvas/utils';
 
 /** Renders a PDF via an iframe with a fallback open-link for blocked embeds. */
 export default function PdfEmbed({ block }: { block: PdfBlock }) {
   const [failed, setFailed] = useState(false);
   const filename = block.title || block.url.split('/').pop()?.split('?')[0] || 'document.pdf';
+  // Only allow https: URLs in the iframe to prevent protocol-level attacks.
+  const safeSrc = useMemo(() => assertHttpsUrl(block.url), [block.url]);
 
   return (
     <div className="w-[400px] h-[520px] flex flex-col overflow-hidden" style={{ background: 'var(--color-surface-raised)' }}>
@@ -37,8 +40,8 @@ export default function PdfEmbed({ block }: { block: PdfBlock }) {
         </a>
       </div>
 
-      {/* PDF content */}
-      {failed ? (
+      {/* PDF content — only rendered when URL passes https: check */}
+      {failed || !safeSrc ? (
         <div className="flex-1 flex flex-col items-center justify-center gap-3 p-6">
           <FileText size={32} style={{ color: 'var(--color-text-muted)' }} />
           <p className="text-xs text-center" style={{ color: 'var(--color-text-muted)' }}>
@@ -59,8 +62,10 @@ export default function PdfEmbed({ block }: { block: PdfBlock }) {
         <div className="relative flex-1">
           <iframe
             className="w-full h-full border-0 block"
-            src={block.url}
+            src={safeSrc}
             title={filename}
+            sandbox="allow-scripts allow-same-origin"
+            referrerPolicy="no-referrer"
             onError={() => setFailed(true)}
           />
           {/* Blocks iframe from stealing mouse events */}

@@ -48,6 +48,8 @@ export default function LinkPreview({ block }: { block: LinkBlock }) {
             alt={title ?? ''}
             className="w-full h-full object-cover group-hover/link:scale-105 transition-transform duration-300"
             onError={() => setImgFailed(true)}
+            referrerPolicy="no-referrer"
+            loading="lazy"
           />
         </div>
       )}
@@ -76,6 +78,8 @@ export default function LinkPreview({ block }: { block: LinkBlock }) {
               alt=""
               className="w-3.5 h-3.5 flex-shrink-0 rounded-sm"
               onError={e => { (e.target as HTMLImageElement).style.display = 'none'; }}
+              referrerPolicy="no-referrer"
+              loading="lazy"
             />
           )}
           <span
