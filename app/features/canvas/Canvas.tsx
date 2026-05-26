@@ -206,7 +206,7 @@ export default function Canvas({
     setSelectedFrameId(null);
   }, [selectedFrameId, deleteFrame, pushSnapshot]);
 
-  /** Unified delete: removes the selected frame if one is selected, otherwise blocks. */
+  /** Unified delete: removes the selected frame if one is selected, otherwise blocks (plus any frames whose all descendant blocks are being deleted). */
   const deleteSelectedAny = useCallback(() => {
     if (selectedFrameId) {
       pushSnapshot();
@@ -214,8 +214,19 @@ export default function Canvas({
       setSelectedFrameId(null);
       return;
     }
-    deleteSelected();
-  }, [selectedFrameId, deleteFrame, deleteSelected, pushSnapshot]);
+    if (selectedIdsRef.current.size === 0) return;
+    // Also delete frames whose every descendant block is in the selection
+    const toDeleteFrames = framesRef.current.filter(f => {
+      const descendants = frameDescendantBlocks(f, blocksRef.current, framesRef.current);
+      return descendants.size > 0 && [...descendants].every(id => selectedIdsRef.current.has(id));
+    });
+    pushSnapshot();
+    setBlocks(prev => prev.filter(b => !selectedIdsRef.current.has(b.id)));
+    setSelectedIds(new Set());
+    if (toDeleteFrames.length > 0) {
+      setFrames(prev => prev.filter(f => !toDeleteFrames.some(df => df.id === f.id)));
+    }
+  }, [selectedFrameId, deleteFrame, framesRef, blocksRef, selectedIdsRef, pushSnapshot, setBlocks, setSelectedIds, setFrames]);
 
   useCanvasKeyboard({
     setSelectedIds, setAddPos, setIsSearchOpen, setIsHelpOpen, setIsPanMode,
