@@ -1,7 +1,17 @@
 import type { NextRequest } from 'next/server';
 import { assertPublicHttpsUrl, assertPublicHostname, safeFetch } from './security';
+import { rateLimitRequest } from '@/app/lib/rateLimit';
+
+/** Returns the URL only if it is an absolute https URL, otherwise undefined. */
+function httpsOnly(value: string | undefined): string | undefined {
+  return value && value.startsWith('https://') ? value : undefined;
+}
 
 export async function GET(request: NextRequest) {
+  if (!rateLimitRequest(request, 'preview', 60, 60_000)) {
+    return Response.json({ error: 'Too many requests' }, { status: 429 });
+  }
+
   const raw = request.nextUrl.searchParams.get('url');
   if (!raw) return Response.json({ error: 'URL required' }, { status: 400 });
 
@@ -54,7 +64,15 @@ export async function GET(request: NextRequest) {
     favicon = favicon.startsWith('/') ? `${origin}${favicon}` : `${origin}/${favicon}`;
   }
 
-  return Response.json({ title, description, image, favicon, url: parsedUrl.toString() });
+  // Only hand https URLs back to the client <img src>. Drops javascript:/data:/http:
+  // values that a malicious target page could place in og:image / favicon.
+  return Response.json({
+    title,
+    description,
+    image: httpsOnly(image),
+    favicon: httpsOnly(favicon),
+    url: parsedUrl.toString(),
+  });
 }
 
 function decodeHTMLEntities(str: string) {

@@ -1,8 +1,9 @@
 /**
- * SECURITY NOTE: Share links and invites are client-enforced in v1.
- * Without server-side InstantDB permission rules, tokens provide obscurity only.
- * See docs/sharing-permissions.md for the dashboard rules that MUST be applied
- * to make access control authoritative.
+ * Access control is enforced server-side: InstantDB permission rules (instant.perms.ts,
+ * backed by schema links) gate member/owner reads and writes, and anonymous share-page
+ * access is validated by the /api/share/[token], /api/workspace/save, and
+ * /api/invite/[token]/accept routes using the admin token. The UI gates here are
+ * defense-in-depth, not the authoritative layer.
  */
 'use client';
 import { useState } from 'react';

@@ -1,93 +1,86 @@
-# InstantDB Permission Rules for Workspace Sharing
+# Workspace Sharing — Authorization Model
 
-## Rules are now in code — `instant.perms.ts`
+Access control is enforced **server-side** through two layers:
 
-Rules live in `instant.perms.ts` at the repo root. Apply them with:
+1. **InstantDB permission rules** (`instant.perms.ts`) backed by **schema links**
+   (`instant.schema.ts`). These gate every direct client read/write for authenticated
+   owners and members.
+2. **Admin-token API routes** for the cases CEL cannot express (anonymous share-page
+   guests, role-gated non-owner writes, invite acceptance).
+
+## Applying the rules
+
+Order matters. The new rules traverse schema links that older rows don't have yet, so
+push the schema, **backfill existing rows**, push the rules, then deploy the app code.
 
 ```bash
-npx instant-cli@latest push perms
+# 1. Set INSTANT_APP_ADMIN_TOKEN in .env.local (server-only; never NEXT_PUBLIC_).
+#    Also set it in the deploy environment (e.g. Vercel) or the API routes will fail.
+
+# 2. Push schema links + permission rules to InstantDB.
+bun run db:push        # pushes instant.schema.ts (links) then instant.perms.ts
+
+# 3. Backfill the `workspace` link onto every pre-existing members/shares/invites row.
+#    REQUIRED: without it, members invited before this change lose access, because
+#    workspaces.view traverses data.ref('members.userId'). Idempotent — safe to re-run.
+bun run db:backfill
+
+# 4. Deploy the app code.
 ```
 
-Then verify in the [InstantDB dashboard](https://www.instantdb.com/dash) under **Permissions**.
+> ⚠️ Skipping step 3 silently locks existing members out of their workspaces (and breaks
+> the owner's member list, role changes, and member removal). Skipping the token in the
+> deploy env breaks share pages, non-owner saves, and invite acceptance at runtime.
+
+Verify in the [InstantDB dashboard](https://www.instantdb.com/dash) under **Schema** and
+**Permissions**.
 
 ---
 
-## Current limitations (requires schema links to fully resolve)
+## Schema links (`instant.schema.ts`)
 
-Because `instant.schema.ts` has no `i.link()` definitions, cross-entity CEL rules
-(`data.ref()`) are unavailable. Two things that need schema links to fully lock down:
+`workspaceMembers`, `workspaceShares`, and `workspaceInvites` each have a forward
+`workspace` link to `workspaces` (reverse labels `members` / `shares` / `invites`,
+`onDelete: 'cascade'`). The flat `workspaceId` string fields are retained so existing
+queries keep working; the links exist so rules can traverse `data.ref('workspace...')`.
 
-1. **workspace.view** — should only allow members/share-token holders, not everyone
-2. **workspace.update** — anonymous share-page editors (no auth.id) cannot be
-   validated without an API-route canvas-save endpoint
+## Permission rules (`instant.perms.ts`)
 
-Until schema links are added, these remain intentionally open.
+| Entity | view | create | update | delete |
+|---|---|---|---|---|
+| `workspaces` | owner OR linked member | self-owned only | **owner only** | owner only |
+| `workspaceShares` | creator (owner) | self as creator | creator | creator |
+| `workspaceMembers` | workspace owner OR fellow member | **false** (API only) | workspace owner | self OR workspace owner |
+| `workspaceInvites` | inviter | self as inviter | inviter | inviter |
 
----
+`workspaces.update` is owner-only because **non-owner edits go through `/api/workspace/save`**,
+and `workspaceMembers.create` is `false` because **members are created only by the
+invite-accept route** (prevents arbitrary self-add / role spoofing).
 
-## Legacy JSON format (for reference / manual dashboard entry)
+## Admin-token API routes
 
-The rules below were the originally intended full ruleset. They rely on cross-entity
-joins that require schema links. Use `instant.perms.ts` instead — the JSON here is
-kept for historical reference only.
+| Route | Purpose | Authorization |
+|---|---|---|
+| `GET /api/share/[token]` | Resolve a share link → workspace name + state + role | Valid, non-revoked share token |
+| `POST /api/workspace/save` | Persist canvas for non-owner editors | Bearer user (owner/editor member) **or** editor share token |
+| `POST /api/invite/[token]/accept` | Accept an invite, create the linked member row | Bearer user whose email matches `invite.email` |
 
-Go to your app in the [InstantDB dashboard](https://www.instantdb.com/dash), open
-**Permissions**, and set the following rules (JSON format):
-
-```json
-{
-  "workspaces": {
-    "allow": {
-      "view": "auth.id == data.userId || (query.workspaceMembers.userId == auth.id && query.workspaceMembers.workspaceId == data.id) || exists(data.workspaceShares, s => s.workspaceId == data.id && s.revokedAt == null)",
-      "create": "auth.id != null",
-      "update": "auth.id == data.userId || exists(query.workspaceMembers, m => m.userId == auth.id && m.workspaceId == data.id && m.role == 'editor')",
-      "delete": "auth.id == data.userId"
-    }
-  },
-  "workspaceShares": {
-    "allow": {
-      "view": "auth.id == data.createdBy",
-      "create": "auth.id == data.createdBy",
-      "update": "auth.id == data.createdBy",
-      "delete": "auth.id == data.createdBy"
-    }
-  },
-  "workspaceInvites": {
-    "allow": {
-      "view": "auth.id != null && (auth.id == data.invitedBy || auth.email == data.email)",
-      "create": "auth.id != null",
-      "update": "auth.id != null && (auth.id == data.invitedBy || auth.email == data.email)",
-      "delete": "auth.id == data.invitedBy"
-    }
-  },
-  "workspaceMembers": {
-    "allow": {
-      "view": "auth.id != null",
-      "create": "auth.id != null",
-      "update": "exists(query.workspaceMembers, m => m.userId == auth.id && m.workspaceId == data.workspaceId && m.role == 'owner')",
-      "delete": "exists(query.workspaceMembers, m => m.userId == auth.id && m.workspaceId == data.workspaceId && m.role == 'owner') || auth.id == data.userId"
-    }
-  }
-}
-```
-
-## What this enforces
-
-| Rule | Effect |
-|---|---|
-| `workspaces.view` | Only owner, members, or holders of a non-revoked share token can read workspace data |
-| `workspaces.update` | Only owner or editor-role members can write canvas state |
-| `workspaceShares.*` | Only the creator can manage share links |
-| `workspaceInvites.*` | Invitees can read/accept their own invite; only the inviter can delete |
-| `workspaceMembers.*` | Only the workspace owner can change roles or remove members |
+All three run on the server only (`app/lib/admin.ts`, guarded by `server-only`) and are
+rate-limited (`app/lib/rateLimit.ts`).
 
 ## Security properties
 
-- **Token revocation** — setting `revokedAt` on a share row immediately blocks access
-  (the view rule checks `s.revokedAt == null`)
-- **Invite email binding** — invite tokens are linked to a specific email address;
-  the accept flow in `/s/invite/[token]/page.tsx` verifies `invite.email === user.email`
-- **Anonymous share guests** — can only access canvas state via their role
-  (`viewer` = read-only, `editor` = read+write); they cannot touch sharing tables
-- **Editor conflict** — v1 uses last-write-wins (stateJson blob); presence cursors
-  make concurrent edits visible so users can coordinate
+- **No IDOR** — a user can only read workspaces they own or are a member of; only the
+  owner can overwrite a workspace directly (others must pass the save route's role check).
+- **No privilege escalation** — only the workspace owner can change member roles; members
+  cannot be created client-side at all.
+- **Token revocation** — setting `revokedAt` on a share row immediately fails the API
+  route's validation, blocking both read and write.
+- **Invite email binding** — the accept route lowercases and compares `invite.email`
+  against the authenticated user's email; acceptance is idempotent (no duplicate members).
+- **Anonymous guests** — never touch the sharing tables directly; they only ever see data
+  the resolve route returns for a valid token, scoped to `viewer` (read-only) or `editor`.
+- **Editor conflict** — v1 uses last-write-wins (stateJson blob); presence cursors make
+  concurrent edits visible so users can coordinate.
+- **Token entropy** — share/invite tokens are `crypto.randomUUID()` substrings (~88 bits),
+  and the resolve/accept routes are rate-limited, so enumeration is impractical.

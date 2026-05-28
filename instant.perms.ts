@@ -1,103 +1,75 @@
 import type { InstantRules } from '@instantdb/react';
 
-// ─── Limitation note ──────────────────────────────────────────────────────────
-// instant.schema.ts has no i.link() definitions, so cross-entity CEL traversals
-// (data.ref / newData.ref) are unavailable here. Rules below provide the best
-// protection achievable with flat entity fields only.
-//
-// Two things that require schema links + a future migration to fully lock down:
-//  1. workspace.view  — needs "viewer is a member OR has a valid share token"
-//  2. workspace.update — needs "updater is an editor-role member OR share-editor"
-//  Until then workspace read/write is gated on auth only (better than wide-open).
-//
-// workspace.update for anonymous share-page guests (no auth.id) cannot be
-// enforced without server-side token validation (API route). That is tracked as
-// a follow-up: move canvas save in /s/[token]/page.tsx to an API route that
-// validates the token before writing.
-// ─────────────────────────────────────────────────────────────────────────────
+// Authorization model (see instant.schema.ts for the links these rules traverse):
+//  • Owner is identified by workspaces.userId.
+//  • Members are workspaceMembers rows linked to a workspace (created only by the
+//    server-side /api/invite/[token]/accept route).
+//  • Anonymous share-page guests have no auth.id and cannot be authorized by CEL,
+//    so they read via /api/share/[token] and write via /api/workspace/save, both
+//    of which validate the share token with the admin token (bypassing these rules).
+//  • Non-owner edits (members + share guests) also go through /api/workspace/save,
+//    which is why workspaces.update stays owner-only here.
 
 const rules = {
-  // ── workspaces ────────────────────────────────────────────────────────────
+  // ── workspaces ──────────────────────────────────────────────────────────────
   workspaces: {
     bind: [
       'isOwner', 'auth.id != null && auth.id == data.userId',
     ],
     allow: {
-      // Intentionally open: anonymous share-page guests need to read workspace
-      // data after resolving a token. Proper scoping requires schema links.
-      view: 'true',
-
-      // Only authenticated users may create workspaces, and they must own them.
+      // Owner or any linked member may read.
+      view: "isOwner || (auth.id != null && auth.id in data.ref('members.userId'))",
+      // Only authenticated users may create workspaces, and only their own.
       create: 'auth.id != null && auth.id == newData.userId',
-
-      // Requires auth at minimum. Full member/share-editor check needs links.
-      // The share-page anonymous-editor case must be migrated to an API route.
-      update: 'isOwner || auth.id != null',
-
-      // Hard gate: only the owner can delete their workspace.
+      // Direct client writes are owner-only; everyone else uses /api/workspace/save.
+      update: 'isOwner',
       delete: 'isOwner',
     },
   },
 
-  // ── workspaceShares ───────────────────────────────────────────────────────
+  // ── workspaceShares ───────────────────────────────────────────────────────────
   workspaceShares: {
     bind: ['isCreator', 'auth.id != null && auth.id == data.createdBy'],
     allow: {
-      // MUST be open: anonymous guests call db.useQuery({ workspaceShares: { $: { where: { token } } } })
-      // to resolve a share link. Tokens are crypto.randomUUID() substrings (~88 bits
-      // of entropy) so enumeration is not a practical attack.
-      view: 'true',
-
-      // Only the workspace owner (createdBy) can create/update/revoke shares.
+      // Only the owner (creator) manages share links. Guests resolve tokens via
+      // /api/share/[token], so anonymous read is no longer needed here — this also
+      // removes the token-enumeration surface.
+      view: 'isCreator',
       create: 'auth.id != null && auth.id == newData.createdBy',
       update: 'isCreator',
       delete: 'isCreator',
     },
   },
 
-  // ── workspaceMembers ──────────────────────────────────────────────────────
+  // ── workspaceMembers ────────────────────────────────────────────────────────
   workspaceMembers: {
     bind: [
       'isSelf', 'auth.id != null && auth.id == data.userId',
+      'isWorkspaceOwner', "auth.id != null && auth.id in data.ref('workspace.userId')",
     ],
     allow: {
-      // Any authenticated user may read member lists (needed for presence/UI).
-      view: 'auth.id != null',
-
-      // Allow authenticated users to create their own member record (invite
-      // acceptance flow). Without schema links we cannot verify an invite
-      // exists — the invite-page still checks server-side via client logic.
-      create: 'auth.id != null && auth.id == newData.userId',
-
-      // Role updates require the existing workspaceMembers row to already exist.
-      // Without links we cannot verify caller is workspace owner here; the
-      // UI-level guard in ShareModal is the remaining line of defence until
-      // schema links are added.
-      update: 'auth.id != null',
-
-      // Any member may remove themselves; owner removal of others relies on UI.
-      delete: 'isSelf || auth.id != null',
+      // The workspace owner and fellow members may read the member list.
+      view: "isWorkspaceOwner || (auth.id != null && auth.id in data.ref('workspace.members.userId'))",
+      // Members are created only by the invite-accept API route (admin token).
+      create: 'false',
+      // Only the workspace owner can change a member's role.
+      update: 'isWorkspaceOwner',
+      // A member can remove themselves; the workspace owner can remove anyone.
+      delete: 'isSelf || isWorkspaceOwner',
     },
   },
 
-  // ── workspaceInvites ──────────────────────────────────────────────────────
+  // ── workspaceInvites ──────────────────────────────────────────────────────────
   workspaceInvites: {
     bind: [
       'isInviter', 'auth.id != null && auth.id == data.invitedBy',
     ],
     allow: {
-      // Invitees need to read their own invite to accept it.
-      view: 'auth.id != null',
-
-      // Only authenticated users may send invites.
+      // Only the inviter manages invites client-side. Invitees read + accept via
+      // /api/invite/[token]/accept (admin token validates the email binding).
+      view: 'isInviter',
       create: 'auth.id != null && auth.id == newData.invitedBy',
-
-      // Acceptance writes acceptedAt. Both the inviter and the invitee (by
-      // email) should be allowed, but email check requires auth.email which
-      // may not be exposed. Require auth as minimum gate.
-      update: 'auth.id != null',
-
-      // Only the inviter can revoke an invite.
+      update: 'isInviter',
       delete: 'isInviter',
     },
   },

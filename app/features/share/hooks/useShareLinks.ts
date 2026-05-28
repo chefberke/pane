@@ -18,7 +18,8 @@ export function useShareLinks(workspaceId: string, userId: string) {
     const token = mintToken();
     const id = crypto.randomUUID();
     const share: ShareLink = { id, workspaceId, token, role, createdAt: Date.now(), createdBy: userId };
-    await db.transact((db.tx as any).workspaceShares[id].update(share));
+    // Set the workspace link so permission rules can traverse share → workspace.
+    await db.transact((db.tx as any).workspaceShares[id].update(share).link({ workspace: workspaceId }));
     return share;
   }, [workspaceId, userId]);
 

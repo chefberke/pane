@@ -21,7 +21,8 @@ export function useInvites(workspaceId: string, invitedBy: string) {
       id, workspaceId, email: email.trim().toLowerCase(),
       role, token, invitedBy, createdAt: Date.now(),
     };
-    await db.transact((db.tx as any).workspaceInvites[id].update(invite));
+    // Set the workspace link so permission rules can traverse invite → workspace.
+    await db.transact((db.tx as any).workspaceInvites[id].update(invite).link({ workspace: workspaceId }));
     return invite;
   }, [workspaceId, invitedBy]);
 

@@ -17,7 +17,8 @@ export interface UseWorkspaceCanvasResult {
  * Loads a workspace's canvas state from InstantDB and provides a debounced save callback.
  * initialState is captured once on first successful load — subsequent InstantDB updates
  * do not re-hydrate the canvas (last-write-wins across devices is the v1 contract).
- * Also lazy-inserts an owner workspaceMember row for new workspaces.
+ * Owners save directly (allowed by the `workspaces.update: isOwner` rule); non-owner
+ * editor-members save through /api/workspace/save, which authorizes via the admin token.
  */
 export function useWorkspaceCanvas(workspaceId: string): UseWorkspaceCanvasResult {
   const { user } = db.useAuth();
@@ -47,12 +48,26 @@ export function useWorkspaceCanvas(workspaceId: string): UseWorkspaceCanvasResul
   const handleSave = useCallback((state: CanvasState) => {
     if (timerRef.current) clearTimeout(timerRef.current);
     timerRef.current = setTimeout(() => {
-      db.transact((db.tx as any).workspaces[workspaceId].update({
-        stateJson: serializeState(state),
-        updatedAt: Date.now(),
-      }));
+      const stateJson = serializeState(state);
+      if (isOwner) {
+        // Owner writes directly — allowed by the `workspaces.update: isOwner` rule.
+        db.transact((db.tx as any).workspaces[workspaceId].update({
+          stateJson,
+          updatedAt: Date.now(),
+        }));
+      } else {
+        // Non-owner editor-members save through the server route, which verifies
+        // their membership role with the admin token (client writes are blocked).
+        const token = (user as any)?.refresh_token;
+        if (!token) return;
+        void fetch('/api/workspace/save', {
+          method: 'POST',
+          headers: { 'Content-Type': 'application/json', Authorization: `Bearer ${token}` },
+          body: JSON.stringify({ id: workspaceId, stateJson }),
+        });
+      }
     }, 500);
-  }, [workspaceId]);
+  }, [workspaceId, isOwner, user]);
 
   const workspaces = (data as { workspaces?: unknown[] } | undefined)?.workspaces;
   const notFound = ready && Array.isArray(workspaces) && workspaces.length === 0;

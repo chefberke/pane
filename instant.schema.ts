@@ -1,7 +1,6 @@
 import { i } from '@instantdb/react';
 
-// eslint-disable-next-line @typescript-eslint/no-explicit-any
-const _schema = (i.schema as any)({
+const _schema = i.schema({
   entities: {
     workspaces: i.entity({
       userId:    i.string(),
@@ -34,6 +33,25 @@ const _schema = (i.schema as any)({
       createdAt:   i.number(),
       acceptedAt:  i.number().optional(),
     }),
+  },
+  // Links let the permission rules in instant.perms.ts traverse relationships
+  // (e.g. "is the caller a member of the workspace this share belongs to").
+  // The flat `workspaceId` string fields above are retained so existing queries
+  // keep working; the links are additive. `onDelete: 'cascade'` on the forward
+  // side removes dependent rows when a workspace is deleted.
+  links: {
+    workspaceMembersWorkspace: {
+      forward: { on: 'workspaceMembers', has: 'one',  label: 'workspace', onDelete: 'cascade' },
+      reverse: { on: 'workspaces',       has: 'many', label: 'members' },
+    },
+    workspaceSharesWorkspace: {
+      forward: { on: 'workspaceShares',  has: 'one',  label: 'workspace', onDelete: 'cascade' },
+      reverse: { on: 'workspaces',       has: 'many', label: 'shares' },
+    },
+    workspaceInvitesWorkspace: {
+      forward: { on: 'workspaceInvites', has: 'one',  label: 'workspace', onDelete: 'cascade' },
+      reverse: { on: 'workspaces',       has: 'many', label: 'invites' },
+    },
   },
   rooms: {
     workspace: {
