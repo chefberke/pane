@@ -16,31 +16,43 @@ interface Props {
   params: Promise<{ token: string }>;
 }
 
-/** Public workspace view/edit page — no login required. Resolves a share token. */
+interface ResolvedShare {
+  workspaceId: string;
+  name: string;
+  stateJson: string | null;
+  role: 'viewer' | 'editor';
+}
+
+/** Public workspace view/edit page — no login required. Resolves a share token
+ *  server-side via /api/share/[token] so the DB stays locked down to members. */
 export default function SharePage({ params }: Props) {
   const { token } = use(params);
   const { user } = db.useAuth();
 
-  // Resolve share link
-  const { data: shareData, isLoading: shareLoading } = db.useQuery({
-    workspaceShares: { $: { where: { token } as any } },
-  });
+  const [share, setShare] = useState<ResolvedShare | null>(null);
+  const [status, setStatus] = useState<'loading' | 'ok' | 'revoked'>('loading');
 
-  const share = (shareData as any)?.workspaceShares?.[0];
-
-  // Resolve workspace once we have the share
-  const { data: wsData, isLoading: wsLoading } = db.useQuery(
-    share && !share.revokedAt
-      ? { workspaces: { $: { where: { id: share.workspaceId } as any } } }
-      : null,
-  );
-
-  const workspace = (wsData as any)?.workspaces?.[0];
+  // Resolve the share token through the server route (admin-validated).
+  useEffect(() => {
+    let cancelled = false;
+    (async () => {
+      try {
+        const res = await fetch(`/api/share/${token}`);
+        if (!res.ok) { if (!cancelled) setStatus('revoked'); return; }
+        const data = (await res.json()) as ResolvedShare;
+        if (!cancelled) { setShare(data); setStatus('ok'); }
+      } catch {
+        if (!cancelled) setStatus('revoked');
+      }
+    })();
+    return () => { cancelled = true; };
+  }, [token]);
 
   // Build a stable guest identity (sessionStorage so refresh keeps same cursor)
   const identity = useMemo(() => {
+    const role = share?.role ?? 'viewer';
     if (user) {
-      return { id: user.id, name: user.email ?? 'User', color: colorForId(user.id), role: share?.role ?? 'viewer' as const };
+      return { id: user.id, name: user.email ?? 'User', color: colorForId(user.id), role };
     }
     const key = `guest-id-${token}`;
     let id = typeof sessionStorage !== 'undefined' ? sessionStorage.getItem(key) : null;
@@ -48,14 +60,14 @@ export default function SharePage({ params }: Props) {
       id = crypto.randomUUID();
       if (typeof sessionStorage !== 'undefined') sessionStorage.setItem(key, id);
     }
-    return { id, name: guestName(id), color: colorForId(id), role: share?.role ?? 'viewer' as const };
+    return { id, name: guestName(id), color: colorForId(id), role };
   }, [user, token, share?.role]);
 
-  const canEdit = share?.role === 'editor' && !share?.revokedAt;
+  const canEdit = share?.role === 'editor';
 
-  if (shareLoading || wsLoading) return <LoadingScreen />;
+  if (status === 'loading') return <LoadingScreen />;
 
-  if (!share || share.revokedAt) {
+  if (status === 'revoked' || !share) {
     return (
       <div className="w-screen h-screen flex flex-col items-center justify-center gap-3"
         style={{ background: 'var(--color-canvas)' }}>
@@ -69,24 +81,16 @@ export default function SharePage({ params }: Props) {
     );
   }
 
-  if (!workspace) {
-    return (
-      <div className="w-screen h-screen flex items-center justify-center"
-        style={{ background: 'var(--color-canvas)' }}>
-        <p className="text-[14px]" style={{ color: 'var(--color-text-primary)' }}>Workspace not found.</p>
-      </div>
-    );
-  }
-
-  const initialState: CanvasState | null = workspace.stateJson
-    ? deserializeState(workspace.stateJson)
+  const initialState: CanvasState | null = share.stateJson
+    ? deserializeState(share.stateJson)
     : null;
 
   return (
     <div className="w-screen h-screen overflow-hidden">
       <ShareCanvas
+        token={token}
         workspaceId={share.workspaceId}
-        workspaceName={workspace.name ?? 'Shared workspace'}
+        workspaceName={share.name}
         initialState={initialState}
         canEdit={canEdit}
         identity={identity}
@@ -96,8 +100,9 @@ export default function SharePage({ params }: Props) {
 }
 
 function ShareCanvas({
-  workspaceId, workspaceName, initialState, canEdit, identity,
+  token, workspaceId, workspaceName, initialState, canEdit, identity,
 }: {
+  token: string;
   workspaceId: string;
   workspaceName: string;
   initialState: CanvasState | null;
@@ -132,11 +137,14 @@ function ShareCanvas({
 
   const handleSave = useCallback((state: CanvasState) => {
     if (!canEdit) return;
-    db.transact((db.tx as any).workspaces[workspaceId].update({
-      stateJson: JSON.stringify(state),
-      updatedAt: Date.now(),
-    }));
-  }, [canEdit, workspaceId]);
+    // Guests (and logged-in viewers of a share link) save through the server route,
+    // which re-validates the share token + editor role with the admin token.
+    void fetch('/api/workspace/save', {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({ id: workspaceId, stateJson: JSON.stringify(state), shareToken: token }),
+    });
+  }, [canEdit, workspaceId, token]);
 
   return (
     <>
