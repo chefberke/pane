@@ -158,6 +158,7 @@ function ShareCanvas({
         onViewportChange={handleViewportChange}
         isFollowing={isFollowing}
         followTarget={followedPeer?.viewport ?? null}
+        identity={{ id: identity.id, name: identity.name, color: identity.color }}
         topRightSlot={
           <Share
             workspaceId={workspaceId}

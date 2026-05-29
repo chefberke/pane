@@ -2,6 +2,10 @@ export interface Comment {
   id: string;
   text: string;
   createdAt: number;
+  authorId?: string;
+  authorName?: string;
+  authorColor?: string;
+  replies?: Comment[];
 }
 
 export interface BaseBlock {

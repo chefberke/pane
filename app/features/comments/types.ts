@@ -7,5 +7,6 @@ export interface CommentsPopoverProps {
   y: number;
   onAdd: (targetId: string, text: string) => void;
   onDelete: (targetId: string, commentId: string) => void;
+  onReply: (targetId: string, parentId: string, text: string) => void;
   onClose: () => void;
 }

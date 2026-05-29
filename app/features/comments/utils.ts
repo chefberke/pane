@@ -1,8 +1,13 @@
 import type { Comment } from '@/app/features/types';
 
-/** Creates a new Comment with a random id and the current timestamp. */
-export function makeComment(text: string): Comment {
-  return { id: Math.random().toString(36).slice(2), text, createdAt: Date.now() };
+/** Creates a new Comment with a random id, the current timestamp, and optional author. */
+export function makeComment(text: string, author?: { id: string; name: string; color: string }): Comment {
+  return {
+    id: Math.random().toString(36).slice(2),
+    text,
+    createdAt: Date.now(),
+    ...(author && { authorId: author.id, authorName: author.name, authorColor: author.color }),
+  };
 }
 
 /** Formats a timestamp as a relative string (e.g. "just now", "5m ago", "3h ago", "2d ago"). */

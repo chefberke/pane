@@ -61,6 +61,7 @@ export default function Canvas({
   isFollowing = false,
   followTarget,
   onViewportChange,
+  identity,
 }: CanvasProps) {
   const viewportRef = useRef<HTMLDivElement>(null);
 
@@ -272,8 +273,8 @@ export default function Canvas({
     pushSnapshot();
     const block = blocksRef.current.find(b => b.id === blockId);
     if (!block) return;
-    updateBlock(blockId, { comments: [...(block.comments ?? []), makeComment(text)] });
-  }, [pushSnapshot, updateBlock, blocksRef]);
+    updateBlock(blockId, { comments: [...(block.comments ?? []), makeComment(text, identity)] });
+  }, [pushSnapshot, updateBlock, blocksRef, identity]);
 
   const handleDeleteComment = useCallback((blockId: string, commentId: string) => {
     pushSnapshot();
@@ -281,6 +282,13 @@ export default function Canvas({
     if (!block) return;
     updateBlock(blockId, { comments: (block.comments ?? []).filter(c => c.id !== commentId) });
   }, [pushSnapshot, updateBlock, blocksRef]);
+
+  const handleReplyComment = useCallback((blockId: string, parentId: string, text: string) => {
+    pushSnapshot();
+    const block = blocksRef.current.find(b => b.id === blockId);
+    if (!block) return;
+    updateBlock(blockId, { comments: (block.comments ?? []).map(c => c.id === parentId ? { ...c, replies: [...(c.replies ?? []), makeComment(text, identity)] } : c) });
+  }, [pushSnapshot, updateBlock, blocksRef, identity]);
 
   const handleOpenFrameComments = useCallback((frame: Frame, anchor: { x: number; y: number }) => {
     setCommentTarget(prev => (prev?.kind === 'frame' && prev.id === frame.id) ? null : { kind: 'frame', id: frame.id, x: anchor.x, y: anchor.y });
@@ -290,8 +298,8 @@ export default function Canvas({
     pushSnapshot();
     const frame = framesRef.current.find(f => f.id === frameId);
     if (!frame) return;
-    updateFrame(frameId, { comments: [...(frame.comments ?? []), makeComment(text)] });
-  }, [pushSnapshot, updateFrame, framesRef]);
+    updateFrame(frameId, { comments: [...(frame.comments ?? []), makeComment(text, identity)] });
+  }, [pushSnapshot, updateFrame, framesRef, identity]);
 
   const handleDeleteFrameComment = useCallback((frameId: string, commentId: string) => {
     pushSnapshot();
@@ -299,6 +307,13 @@ export default function Canvas({
     if (!frame) return;
     updateFrame(frameId, { comments: (frame.comments ?? []).filter(c => c.id !== commentId) });
   }, [pushSnapshot, updateFrame, framesRef]);
+
+  const handleReplyFrameComment = useCallback((frameId: string, parentId: string, text: string) => {
+    pushSnapshot();
+    const frame = framesRef.current.find(f => f.id === frameId);
+    if (!frame) return;
+    updateFrame(frameId, { comments: (frame.comments ?? []).map(c => c.id === parentId ? { ...c, replies: [...(c.replies ?? []), makeComment(text, identity)] } : c) });
+  }, [pushSnapshot, updateFrame, framesRef, identity]);
 
   const handleAddSubmit = useCallback((value: string, sx: number, sy: number) => {
     setAddPos(null);
@@ -874,6 +889,7 @@ export default function Canvas({
           y={commentTarget.y}
           onAdd={commentTarget.kind === 'block' ? handleAddComment : handleAddFrameComment}
           onDelete={commentTarget.kind === 'block' ? handleDeleteComment : handleDeleteFrameComment}
+          onReply={commentTarget.kind === 'block' ? handleReplyComment : handleReplyFrameComment}
           onClose={() => setCommentTarget(null)}
         />
       )}

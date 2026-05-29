@@ -30,4 +30,6 @@ export interface CanvasProps {
   followTarget?: { offset: { x: number; y: number }; scale: number; size: { w: number; h: number } } | null;
   /** Called with local viewport state so the page can publish it to presence. */
   onViewportChange?: (offset: { x: number; y: number }, scale: number, size: { w: number; h: number }) => void;
+  /** Current user identity — attached to comments/replies as author. */
+  identity?: { id: string; name: string; color: string };
 }
