@@ -8,6 +8,7 @@ const _schema = i.schema({
       createdAt: i.number(),
       updatedAt: i.number(),
       stateJson: i.string().optional(),
+      deletedAt: i.number().optional(),
     }),
     workspaceShares: i.entity({
       workspaceId: i.string(),

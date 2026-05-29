@@ -30,6 +30,7 @@ export default function WorkspaceSidebar() {
     .map(m => m.workspaceId);
 
   const ownedWorkspaces: Workspace[] = ((data as { workspaces?: Workspace[] } | undefined)?.workspaces ?? [])
+    .filter(w => !w.deletedAt)
     .slice()
     .sort((a, b) => (a.createdAt ?? 0) - (b.createdAt ?? 0));
 
@@ -169,6 +170,8 @@ function MemberWorkspaceItem({ workspaceId, isActive }: { workspaceId: string; i
   const { data } = db.useQuery({ workspaces: { $: { where: { id: workspaceId } as any } } });
   const ws = (data as any)?.workspaces?.[0];
   const name = ws?.name ?? 'Shared canvas';
+
+  if (ws?.deletedAt) return null;
 
   return (
     <a

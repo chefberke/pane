@@ -70,7 +70,7 @@ export function useWorkspaceCanvas(workspaceId: string): UseWorkspaceCanvasResul
   }, [workspaceId, isOwner, user]);
 
   const workspaces = (data as { workspaces?: unknown[] } | undefined)?.workspaces;
-  const notFound = ready && Array.isArray(workspaces) && workspaces.length === 0;
+  const notFound = ready && Array.isArray(workspaces) && (workspaces.length === 0 || !!ws?.deletedAt);
 
   return {
     initialState,

@@ -6,7 +6,7 @@ import { useRouter, usePathname } from 'next/navigation';
 import {
   User, ChevronRight, Sun, Moon, Monitor,
   Plus, Settings, Command, HelpCircle, LogOut, Layers,
-  MoreHorizontal, Pencil, Trash2, Copy, Check,
+  MoreHorizontal, Pencil, Trash2, Copy, Check, RotateCcw,
 } from 'lucide-react';
 import { APP_NAME, PANEL_WIDTH } from './constants';
 import type { ThemeChoice } from '../canvas/hooks/useTheme';
@@ -23,6 +23,7 @@ interface WorkspaceItem {
   id: string;
   name: string;
   createdAt: number;
+  deletedAt?: number;
 }
 
 /** Anchored dropdown menu panel that opens below the MenuButton. */
@@ -37,6 +38,7 @@ export default function MenuPanel({ themeChoice, onSetTheme, onClose }: Props) {
   const [actionMenuPos, setActionMenuPos] = useState({ top: 0, left: 0 });
   const [renameTarget, setRenameTarget] = useState<WorkspaceItem | null>(null);
   const [deleteTarget, setDeleteTarget] = useState<WorkspaceItem | null>(null);
+  const [trashOpen, setTrashOpen] = useState(false);
   const dotBtnRefs = useRef<Record<string, HTMLButtonElement | null>>({});
 
   const userId = user?.id ?? '__unauthenticated__';
@@ -44,10 +46,14 @@ export default function MenuPanel({ themeChoice, onSetTheme, onClose }: Props) {
     // eslint-disable-next-line @typescript-eslint/no-explicit-any
     workspaces: { $: { where: { userId } as any } },
   });
-  const workspaces: WorkspaceItem[] = ((wsData as { workspaces?: WorkspaceItem[] } | undefined)
+  const allWorkspaces: WorkspaceItem[] = ((wsData as { workspaces?: WorkspaceItem[] } | undefined)
     ?.workspaces ?? [])
     .slice()
     .sort((a, b) => (a.createdAt ?? 0) - (b.createdAt ?? 0));
+  const workspaces = allWorkspaces.filter(w => !w.deletedAt);
+  const deletedWorkspaces = allWorkspaces
+    .filter(w => w.deletedAt)
+    .sort((a, b) => (b.deletedAt ?? 0) - (a.deletedAt ?? 0));
 
   useEffect(() => {
     const onKey = (e: KeyboardEvent) => {
@@ -63,7 +69,7 @@ export default function MenuPanel({ themeChoice, onSetTheme, onClose }: Props) {
 
   useEffect(() => {
     // Don't close while a modal is open — the modal handles its own dismissal
-    if (renameTarget || deleteTarget) return;
+    if (renameTarget || deleteTarget || trashOpen) return;
     const onDown = (e: MouseEvent) => {
       const inPanel = ref.current?.contains(e.target as Node);
       const inPortal = (e.target as Element)?.closest?.('[data-menu-portal]');
@@ -74,7 +80,7 @@ export default function MenuPanel({ themeChoice, onSetTheme, onClose }: Props) {
     };
     document.addEventListener('mousedown', onDown);
     return () => document.removeEventListener('mousedown', onDown);
-  }, [onClose, renameTarget, deleteTarget]);
+  }, [onClose, renameTarget, deleteTarget, trashOpen]);
 
   const openActionMenu = useCallback((ws: WorkspaceItem) => {
     const btn = dotBtnRefs.current[ws.id];
@@ -105,9 +111,18 @@ export default function MenuPanel({ themeChoice, onSetTheme, onClose }: Props) {
   };
 
   const handleDelete = async (id: string) => {
-    await db.transact(db.tx.workspaces[id].delete());
+    // Soft delete — moves the canvas to Trash; restorable until permanently deleted.
+    await db.transact(db.tx.workspaces[id].update({ deletedAt: Date.now() }));
     setDeleteTarget(null);
     if (pathname === `/w/${id}`) router.replace('/w');
+  };
+
+  const handleRestore = async (id: string) => {
+    await db.transact(db.tx.workspaces[id].update({ deletedAt: null as unknown as number }));
+  };
+
+  const handleDeleteForever = async (id: string) => {
+    await db.transact(db.tx.workspaces[id].delete());
   };
 
   const activeWs = actionMenuId ? workspaces.find(w => w.id === actionMenuId) ?? null : null;
@@ -268,9 +283,28 @@ export default function MenuPanel({ themeChoice, onSetTheme, onClose }: Props) {
         <div style={{ borderTop: '1px solid var(--color-border-default)' }} className="py-2">
           <Row icon={<Settings size={14} />} label="Settings" />
           <Row icon={<Command size={14} />} label="Keyboard shortcuts" shortcut="?" />
+          {user && (
+            <Row
+              icon={<Trash2 size={14} />}
+              label="Trash"
+              shortcut={deletedWorkspaces.length > 0 ? String(deletedWorkspaces.length) : undefined}
+              onClick={() => setTrashOpen(true)}
+            />
+          )}
           <Row icon={<HelpCircle size={14} />} label="Help & feedback" />
         </div>
       </motion.div>
+
+      {/* Trash modal */}
+      {trashOpen && createPortal(
+        <TrashModal
+          workspaces={deletedWorkspaces}
+          onRestore={handleRestore}
+          onDeleteForever={handleDeleteForever}
+          onClose={() => setTrashOpen(false)}
+        />,
+        document.body
+      )}
 
       {/* 3-dot action dropdown — portal to escape overflow:hidden */}
       {actionMenuId && activeWs && createPortal(
@@ -428,6 +462,110 @@ function RenameModal({ workspace, onSave, onClose }: {
           <ModalButton label="Save" primary onClick={handleSave} disabled={!value.trim()} />
         </div>
       </div>
+    </div>
+  );
+}
+
+/* ─── Trash modal ────────────────────────────────────────────────────── */
+
+function TrashModal({ workspaces, onRestore, onDeleteForever, onClose }: {
+  workspaces: WorkspaceItem[];
+  onRestore: (id: string) => void;
+  onDeleteForever: (id: string) => void;
+  onClose: () => void;
+}) {
+  const [confirmTarget, setConfirmTarget] = useState<WorkspaceItem | null>(null);
+
+  useEffect(() => {
+    const onKey = (e: KeyboardEvent) => {
+      if (e.key === 'Escape') {
+        e.preventDefault();
+        if (confirmTarget) { setConfirmTarget(null); return; }
+        onClose();
+      }
+    };
+    window.addEventListener('keydown', onKey);
+    return () => window.removeEventListener('keydown', onKey);
+  }, [onClose, confirmTarget]);
+
+  return (
+    <div
+      data-menu-portal
+      className="fixed inset-0 z-[600] flex items-center justify-center"
+      style={{ background: 'var(--color-overlay-modal)' }}
+      onMouseDown={e => { if (e.target === e.currentTarget) onClose(); }}
+    >
+      <div
+        className="flex flex-col p-5 gap-4"
+        style={{
+          width: 380,
+          background: 'var(--color-surface)',
+          border: '1px solid var(--color-border-default)',
+          borderRadius: 'var(--radius-4xl)',
+          boxShadow: 'var(--shadow-modal-lg)',
+        }}
+      >
+        <div>
+          <p className="text-[15px] font-semibold" style={{ color: 'var(--color-text-primary)' }}>Trash</p>
+          <p className="text-[12px] mt-0.5" style={{ color: 'var(--color-text-muted)' }}>
+            Deleted canvases can be restored or removed permanently.
+          </p>
+        </div>
+
+        {workspaces.length === 0 ? (
+          <p className="text-[13px] py-6 text-center" style={{ color: 'var(--color-text-muted)' }}>
+            Trash is empty.
+          </p>
+        ) : (
+          <div className="flex flex-col max-h-72 overflow-y-auto -mx-1">
+            {workspaces.map(ws => (
+              <div
+                key={ws.id}
+                className="flex items-center gap-2 px-1 rounded-lg"
+                style={{ height: 'var(--row-height)' }}
+              >
+                <span className="flex-1 min-w-0 text-[13px] font-mono truncate" style={{ color: 'var(--color-text-primary)' }}>
+                  {ws.name}
+                </span>
+                <button
+                  type="button"
+                  className="flex items-center gap-1 px-2 h-7 rounded-md cursor-pointer text-[12px]"
+                  style={{ color: 'var(--color-text-secondary)', background: 'var(--color-surface-sunken)', border: 'none' }}
+                  onClick={() => onRestore(ws.id)}
+                  title="Restore"
+                >
+                  <RotateCcw size={12} /> Restore
+                </button>
+                <button
+                  type="button"
+                  className="flex items-center justify-center w-7 h-7 rounded-md cursor-pointer"
+                  style={{ color: 'var(--color-text-danger)', background: 'transparent', border: 'none' }}
+                  onMouseEnter={e => { (e.currentTarget as HTMLButtonElement).style.background = 'var(--color-bg-danger-hover)'; }}
+                  onMouseLeave={e => { (e.currentTarget as HTMLButtonElement).style.background = 'transparent'; }}
+                  onClick={() => setConfirmTarget(ws)}
+                  title="Delete forever"
+                >
+                  <Trash2 size={13} />
+                </button>
+              </div>
+            ))}
+          </div>
+        )}
+
+        <div className="flex justify-end">
+          <ModalButton label="Close" onClick={onClose} />
+        </div>
+      </div>
+
+      {/* Permanent delete confirmation reuses the name-confirm DeleteModal */}
+      {confirmTarget && createPortal(
+        <DeleteModal
+          workspace={confirmTarget}
+          onConfirm={() => { onDeleteForever(confirmTarget.id); setConfirmTarget(null); }}
+          onClose={() => setConfirmTarget(null)}
+        />,
+        document.body
+      )}
     </div>
   );
 }

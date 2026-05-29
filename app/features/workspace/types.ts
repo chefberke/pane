@@ -4,4 +4,5 @@ export interface Workspace {
   stateJson?: string;
   createdAt: number;
   updatedAt: number;
+  deletedAt?: number;
 }
