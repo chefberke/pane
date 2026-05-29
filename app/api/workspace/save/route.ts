@@ -2,6 +2,7 @@
 import type { NextRequest } from 'next/server';
 import { adminDb, verifyBearer } from '@/app/lib/admin';
 import { rateLimitRequest } from '@/app/lib/rateLimit';
+import { logDevResult } from '@/app/lib/env';
 
 // Cap the serialized canvas to guard against oversized / abusive payloads.
 const MAX_STATE_BYTES = 2_000_000; // 2 MB
@@ -26,6 +27,7 @@ export async function POST(request: NextRequest) {
   try {
     body = await request.json();
   } catch {
+    logDevResult('workspace-save', 400, 'invalid JSON');
     return Response.json({ error: 'Invalid JSON body' }, { status: 400 });
   }
 
@@ -34,9 +36,11 @@ export async function POST(request: NextRequest) {
   const shareToken = typeof body.shareToken === 'string' ? body.shareToken : '';
 
   if (!id || !stateJson) {
+    logDevResult('workspace-save', 400, 'id/stateJson missing');
     return Response.json({ error: 'id and stateJson are required' }, { status: 400 });
   }
   if (Buffer.byteLength(stateJson, 'utf8') > MAX_STATE_BYTES) {
+    logDevResult('workspace-save', 413, 'state too large');
     return Response.json({ error: 'Canvas state too large' }, { status: 413 });
   }
 
@@ -45,6 +49,7 @@ export async function POST(request: NextRequest) {
     : await authorizeMember(request, id);
 
   if (!authorized) {
+    logDevResult('workspace-save', 403, shareToken ? 'share token not editor' : 'not owner/editor member');
     return Response.json({ error: 'Not authorized to edit this workspace' }, { status: 403 });
   }
 

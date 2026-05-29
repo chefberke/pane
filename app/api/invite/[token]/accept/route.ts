@@ -2,6 +2,7 @@
 import type { NextRequest } from 'next/server';
 import { adminDb, verifyBearer } from '@/app/lib/admin';
 import { rateLimitRequest } from '@/app/lib/rateLimit';
+import { logDevResult } from '@/app/lib/env';
 
 interface Params {
   params: Promise<{ token: string }>;
@@ -19,21 +20,29 @@ export async function POST(request: NextRequest, { params }: Params) {
   }
 
   const { token } = await params;
-  if (!token) return Response.json({ error: 'Token required' }, { status: 400 });
+  if (!token) {
+    logDevResult('invite-accept', 400, 'token missing');
+    return Response.json({ error: 'Token required' }, { status: 400 });
+  }
 
   const user = await verifyBearer(request);
-  if (!user) return Response.json({ error: 'Authentication required' }, { status: 401 });
+  if (!user) {
+    logDevResult('invite-accept', 401, 'bearer invalid/missing');
+    return Response.json({ error: 'Authentication required' }, { status: 401 });
+  }
 
   const res = await adminDb.query({
     workspaceInvites: { $: { where: { token } as any } },
   });
   const invite = (res as any)?.workspaceInvites?.[0];
   if (!invite) {
+    logDevResult('invite-accept', 404, 'invite not found');
     return Response.json({ error: 'Invite not found or has been revoked.' }, { status: 404 });
   }
 
   const userEmail = user.email?.toLowerCase() ?? '';
   if (!userEmail || invite.email?.toLowerCase() !== userEmail) {
+    logDevResult('invite-accept', 403, `email mismatch: invite=${invite.email} user=${userEmail || 'none'}`);
     return Response.json(
       { error: `This invite was sent to ${invite.email}.` },
       { status: 403 },

@@ -1,6 +1,7 @@
 import type { NextRequest } from 'next/server';
 import { assertPublicHttpsUrl, assertPublicHostname, safeFetch } from './security';
 import { rateLimitRequest } from '@/app/lib/rateLimit';
+import { logDevResult } from '@/app/lib/env';
 
 /** Returns the URL only if it is an absolute https URL, otherwise undefined. */
 function httpsOnly(value: string | undefined): string | undefined {
@@ -13,7 +14,10 @@ export async function GET(request: NextRequest) {
   }
 
   const raw = request.nextUrl.searchParams.get('url');
-  if (!raw) return Response.json({ error: 'URL required' }, { status: 400 });
+  if (!raw) {
+    logDevResult('preview', 400, 'url param missing');
+    return Response.json({ error: 'URL required' }, { status: 400 });
+  }
 
   let parsedUrl: URL;
   try {
@@ -21,6 +25,7 @@ export async function GET(request: NextRequest) {
     await assertPublicHostname(parsedUrl.hostname);
   } catch (err: unknown) {
     const msg = err instanceof Error ? err.message : 'Invalid URL';
+    logDevResult('preview', 400, `url rejected: ${msg}`);
     return Response.json({ error: msg }, { status: 400 });
   }
 
@@ -34,6 +39,7 @@ export async function GET(request: NextRequest) {
     html = await res.text();
   } catch (err: unknown) {
     const msg = err instanceof Error ? err.message : 'Fetch failed';
+    logDevResult('preview', 400, `fetch failed: ${msg}`);
     return Response.json({ error: msg }, { status: 400 });
   }
 

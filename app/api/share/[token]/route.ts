@@ -2,6 +2,7 @@
 import type { NextRequest } from 'next/server';
 import { adminDb } from '@/app/lib/admin';
 import { rateLimitRequest } from '@/app/lib/rateLimit';
+import { logDevResult } from '@/app/lib/env';
 
 interface Params {
   params: Promise<{ token: string }>;
@@ -18,13 +19,17 @@ export async function GET(request: NextRequest, { params }: Params) {
   }
 
   const { token } = await params;
-  if (!token) return Response.json({ error: 'Token required' }, { status: 400 });
+  if (!token) {
+    logDevResult('share-resolve', 400, 'token missing');
+    return Response.json({ error: 'Token required' }, { status: 400 });
+  }
 
   const shareRes = await adminDb.query({
     workspaceShares: { $: { where: { token } as any } },
   });
   const share = (shareRes as any)?.workspaceShares?.[0];
   if (!share || share.revokedAt) {
+    logDevResult('share-resolve', 404, share ? 'revoked' : 'token not found');
     return Response.json({ error: 'This link is no longer active.' }, { status: 404 });
   }
 
@@ -33,6 +38,7 @@ export async function GET(request: NextRequest, { params }: Params) {
   });
   const workspace = (wsRes as any)?.workspaces?.[0];
   if (!workspace) {
+    logDevResult('share-resolve', 404, 'workspace missing');
     return Response.json({ error: 'Workspace not found.' }, { status: 404 });
   }
 
