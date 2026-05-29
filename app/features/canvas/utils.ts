@@ -16,6 +16,32 @@ export function sanitizeFileName(name: string): string {
   return cleaned || 'file';
 }
 
+/** Downscales an image File so its longest edge ≤ maxEdge and re-encodes it as WebP to shrink storage. Returns the original for GIF/SVG, on failure, or when re-encoding yields no size gain. */
+export async function downscaleImage(file: File, maxEdge: number, quality: number): Promise<File> {
+  // Animated GIFs and vector SVGs would lose data through a canvas round-trip.
+  if (file.type === 'image/gif' || file.type === 'image/svg+xml') return file;
+  try {
+    const bitmap = await createImageBitmap(file);
+    const longest = Math.max(bitmap.width, bitmap.height);
+    const ratio = longest > maxEdge ? maxEdge / longest : 1;
+    const w = Math.round(bitmap.width * ratio);
+    const h = Math.round(bitmap.height * ratio);
+    const canvas = document.createElement('canvas');
+    canvas.width = w;
+    canvas.height = h;
+    const ctx = canvas.getContext('2d');
+    if (!ctx) { bitmap.close(); return file; }
+    ctx.drawImage(bitmap, 0, 0, w, h);
+    bitmap.close();
+    const blob = await new Promise<Blob | null>(resolve => canvas.toBlob(resolve, 'image/webp', quality));
+    if (!blob || blob.size >= file.size) return file;
+    const name = file.name.replace(/\.[^.]+$/, '') + '.webp';
+    return new File([blob], name, { type: 'image/webp' });
+  } catch {
+    return file;
+  }
+}
+
 /** Infers block type from a URL (or iframe HTML snippet) by inspecting hostname and file extension. */
 export function detectType(input: string): Block['type'] {
   const trimmed = input.trim();

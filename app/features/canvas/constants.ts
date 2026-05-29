@@ -7,8 +7,16 @@ export const DRAG_THRESHOLD = 2;
 export const MARQUEE_THRESHOLD = 4;
 export const DOT_GRID_SIZE = 24;
 export const FOLLOW_LERP = 0.18;
-/** Maximum size for an uploaded/pasted image, in bytes (10 MB). */
-export const MAX_IMAGE_BYTES = 10_000_000;
+/** Safety cap on the raw image file we'll even attempt to process, in bytes (30 MB). Most images are downscaled well below this before upload. */
+export const MAX_IMAGE_BYTES = 30_000_000;
+/** Longest edge (px) an uploaded image is downscaled to before upload. */
+export const MAX_IMAGE_EDGE = 2000;
+/** WebP quality (0–1) used when re-encoding a downscaled image. */
+export const IMAGE_OUTPUT_QUALITY = 0.8;
+/** Maximum size for an uploaded PDF, in bytes (25 MB) — PDFs can't be compressed client-side. */
+export const MAX_PDF_BYTES = 25_000_000;
+/** How long the on-canvas upload error label stays visible, in ms. */
+export const UPLOAD_ERROR_MS = 2500;
 
 /** Approximate rendered dimensions per block type — used to center blocks on drop. */
 export const BLOCK_SIZES: Record<Block['type'], { w: number; h: number }> = {

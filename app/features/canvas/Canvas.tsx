@@ -18,9 +18,9 @@ import ZoomControls from './ZoomControls';
 import ItemsButton from '../items-panel/ItemsButton';
 import ItemsSheet from '../items-panel/ItemsSheet';
 import MenuButton from '../menu-panel/MenuButton';
-import { ZOOM_STEP, BLOCK_SIZES, DOT_GRID_SIZE, MIN_SCALE, MAX_SCALE, MAX_IMAGE_BYTES } from './constants';
+import { ZOOM_STEP, BLOCK_SIZES, DOT_GRID_SIZE, MIN_SCALE, MAX_SCALE, MAX_IMAGE_BYTES, MAX_IMAGE_EDGE, IMAGE_OUTPUT_QUALITY, MAX_PDF_BYTES, UPLOAD_ERROR_MS } from './constants';
 import { useFollowViewport } from './hooks/useFollowViewport';
-import { uid, sanitizeFileName } from './utils';
+import { uid, sanitizeFileName, downscaleImage } from './utils';
 import {
   blockRect,
   buildBlockFrameMap,
@@ -50,6 +50,7 @@ import { useFrames } from '../frames/hooks/useFrames';
 import type { FrameHandlers } from '../frames/types';
 import { AnimatePresence } from 'framer-motion';
 import EmptyState from './EmptyState';
+import UploadErrorFlash from './UploadErrorFlash';
 import { db } from '@/app/lib/db';
 
 /** Infinite pan/zoom canvas — orchestrates viewport, blocks, frames, selection, and keyboard shortcuts. */
@@ -89,6 +90,8 @@ export default function Canvas({
   const [commentTarget, setCommentTarget] = useState<{ kind: 'block' | 'frame'; id: string; x: number; y: number } | null>(null);
   const [lightbox, setLightbox] = useState<{ url: string; alt?: string } | null>(null);
   const [pdfLightbox, setPdfLightbox] = useState<{ url: string; title?: string } | null>(null);
+  const [uploadError, setUploadError] = useState<{ x: number; y: number; message: string } | null>(null);
+  const uploadErrorTimer = useRef<ReturnType<typeof setTimeout> | null>(null);
 
   // Live drag context tracking projected rects for the block(s) currently being dragged.
   const dragCtxRef = useRef<{
@@ -238,8 +241,17 @@ export default function Canvas({
     groupSelected, ungroupSelected, clearFrameSelection,
     disabled: isFollowing,
   });
+  /** Shows a short-lived red error label at the given screen point. */
+  const flashUploadError = useCallback((sx: number, sy: number, message: string) => {
+    if (uploadErrorTimer.current) clearTimeout(uploadErrorTimer.current);
+    setUploadError({ x: sx, y: sy, message });
+    uploadErrorTimer.current = setTimeout(() => setUploadError(null), UPLOAD_ERROR_MS);
+  }, []);
+  useEffect(() => () => { if (uploadErrorTimer.current) clearTimeout(uploadErrorTimer.current); }, []);
+
   const handleUploadPdf = useCallback(async (file: File, sx: number, sy: number) => {
     setAddPos(null);
+    if (file.size > MAX_PDF_BYTES) { flashUploadError(sx, sy, 'PDF too large (max 25MB)'); return; }
     const path = `pdfs/${uid()}-${sanitizeFileName(file.name)}`;
     const pos = screenToCanvas(sx, sy);
     const { w, h } = BLOCK_SIZES.pdf;
@@ -259,24 +271,26 @@ export default function Canvas({
       console.error('PDF upload failed', err);
       setBlocks(prev => prev.filter(b => b.id !== blockId));
     }
-  }, [screenToCanvas, setBlocks, pushSnapshot]);
+  }, [screenToCanvas, setBlocks, pushSnapshot, flashUploadError]);
 
   const handleUploadImage = useCallback(async (file: File, sx: number, sy: number) => {
     setAddPos(null);
     if (!file.type.startsWith('image/')) { console.warn('Not an image file', file.type); return; }
-    if (file.size > MAX_IMAGE_BYTES) { console.warn('Image too large', file.size); return; }
-    const path = `images/${uid()}-${sanitizeFileName(file.name)}`;
+    if (file.size > MAX_IMAGE_BYTES) { flashUploadError(sx, sy, 'Image too large (max 30MB)'); return; }
     const pos = screenToCanvas(sx, sy);
     const { w, h } = BLOCK_SIZES.image;
     const blockId = uid();
-    // Show a loading placeholder immediately so large uploads don't feel stuck.
+    // Show a loading placeholder immediately so the downscale + upload don't feel stuck.
     pushSnapshot();
     setBlocks(prev => [...prev, {
       id: blockId, type: 'image', url: '', alt: file.name,
       x: pos.x - w / 2, y: pos.y - h / 2, uploading: true,
     }]);
     try {
-      await db.storage.uploadFile(path, file);
+      // Downscale + re-encode client-side to keep stored images small.
+      const upload = await downscaleImage(file, MAX_IMAGE_EDGE, IMAGE_OUTPUT_QUALITY);
+      const path = `images/${uid()}-${sanitizeFileName(upload.name)}`;
+      await db.storage.uploadFile(path, upload);
       const downloadData = await db.storage.getDownloadUrl(path);
       const url: string = typeof downloadData === 'string' ? downloadData : downloadData?.data?.url ?? path;
       setBlocks(prev => prev.map(b => b.id === blockId ? { ...b, url, uploading: false } : b));
@@ -284,7 +298,7 @@ export default function Canvas({
       console.error('Image upload failed', err);
       setBlocks(prev => prev.filter(b => b.id !== blockId));
     }
-  }, [screenToCanvas, setBlocks, pushSnapshot]);
+  }, [screenToCanvas, setBlocks, pushSnapshot, flashUploadError]);
 
   usePasteUrl({ viewportRef, addBlockFromUrl, onPasteImage: handleUploadImage });
 
@@ -935,6 +949,17 @@ export default function Canvas({
           onClose={() => setAddPos(null)}
         />
       )}
+
+      <AnimatePresence>
+        {uploadError && (
+          <UploadErrorFlash
+            key={`${uploadError.x}-${uploadError.y}-${uploadError.message}`}
+            x={uploadError.x}
+            y={uploadError.y}
+            message={uploadError.message}
+          />
+        )}
+      </AnimatePresence>
 
       {!isFollowing && commentTarget && (
         <CommentsPopover
