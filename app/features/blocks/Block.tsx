@@ -14,6 +14,7 @@ import PdfEmbed from './renderers/PdfEmbed';
 import GithubEmbed from './renderers/GithubEmbed';
 import { useBlockDrag } from './hooks/useBlockDrag';
 import CommentBubble from '../comments/CommentBubble';
+import ActionTip from './ActionTip';
 
 interface Props {
   block: Block;
@@ -27,7 +28,9 @@ interface Props {
 function BlockContainer({ block, scale, selected, isInMultiSelection, handlers }: Props) {
   const [isEditingText, setIsEditingText] = useState(false);
   const [isHovered, setIsHovered] = useState(false);
-  const lastComment = (block.comments?.length ?? 0) > 0 ? block.comments![block.comments!.length - 1] : null;
+  const comments = block.comments ?? [];
+  const commentCount = comments.length;
+  const lastComment = commentCount > 0 ? comments[comments.length - 1] : null;
 
   const { containerRef, overlayRef, onPointerDown } = useBlockDrag({
     block,
@@ -111,28 +114,30 @@ function BlockContainer({ block, scale, selected, isInMultiSelection, handlers }
         ].join(' ')}
         style={{ background: 'var(--color-surface-action)' }}
       >
-        <button
-          className="flex items-center gap-1 px-2 py-1 rounded-full transition-colors hover:bg-blue-500/80"
-          style={{ color: 'var(--color-text-on-action)', cursor: 'default' }}
-          onClick={e => { e.stopPropagation(); handlers.onOpenComments(block, { x: e.clientX, y: e.clientY }); }}
-          onPointerDown={e => e.stopPropagation()}
-          title="Comments"
-        >
-          <MessageCircle size={11} />
-          {(block.comments?.length ?? 0) > 0 && (
-            <span className="text-[10px] font-medium leading-none">{block.comments!.length}</span>
-          )}
-        </button>
+        <ActionTip label="Comments">
+          <button
+            className="flex items-center gap-1 px-2 py-1 rounded-full transition-colors hover:bg-blue-500/80"
+            style={{ color: 'var(--color-text-on-action)', cursor: 'default' }}
+            onClick={e => { e.stopPropagation(); handlers.onOpenComments(block, { x: e.clientX, y: e.clientY }); }}
+            onPointerDown={e => e.stopPropagation()}
+          >
+            <MessageCircle size={11} />
+            {commentCount > 0 && (
+              <span className="text-[10px] font-medium leading-none">{commentCount}</span>
+            )}
+          </button>
+        </ActionTip>
         <div className="w-px h-3 mx-0.5" style={{ background: 'var(--color-border-subtle)' }} />
-        <button
-          className="flex items-center px-2 py-1 rounded-full transition-colors hover:bg-red-500/80"
-          style={{ color: 'var(--color-text-on-action)', cursor: 'default' }}
-          onClick={e => { e.stopPropagation(); handlers.onDelete(block.id); }}
-          onPointerDown={e => e.stopPropagation()}
-          title="Delete"
-        >
-          <Trash2 size={11} />
-        </button>
+        <ActionTip label="Delete">
+          <button
+            className="flex items-center px-2 py-1 rounded-full transition-colors hover:bg-red-500/80"
+            style={{ color: 'var(--color-text-on-action)', cursor: 'default' }}
+            onClick={e => { e.stopPropagation(); handlers.onDelete(block.id); }}
+            onPointerDown={e => e.stopPropagation()}
+          >
+            <Trash2 size={11} />
+          </button>
+        </ActionTip>
       </div>
     </div>
   );

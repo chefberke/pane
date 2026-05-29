@@ -2,6 +2,7 @@
 import { MessageCircle, Pencil, Trash2 } from 'lucide-react';
 import type { Frame, FrameColor } from '@/app/features/types';
 import ColorSwatch from './ColorSwatch';
+import ActionTip from './ActionTip';
 
 interface Props {
   frame: Frame;
@@ -14,7 +15,7 @@ interface Props {
 
 /** Floating action pill anchored above a frame's top-right edge — Comments + Rename + Color + Delete. */
 export default function FrameActionPill({ frame, visible, onOpenComments, onStartRename, onColorChange, onDelete }: Props) {
-  const commentCount = frame.comments?.length ?? 0;
+  const commentCount = (frame.comments ?? []).length;
   return (
     <div
       className={[
@@ -24,42 +25,47 @@ export default function FrameActionPill({ frame, visible, onOpenComments, onStar
       style={{ background: 'var(--color-surface-action)', pointerEvents: visible ? 'auto' : 'none' }}
       onPointerDown={e => e.stopPropagation()}
     >
-      <button
-        className="flex items-center gap-1 px-2 py-1 rounded-full transition-colors hover:bg-blue-500/80"
-        style={{ color: 'var(--color-text-on-action)', cursor: 'default' }}
-        onClick={e => { e.stopPropagation(); onOpenComments({ x: e.clientX, y: e.clientY }); }}
-        onPointerDown={e => e.stopPropagation()}
-        title="Comments"
-      >
-        <MessageCircle size={11} />
-        {commentCount > 0 && (
-          <span className="text-[10px] font-medium leading-none">{commentCount}</span>
-        )}
-      </button>
+      <ActionTip label="Comments">
+        <button
+          className="flex items-center gap-1 px-2 py-1 rounded-full transition-colors hover:bg-blue-500/80"
+          style={{ color: 'var(--color-text-on-action)', cursor: 'default' }}
+          onClick={e => { e.stopPropagation(); onOpenComments({ x: e.clientX, y: e.clientY }); }}
+          onPointerDown={e => e.stopPropagation()}
+        >
+          <MessageCircle size={11} />
+          {commentCount > 0 && (
+            <span className="text-[10px] font-medium leading-none">{commentCount}</span>
+          )}
+        </button>
+      </ActionTip>
       <div className="w-px h-3 mx-0.5" style={{ background: 'var(--color-border-subtle)' }} />
-      <button
-        className="flex items-center px-2 py-1 rounded-full transition-colors hover:bg-white/15"
-        style={{ color: 'var(--color-text-on-action)', cursor: 'default' }}
-        onClick={e => { e.stopPropagation(); onStartRename(); }}
-        onPointerDown={e => e.stopPropagation()}
-        title="Rename"
-      >
-        <Pencil size={11} />
-      </button>
+      <ActionTip label="Rename">
+        <button
+          className="flex items-center px-2 py-1 rounded-full transition-colors hover:bg-white/15"
+          style={{ color: 'var(--color-text-on-action)', cursor: 'default' }}
+          onClick={e => { e.stopPropagation(); onStartRename(); }}
+          onPointerDown={e => e.stopPropagation()}
+        >
+          <Pencil size={11} />
+        </button>
+      </ActionTip>
       <div className="w-px h-3 mx-0.5" style={{ background: 'var(--color-border-subtle)' }} />
-      <div className="flex items-center px-2 py-1">
-        <ColorSwatch color={frame.color} onChange={onColorChange} />
-      </div>
+      <ActionTip label="Color">
+        <div className="flex items-center px-2 py-1">
+          <ColorSwatch color={frame.color} onChange={onColorChange} />
+        </div>
+      </ActionTip>
       <div className="w-px h-3 mx-0.5" style={{ background: 'var(--color-border-subtle)' }} />
-      <button
-        className="flex items-center px-2 py-1 rounded-full transition-colors hover:bg-red-500/80"
-        style={{ color: 'var(--color-text-on-action)', cursor: 'default' }}
-        onClick={e => { e.stopPropagation(); onDelete(); }}
-        onPointerDown={e => e.stopPropagation()}
-        title="Delete"
-      >
-        <Trash2 size={11} />
-      </button>
+      <ActionTip label="Delete">
+        <button
+          className="flex items-center px-2 py-1 rounded-full transition-colors hover:bg-red-500/80"
+          style={{ color: 'var(--color-text-on-action)', cursor: 'default' }}
+          onClick={e => { e.stopPropagation(); onDelete(); }}
+          onPointerDown={e => e.stopPropagation()}
+        >
+          <Trash2 size={11} />
+        </button>
+      </ActionTip>
     </div>
   );
 }

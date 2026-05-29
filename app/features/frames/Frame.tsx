@@ -62,7 +62,8 @@ function Frame({ frame, scale, selected, memberCount, descendantBlocks, handlers
   }
 
   const tokens = FRAME_COLORS[frame.color];
-  const lastComment = (frame.comments?.length ?? 0) > 0 ? frame.comments![frame.comments!.length - 1] : null;
+  const comments = frame.comments ?? [];
+  const lastComment = comments.length > 0 ? comments[comments.length - 1] : null;
   const pillVisible = selected || isHovered || isEditing;
   const previewRect = dropPreview?.rect;
   const dropActive = dropPreview?.active === true;
