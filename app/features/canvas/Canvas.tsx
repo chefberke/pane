@@ -4,6 +4,8 @@ import { flushSync } from 'react-dom';
 import type { Block, Frame, FrameColor } from '@/app/features/types';
 import type { CanvasProps } from './types';
 import BlockContainer from '../blocks/Block';
+import ImageLightbox from '../blocks/ImageLightbox';
+import PdfLightbox from '../blocks/PdfLightbox';
 import FrameView from '../frames/Frame';
 import AddInput from '../add-input/AddInput';
 import Toolbar from '../toolbar/Toolbar';
@@ -16,9 +18,9 @@ import ZoomControls from './ZoomControls';
 import ItemsButton from '../items-panel/ItemsButton';
 import ItemsSheet from '../items-panel/ItemsSheet';
 import MenuButton from '../menu-panel/MenuButton';
-import { ZOOM_STEP, BLOCK_SIZES, DOT_GRID_SIZE, MIN_SCALE, MAX_SCALE } from './constants';
+import { ZOOM_STEP, BLOCK_SIZES, DOT_GRID_SIZE, MIN_SCALE, MAX_SCALE, MAX_IMAGE_BYTES } from './constants';
 import { useFollowViewport } from './hooks/useFollowViewport';
-import { uid } from './utils';
+import { uid, sanitizeFileName } from './utils';
 import {
   blockRect,
   buildBlockFrameMap,
@@ -85,6 +87,8 @@ export default function Canvas({
   const [isHelpOpen, setIsHelpOpen] = useState(false);
   const [isItemsOpen, setIsItemsOpen] = useState(false);
   const [commentTarget, setCommentTarget] = useState<{ kind: 'block' | 'frame'; id: string; x: number; y: number } | null>(null);
+  const [lightbox, setLightbox] = useState<{ url: string; alt?: string } | null>(null);
+  const [pdfLightbox, setPdfLightbox] = useState<{ url: string; title?: string } | null>(null);
 
   // Live drag context tracking projected rects for the block(s) currently being dragged.
   const dragCtxRef = useRef<{
@@ -234,7 +238,69 @@ export default function Canvas({
     groupSelected, ungroupSelected, clearFrameSelection,
     disabled: isFollowing,
   });
-  usePasteUrl({ viewportRef, addBlockFromUrl });
+  const handleUploadPdf = useCallback(async (file: File, sx: number, sy: number) => {
+    setAddPos(null);
+    const path = `pdfs/${uid()}-${sanitizeFileName(file.name)}`;
+    const pos = screenToCanvas(sx, sy);
+    const { w, h } = BLOCK_SIZES.pdf;
+    const blockId = uid();
+    // Show a loading placeholder immediately so large uploads don't feel stuck.
+    pushSnapshot();
+    setBlocks(prev => [...prev, {
+      id: blockId, type: 'pdf', url: '', source: 'upload', filePath: path,
+      title: file.name, x: pos.x - w / 2, y: pos.y - h / 2, uploading: true,
+    }]);
+    try {
+      await db.storage.uploadFile(path, file);
+      const downloadData = await db.storage.getDownloadUrl(path);
+      const url: string = typeof downloadData === 'string' ? downloadData : downloadData?.data?.url ?? path;
+      setBlocks(prev => prev.map(b => b.id === blockId ? { ...b, url, uploading: false } : b));
+    } catch (err) {
+      console.error('PDF upload failed', err);
+      setBlocks(prev => prev.filter(b => b.id !== blockId));
+    }
+  }, [screenToCanvas, setBlocks, pushSnapshot]);
+
+  const handleUploadImage = useCallback(async (file: File, sx: number, sy: number) => {
+    setAddPos(null);
+    if (!file.type.startsWith('image/')) { console.warn('Not an image file', file.type); return; }
+    if (file.size > MAX_IMAGE_BYTES) { console.warn('Image too large', file.size); return; }
+    const path = `images/${uid()}-${sanitizeFileName(file.name)}`;
+    const pos = screenToCanvas(sx, sy);
+    const { w, h } = BLOCK_SIZES.image;
+    const blockId = uid();
+    // Show a loading placeholder immediately so large uploads don't feel stuck.
+    pushSnapshot();
+    setBlocks(prev => [...prev, {
+      id: blockId, type: 'image', url: '', alt: file.name,
+      x: pos.x - w / 2, y: pos.y - h / 2, uploading: true,
+    }]);
+    try {
+      await db.storage.uploadFile(path, file);
+      const downloadData = await db.storage.getDownloadUrl(path);
+      const url: string = typeof downloadData === 'string' ? downloadData : downloadData?.data?.url ?? path;
+      setBlocks(prev => prev.map(b => b.id === blockId ? { ...b, url, uploading: false } : b));
+    } catch (err) {
+      console.error('Image upload failed', err);
+      setBlocks(prev => prev.filter(b => b.id !== blockId));
+    }
+  }, [screenToCanvas, setBlocks, pushSnapshot]);
+
+  usePasteUrl({ viewportRef, addBlockFromUrl, onPasteImage: handleUploadImage });
+
+  /** Drop handler — adds dropped image / PDF files at the drop point. */
+  const handleDrop = useCallback((e: React.DragEvent) => {
+    const files = Array.from(e.dataTransfer?.files ?? []);
+    if (files.length === 0) return;
+    e.preventDefault();
+    const rect = viewportRef.current?.getBoundingClientRect();
+    const sx = rect ? e.clientX - rect.left : 400;
+    const sy = rect ? e.clientY - rect.top : 300;
+    for (const file of files) {
+      if (file.type.startsWith('image/')) handleUploadImage(file, sx, sy);
+      else if (file.type === 'application/pdf') handleUploadPdf(file, sx, sy);
+    }
+  }, [handleUploadImage, handleUploadPdf]);
 
   // Publish own viewport to presence so others can follow us
   useEffect(() => {
@@ -248,12 +314,21 @@ export default function Canvas({
   useFollowViewport({ isFollowing, followTarget, viewportRef, offset, scale, setOffset, setScale });
 
   const handleOpenBlock = useCallback((block: Block) => {
+    // Images open in an in-app lightbox rather than a new tab.
+    if (block.type === 'image') {
+      if (!block.uploading && block.url) setLightbox({ url: block.url, alt: block.alt });
+      return;
+    }
+    // PDFs preview inline in a modal rather than a new tab.
+    if (block.type === 'pdf') {
+      if (!block.uploading && block.url) setPdfLightbox({ url: block.url, title: block.title });
+      return;
+    }
     let url: string | null = null;
-    if (block.type === 'link' || block.type === 'twitter' || block.type === 'image') url = block.url;
+    if (block.type === 'link' || block.type === 'twitter') url = block.url;
     if (block.type === 'youtube') url = `https://www.youtube.com/watch?v=${block.videoId}`;
     if (block.type === 'spotify') url = block.url;
     if (block.type === 'map') url = block.embedUrl;
-    if (block.type === 'pdf') url = block.url;
     if (block.type === 'github') url = block.url;
     if (url) window.open(url, '_blank', 'noopener,noreferrer');
   }, []);
@@ -328,25 +403,6 @@ export default function Canvas({
       setBlocks(prev => [...prev, { id: uid(), type: 'text', content: trimmed, x: x - w / 2, y: y - h / 2 }]);
     }
   }, [addBlockFromUrl, screenToCanvas, setBlocks, pushSnapshot]);
-
-  const handleUploadPdf = useCallback(async (file: File, sx: number, sy: number) => {
-    setAddPos(null);
-    const path = `pdfs/${uid()}-${file.name}`;
-    try {
-      await db.storage.uploadFile(path, file);
-      const downloadData = await db.storage.getDownloadUrl(path);
-      const url: string = typeof downloadData === 'string' ? downloadData : downloadData?.data?.url ?? path;
-      const pos = screenToCanvas(sx, sy);
-      const { w, h } = BLOCK_SIZES.pdf;
-      pushSnapshot();
-      setBlocks(prev => [...prev, {
-        id: uid(), type: 'pdf', url, source: 'upload', filePath: path,
-        title: file.name, x: pos.x - w / 2, y: pos.y - h / 2,
-      }]);
-    } catch (err) {
-      console.error('PDF upload failed', err);
-    }
-  }, [screenToCanvas, setBlocks, pushSnapshot]);
 
   const navigateToBlock = useCallback((block: Block) => {
     setIsSearchOpen(false);
@@ -722,6 +778,8 @@ export default function Canvas({
       onPointerUp={isFollowing ? undefined : onPointerUp}
       onPointerCancel={isFollowing ? undefined : onPointerUp}
       onDoubleClick={canEdit && !isFollowing ? onDoubleClick : undefined}
+      onDragOver={canEdit && !isFollowing ? (e => e.preventDefault()) : undefined}
+      onDrop={canEdit && !isFollowing ? handleDrop : undefined}
     >
       {/* Dot grid */}
       <div
@@ -873,6 +931,7 @@ export default function Canvas({
           y={addPos.y}
           onSubmit={val => handleAddSubmit(val, addPos.x, addPos.y)}
           onUploadPdf={file => handleUploadPdf(file, addPos.x, addPos.y)}
+          onUploadImage={file => handleUploadImage(file, addPos.x, addPos.y)}
           onClose={() => setAddPos(null)}
         />
       )}
@@ -904,6 +963,14 @@ export default function Canvas({
 
       {!isFollowing && isHelpOpen && (
         <ShortcutsHelp onClose={() => setIsHelpOpen(false)} />
+      )}
+
+      {lightbox && (
+        <ImageLightbox url={lightbox.url} alt={lightbox.alt} onClose={() => setLightbox(null)} />
+      )}
+
+      {pdfLightbox && (
+        <PdfLightbox url={pdfLightbox.url} title={pdfLightbox.title} onClose={() => setPdfLightbox(null)} />
       )}
 
       {!isFollowing && isItemsOpen && (

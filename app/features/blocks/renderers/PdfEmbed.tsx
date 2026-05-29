@@ -1,14 +1,14 @@
 'use client';
-import { useState, useMemo } from 'react';
-import { ExternalLink, FileText } from 'lucide-react';
+import { useMemo } from 'react';
+import { ExternalLink, FileText, Loader2 } from 'lucide-react';
 import type { PdfBlock } from '@/app/features/types';
 import { assertHttpsUrl } from '@/app/features/canvas/utils';
+import PdfUnavailable from '../PdfUnavailable';
 
-/** Renders a PDF via an iframe with a fallback open-link for blocked embeds. */
+/** Renders a PDF via the browser's native viewer, with a styled fallback for blocked embeds. */
 export default function PdfEmbed({ block }: { block: PdfBlock }) {
-  const [failed, setFailed] = useState(false);
   const filename = block.title || block.url.split('/').pop()?.split('?')[0] || 'document.pdf';
-  // Only allow https: URLs in the iframe to prevent protocol-level attacks.
+  // Only allow https: URLs in the embed to prevent protocol-level attacks.
   const safeSrc = useMemo(() => assertHttpsUrl(block.url), [block.url]);
 
   return (
@@ -40,35 +40,22 @@ export default function PdfEmbed({ block }: { block: PdfBlock }) {
         </a>
       </div>
 
-      {/* PDF content — only rendered when URL passes https: check */}
-      {failed || !safeSrc ? (
-        <div className="flex-1 flex flex-col items-center justify-center gap-3 p-6">
-          <FileText size={32} style={{ color: 'var(--color-text-muted)' }} />
-          <p className="text-xs text-center" style={{ color: 'var(--color-text-muted)' }}>
-            This PDF cannot be previewed here.
-          </p>
-          <a
-            href={block.url}
-            target="_blank"
-            rel="noopener noreferrer"
-            className="text-xs font-medium text-blue-500 hover:text-blue-400 flex items-center gap-1"
-            onPointerDown={e => e.stopPropagation()}
-            onClick={e => e.stopPropagation()}
-          >
-            Open PDF <ExternalLink size={11} />
-          </a>
+      {/* PDF content — loading placeholder while the upload is in flight */}
+      {block.uploading ? (
+        <div className="flex-1 flex flex-col items-center justify-center gap-3 p-6" style={{ color: 'var(--color-text-muted)' }}>
+          <Loader2 size={28} className="animate-spin" />
+          <p className="text-xs text-center">Uploading…</p>
         </div>
+      ) : !safeSrc ? (
+        <PdfUnavailable filename={filename} />
       ) : (
         <div className="relative flex-1">
-          <iframe
-            className="w-full h-full border-0 block"
-            src={safeSrc}
-            title={filename}
-            sandbox="allow-scripts allow-same-origin"
-            referrerPolicy="no-referrer"
-            onError={() => setFailed(true)}
-          />
-          {/* Blocks iframe from stealing mouse events */}
+          {/* <object> uses the browser's native PDF viewer; a sandboxed <iframe>
+              renders blank. Children show the styled fallback when it can't embed. */}
+          <object data={safeSrc} type="application/pdf" className="w-full h-full block" title={filename}>
+            <PdfUnavailable filename={filename} />
+          </object>
+          {/* Blocks the embed from stealing mouse events while dragging */}
           <div className="absolute inset-0" />
         </div>
       )}

@@ -6,6 +6,16 @@ export function uid(): string {
   return Math.random().toString(36).slice(2, 10);
 }
 
+/** Strips non-ISO-8859-1 chars from a filename so it is safe inside an HTTP header (storage upload path). */
+export function sanitizeFileName(name: string): string {
+  const cleaned = name
+    .replace(/[^\x20-\x7E]/g, '') // drop anything outside printable ASCII
+    .replace(/[^\w.\-]+/g, '-')   // collapse remaining unsafe chars to hyphens
+    .replace(/-+/g, '-')
+    .replace(/^[-.]+|[-.]+$/g, '');
+  return cleaned || 'file';
+}
+
 /** Infers block type from a URL (or iframe HTML snippet) by inspecting hostname and file extension. */
 export function detectType(input: string): Block['type'] {
   const trimmed = input.trim();

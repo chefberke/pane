@@ -11,10 +11,12 @@ interface Props {
   onSubmit: (value: string) => void;
   /** Called when the user selects a PDF file to upload. */
   onUploadPdf?: (file: File) => void;
+  /** Called when the user selects an image file to upload. */
+  onUploadImage?: (file: File) => void;
   onClose: () => void;
 }
 
-export default function AddInput({ x, y, onSubmit, onUploadPdf, onClose }: Props) {
+export default function AddInput({ x, y, onSubmit, onUploadPdf, onUploadImage, onClose }: Props) {
   const [value, setValue] = useState('');
   const [uploading, setUploading] = useState(false);
   const ref = useRef<HTMLInputElement>(null);
@@ -30,10 +32,12 @@ export default function AddInput({ x, y, onSubmit, onUploadPdf, onClose }: Props
 
   const handleFileChange = async (e: React.ChangeEvent<HTMLInputElement>) => {
     const file = e.target.files?.[0];
-    if (!file || !onUploadPdf) return;
+    if (!file) return;
+    const handler = file.type.startsWith('image/') ? onUploadImage : onUploadPdf;
+    if (!handler) return;
     setUploading(true);
     try {
-      await onUploadPdf(file);
+      await handler(file);
     } finally {
       setUploading(false);
     }
@@ -66,12 +70,12 @@ export default function AddInput({ x, y, onSubmit, onUploadPdf, onClose }: Props
           onChange={e => setValue(e.target.value)}
           onKeyDown={handleKeyDown}
         />
-        {onUploadPdf && (
+        {(onUploadPdf || onUploadImage) && (
           <>
             <button
               className="px-3 py-3.5 transition-colors hover:opacity-70 shrink-0"
               style={{ color: 'var(--color-text-muted)' }}
-              title={uploading ? 'Uploading…' : 'Upload PDF'}
+              title={uploading ? 'Uploading…' : 'Upload file'}
               disabled={uploading}
               onClick={() => fileRef.current?.click()}
               onPointerDown={e => e.stopPropagation()}
@@ -81,7 +85,7 @@ export default function AddInput({ x, y, onSubmit, onUploadPdf, onClose }: Props
             <input
               ref={fileRef}
               type="file"
-              accept="application/pdf"
+              accept={[onUploadImage && 'image/*', onUploadPdf && 'application/pdf'].filter(Boolean).join(',')}
               className="hidden"
               onChange={handleFileChange}
             />
@@ -90,7 +94,7 @@ export default function AddInput({ x, y, onSubmit, onUploadPdf, onClose }: Props
       </div>
       <div className="px-4 pb-3 flex items-center justify-between">
         <span className="text-xs" style={{ color: 'var(--color-text-muted)' }}>
-          {uploading ? 'Uploading PDF…' : 'Enter to add · Esc to cancel'}
+          {uploading ? 'Uploading…' : 'Enter to add · Esc to cancel'}
         </span>
         <button
           className="text-xs font-medium transition-colors text-blue-500 hover:text-blue-400"

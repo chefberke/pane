@@ -11,6 +11,19 @@ import type { InstantRules } from '@instantdb/react';
 //    which is why workspaces.update stays owner-only here.
 
 const rules = {
+  // ── $files (storage) ──────────────────────────────────────────────────────────
+  // Canvas image uploads go through db.storage.uploadFile client-side, which
+  // requires explicit storage permissions. Without this block InstantDB denies
+  // every upload ("not has-storage-permission?"). Any authenticated user may
+  // upload/delete; anyone may view so share-page guests can load canvas images.
+  $files: {
+    allow: {
+      view: 'true',
+      create: 'auth.id != null',
+      delete: 'auth.id != null',
+    },
+  },
+
   // ── workspaces ──────────────────────────────────────────────────────────────
   workspaces: {
     bind: [

@@ -7,6 +7,8 @@ export const DRAG_THRESHOLD = 2;
 export const MARQUEE_THRESHOLD = 4;
 export const DOT_GRID_SIZE = 24;
 export const FOLLOW_LERP = 0.18;
+/** Maximum size for an uploaded/pasted image, in bytes (10 MB). */
+export const MAX_IMAGE_BYTES = 10_000_000;
 
 /** Approximate rendered dimensions per block type — used to center blocks on drop. */
 export const BLOCK_SIZES: Record<Block['type'], { w: number; h: number }> = {
