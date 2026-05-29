@@ -1,4 +1,5 @@
 import { lookup } from 'dns/promises';
+import { isDev } from '@/app/lib/env';
 
 const PRIVATE_RANGES = [
   // IPv4 loopback / link-local / private / multicast
@@ -57,6 +58,8 @@ export async function assertPublicHostname(hostname: string): Promise<void> {
 }
 
 function isPrivateIp(ip: string): boolean {
+  // Dev: allow localhost/private hosts so local URLs can be previewed.
+  if (isDev) return false;
   return PRIVATE_RANGES.some(r => r.test(ip));
 }
 

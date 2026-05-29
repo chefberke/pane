@@ -1,4 +1,5 @@
 import 'server-only';
+import { isDev, logDevRequest } from './env';
 
 // NOTE: This is an in-memory, per-instance limiter. On serverless/multi-instance
 // deployments each instance has its own counters, so it is best-effort abuse
@@ -48,5 +49,10 @@ export function rateLimitRequest(
   limit: number,
   windowMs: number,
 ): boolean {
+  // Dev: log the hit and never rate-limit so local testing doesn't trip 429s.
+  if (isDev) {
+    logDevRequest(routeName, request);
+    return true;
+  }
   return rateLimit(`${routeName}:${clientKey(request)}`, limit, windowMs);
 }
