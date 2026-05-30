@@ -1,15 +1,13 @@
 'use client';
 import { useState, useRef, useCallback, useMemo, useEffect } from 'react';
 import { flushSync } from 'react-dom';
+import dynamic from 'next/dynamic';
 import type { Block, Frame, FrameColor } from '@/app/features/types';
 import type { CanvasProps } from './types';
 import BlockContainer from '../blocks/Block';
-import ImageLightbox from '../blocks/ImageLightbox';
-import PdfLightbox from '../blocks/PdfLightbox';
 import FrameView from '../frames/Frame';
 import AddInput from '../add-input/AddInput';
 import Toolbar from '../toolbar/Toolbar';
-import SearchModal from '../search/SearchModal';
 import CommentsPopover from '../comments/CommentsPopover';
 import { makeComment } from '../comments/utils';
 import ContextMenu from '../context-menu/ContextMenu';
@@ -17,12 +15,18 @@ import { useContextMenu } from '../context-menu/hooks/useContextMenu';
 import { blockShareUrl } from '../context-menu/utils';
 import type { ContextMenuRow, ContextMenuTarget } from '../context-menu/types';
 import { Plus, Type, BoxSelect, Maximize2, ExternalLink, Link2, MessageCircle, Copy, FolderPlus, FolderMinus, Trash2, Pencil } from 'lucide-react';
-import ShortcutsHelp from './ShortcutsHelp';
 import ShortcutsButton from './ShortcutsButton';
 import ZoomControls from './ZoomControls';
 import ItemsButton from '../items-panel/ItemsButton';
-import ItemsSheet from '../items-panel/ItemsSheet';
 import MenuButton from '../menu-panel/MenuButton';
+
+// Heavy, conditionally-mounted overlays — code-split out of the initial canvas
+// chunk and loaded on demand. All are client-only interactive UI, so SSR is off.
+const ImageLightbox = dynamic(() => import('../blocks/ImageLightbox'), { ssr: false });
+const PdfLightbox = dynamic(() => import('../blocks/PdfLightbox'), { ssr: false });
+const SearchModal = dynamic(() => import('../search/SearchModal'), { ssr: false });
+const ShortcutsHelp = dynamic(() => import('./ShortcutsHelp'), { ssr: false });
+const ItemsSheet = dynamic(() => import('../items-panel/ItemsSheet'), { ssr: false });
 import { ZOOM_STEP, BLOCK_SIZES, DOT_GRID_SIZE, MIN_SCALE, MAX_SCALE, MAX_IMAGE_BYTES, MAX_IMAGE_EDGE, IMAGE_OUTPUT_QUALITY, MAX_PDF_BYTES, UPLOAD_ERROR_MS } from './constants';
 import { useFollowViewport } from './hooks/useFollowViewport';
 import { uid, sanitizeFileName, downscaleImage } from './utils';
@@ -841,6 +845,11 @@ export default function Canvas({
     return map;
   }, [blocks, frames]);
 
+  // O(1) id lookups for the live-collaboration render path (peer selection outlines)
+  // and comment targets — avoids repeated O(n) `.find()` scans per peer/selection.
+  const blockById = useMemo(() => new Map(blocks.map(b => [b.id, b])), [blocks]);
+  const frameById = useMemo(() => new Map(frames.map(f => [f.id, f])), [frames]);
+
   return (
     <div
       ref={viewportRef}
@@ -928,7 +937,7 @@ export default function Canvas({
         {/* Remote peer selection outlines (canvas-space, scale-correct) */}
         {peers.map(peer =>
           peer.selection.blockIds.map(bid => {
-            const block = blocks.find(b => b.id === bid);
+            const block = blockById.get(bid);
             if (!block) return null;
             const w = block.width  ?? BLOCK_SIZES[block.type]?.w ?? 240;
             const h = block.height ?? BLOCK_SIZES[block.type]?.h ?? 160;
@@ -950,7 +959,7 @@ export default function Canvas({
         )}
         {peers.map(peer => {
           if (!peer.selection.frameId) return null;
-          const frame = frames.find(f => f.id === peer.selection.frameId);
+          const frame = frameById.get(peer.selection.frameId);
           if (!frame) return null;
           return (
             <div
@@ -1057,8 +1066,8 @@ export default function Canvas({
           targetId={commentTarget.id}
           comments={
             commentTarget.kind === 'block'
-              ? blocks.find(b => b.id === commentTarget.id)?.comments ?? []
-              : frames.find(f => f.id === commentTarget.id)?.comments ?? []
+              ? blockById.get(commentTarget.id)?.comments ?? []
+              : frameById.get(commentTarget.id)?.comments ?? []
           }
           x={commentTarget.x}
           y={commentTarget.y}
@@ -1097,7 +1106,7 @@ export default function Canvas({
           onNavigate={navigateToBlock}
           onNavigateFrame={navigateToFrame}
           onDelete={handleDeleteBlock}
-          onTogglePin={id => updateBlock(id, { pinned: !blocks.find(b => b.id === id)?.pinned })}
+          onTogglePin={id => updateBlock(id, { pinned: !blockById.get(id)?.pinned })}
         />
       )}
 

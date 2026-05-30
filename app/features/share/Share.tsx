@@ -7,10 +7,14 @@
  */
 'use client';
 import { useState } from 'react';
+import dynamic from 'next/dynamic';
 import type { RemotePresencePeer } from '@/app/features/types';
 import ShareButton from './ShareButton';
-import ShareModal from './ShareModal';
 import AvatarStack from './AvatarStack';
+
+// The share dialog (and its framer-motion dropdowns) is only needed once the user
+// opens it — code-split it out of the workspace's initial client bundle.
+const ShareModal = dynamic(() => import('./ShareModal'), { ssr: false });
 
 interface Props {
   workspaceId: string;

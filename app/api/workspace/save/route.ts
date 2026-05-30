@@ -70,12 +70,17 @@ async function authorizeShare(shareToken: string, id: string): Promise<boolean> 
 
 /** True if the bearer user is the owner or an editor/owner member of workspace `id`. */
 async function authorizeMember(request: NextRequest, id: string): Promise<boolean> {
-  const user = await verifyBearer(request);
-  if (!user) return false;
-
-  const wsRes = await adminDb.query({
+  // The workspace lookup keys off `id` (from the request body), not the user, so kick it
+  // off in parallel with auth instead of waiting for the bearer check first.
+  const userPromise = verifyBearer(request);
+  const wsPromise = adminDb.query({
     workspaces: { $: { where: { id } as any } },
   });
+
+  const user = await userPromise;
+  if (!user) return false;
+
+  const wsRes = await wsPromise;
   const workspace = (wsRes as any)?.workspaces?.[0];
   if (!workspace) return false;
   if (workspace.userId === user.id) return true; // owner

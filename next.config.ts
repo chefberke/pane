@@ -48,6 +48,12 @@ const csp = [
 ].join("; ");
 
 const nextConfig: NextConfig = {
+  experimental: {
+    // Transform named imports into direct submodule imports at build time so only
+    // the components actually used are bundled. `lucide-react` is already optimized
+    // by default in Next 16; `framer-motion` is the one we add explicitly.
+    optimizePackageImports: ["framer-motion"],
+  },
   async headers() {
     return [
       {

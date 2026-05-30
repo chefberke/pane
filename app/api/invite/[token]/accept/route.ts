@@ -25,15 +25,20 @@ export async function POST(request: NextRequest, { params }: Params) {
     return Response.json({ error: 'Token required' }, { status: 400 });
   }
 
-  const user = await verifyBearer(request);
+  // The invite lookup keys off the URL `token`, not the user, so start it in parallel with
+  // auth. Worst case for an unauthenticated caller is one wasted read (route is rate-limited).
+  const userPromise = verifyBearer(request);
+  const invitePromise = adminDb.query({
+    workspaceInvites: { $: { where: { token } as any } },
+  });
+
+  const user = await userPromise;
   if (!user) {
     logDevResult('invite-accept', 401, 'bearer invalid/missing');
     return Response.json({ error: 'Authentication required' }, { status: 401 });
   }
 
-  const res = await adminDb.query({
-    workspaceInvites: { $: { where: { token } as any } },
-  });
+  const res = await invitePromise;
   const invite = (res as any)?.workspaceInvites?.[0];
   if (!invite) {
     logDevResult('invite-accept', 404, 'invite not found');
