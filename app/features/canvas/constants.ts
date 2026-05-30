@@ -17,6 +17,12 @@ export const IMAGE_OUTPUT_QUALITY = 0.8;
 export const MAX_PDF_BYTES = 25_000_000;
 /** How long the on-canvas upload error label stays visible, in ms. */
 export const UPLOAD_ERROR_MS = 2500;
+/** Debounce before persisting canvas state after a change, in ms. */
+export const SAVE_DEBOUNCE_MS = 150;
+/** Screen-edge padding (px) reserved when zooming to fit all blocks. */
+export const ZOOM_TO_FIT_PADDING = 64;
+/** Stacking order for screen-space remote peer cursors. */
+export const PEER_CURSOR_Z = 150;
 
 /** Approximate rendered dimensions per block type — used to center blocks on drop. */
 export const BLOCK_SIZES: Record<Block['type'], { w: number; h: number }> = {

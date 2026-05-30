@@ -2,6 +2,21 @@ import type { Block, Frame, RemotePresencePeer } from '@/app/features/types';
 
 export type Marquee = { x1: number; y1: number; x2: number; y2: number };
 
+/** The block or frame whose comments popover is currently open, with its anchor point. */
+export type CommentTarget = { kind: 'block' | 'frame'; id: string; x: number; y: number } | null;
+
+/** Block + frame comment CRUD callbacks produced by useComments. */
+export interface CommentHandlers {
+  handleOpenComments: (block: Block, anchor: { x: number; y: number }) => void;
+  handleAddComment: (blockId: string, text: string) => void;
+  handleDeleteComment: (blockId: string, commentId: string) => void;
+  handleReplyComment: (blockId: string, parentId: string, text: string) => void;
+  handleOpenFrameComments: (frame: Frame, anchor: { x: number; y: number }) => void;
+  handleAddFrameComment: (frameId: string, text: string) => void;
+  handleDeleteFrameComment: (frameId: string, commentId: string) => void;
+  handleReplyFrameComment: (frameId: string, parentId: string, text: string) => void;
+}
+
 export interface CanvasState {
   blocks: Block[];
   frames: Frame[];
