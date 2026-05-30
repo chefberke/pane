@@ -1,0 +1,31 @@
+'use client';
+import { memo } from 'react';
+import { Settings, Command, HelpCircle, Trash2 } from 'lucide-react';
+import { Row } from './primitives';
+
+interface Props {
+  hasUser: boolean;
+  trashCount: number;
+  onOpenTrash: () => void;
+}
+
+/** Settings, shortcuts, trash, and help rows at the bottom of the panel. */
+function SettingsGroup({ hasUser, trashCount, onOpenTrash }: Props) {
+  return (
+    <div style={{ borderTop: '1px solid var(--color-border-default)' }} className="py-2">
+      <Row icon={<Settings size={14} />} label="Settings" />
+      <Row icon={<Command size={14} />} label="Keyboard shortcuts" shortcut="?" />
+      {hasUser && (
+        <Row
+          icon={<Trash2 size={14} />}
+          label="Trash"
+          shortcut={trashCount > 0 ? String(trashCount) : undefined}
+          onClick={onOpenTrash}
+        />
+      )}
+      <Row icon={<HelpCircle size={14} />} label="Help & feedback" />
+    </div>
+  );
+}
+
+export default memo(SettingsGroup);
