@@ -1,12 +1,12 @@
 'use client';
-import { useMemo } from 'react';
+import { memo, useMemo } from 'react';
 import { ExternalLink, FileText, Loader2 } from 'lucide-react';
 import type { PdfBlock } from '@/app/features/types';
 import { assertHttpsUrl } from '@/app/features/canvas/utils';
 import PdfUnavailable from '../PdfUnavailable';
 
 /** Renders a PDF via the browser's native viewer, with a styled fallback for blocked embeds. */
-export default function PdfEmbed({ block }: { block: PdfBlock }) {
+function PdfEmbed({ block }: { block: PdfBlock }) {
   const filename = block.title || block.url.split('/').pop()?.split('?')[0] || 'document.pdf';
   // Only allow https: URLs in the embed to prevent protocol-level attacks.
   const safeSrc = useMemo(() => assertHttpsUrl(block.url), [block.url]);
@@ -62,3 +62,5 @@ export default function PdfEmbed({ block }: { block: PdfBlock }) {
     </div>
   );
 }
+
+export default memo(PdfEmbed);

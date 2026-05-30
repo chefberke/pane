@@ -1,11 +1,11 @@
 'use client';
-import { useMemo } from 'react';
+import { memo, useMemo } from 'react';
 import { Loader2 } from 'lucide-react';
 import type { ImageBlock } from '@/app/features/types';
 import { assertHttpsUrl } from '@/app/features/canvas/utils';
 
 /** Renders a direct image URL, constrained to a max height with object-contain. */
-export default function ImageEmbed({ block }: { block: ImageBlock }) {
+function ImageEmbed({ block }: { block: ImageBlock }) {
   const safeSrc = useMemo(() => assertHttpsUrl(block.url), [block.url]);
 
   if (block.uploading) return (
@@ -41,3 +41,5 @@ export default function ImageEmbed({ block }: { block: ImageBlock }) {
     </div>
   );
 }
+
+export default memo(ImageEmbed);

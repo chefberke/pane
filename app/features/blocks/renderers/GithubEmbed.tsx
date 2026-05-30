@@ -1,4 +1,5 @@
 'use client';
+import { memo } from 'react';
 import type { GitHubBlock } from '@/app/features/types';
 import { Star, GitFork, Scale } from 'lucide-react';
 
@@ -16,7 +17,7 @@ function formatCount(n: number): string {
 }
 
 /** Renders a GitHub repository card with live stats fetched from the public API. */
-export default function GithubEmbed({ block }: { block: GitHubBlock }) {
+function GithubEmbed({ block }: { block: GitHubBlock }) {
   const { owner, repo, url, description, stars, forks, language, license, topics, loading } = block;
 
   if (loading) {
@@ -132,3 +133,5 @@ export default function GithubEmbed({ block }: { block: GitHubBlock }) {
     </a>
   );
 }
+
+export default memo(GithubEmbed);

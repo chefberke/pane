@@ -1,8 +1,9 @@
 'use client';
+import { memo } from 'react';
 import type { SpotifyBlock } from '@/app/features/types';
 
 /** Renders a Spotify embed — compact height for tracks, full height for albums/playlists/episodes. */
-export default function SpotifyEmbed({ block }: { block: SpotifyBlock }) {
+function SpotifyEmbed({ block }: { block: SpotifyBlock }) {
   const isTrack = block.spotifyType === 'track';
   const height = isTrack ? 80 : 380;
 
@@ -22,3 +23,5 @@ export default function SpotifyEmbed({ block }: { block: SpotifyBlock }) {
     </div>
   );
 }
+
+export default memo(SpotifyEmbed);

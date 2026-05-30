@@ -1,4 +1,5 @@
 'use client';
+import { memo } from 'react';
 
 interface BtnProps {
   onClick?: () => void;
@@ -9,7 +10,7 @@ interface BtnProps {
 }
 
 /** Icon-only square toolbar button with active/inactive visual states. */
-export function Btn({ onClick, active = false, disabled = false, children, className = '' }: BtnProps) {
+function BtnImpl({ onClick, active = false, disabled = false, children, className = '' }: BtnProps) {
   return (
     <button
       onClick={onClick}
@@ -43,12 +44,20 @@ export function Btn({ onClick, active = false, disabled = false, children, class
   );
 }
 
+/** Icon-only square toolbar button with active/inactive visual states. */
+export const Btn = memo(BtnImpl);
+
+const SEP_STYLE = { background: 'var(--color-border-default)' };
+
 /** 1px vertical divider between toolbar sections. */
-export function Sep() {
+function SepImpl() {
   return (
     <div
       className="w-px h-4 mx-0.5 flex-shrink-0"
-      style={{ background: 'var(--color-border-default)' }}
+      style={SEP_STYLE}
     />
   );
 }
+
+/** 1px vertical divider between toolbar sections. */
+export const Sep = memo(SepImpl);

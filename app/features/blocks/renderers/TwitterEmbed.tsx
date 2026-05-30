@@ -1,8 +1,9 @@
 'use client';
+import { memo } from 'react';
 import type { TwitterBlock } from '@/app/features/types';
 
 /** Renders a tweet via the Twitter platform embed iframe. */
-export default function TwitterEmbed({ block }: { block: TwitterBlock }) {
+function TwitterEmbed({ block }: { block: TwitterBlock }) {
   return (
     <div className="relative w-[320px] h-[480px] overflow-hidden" style={{ background: 'var(--color-surface-embed)' }}>
       <iframe
@@ -16,3 +17,5 @@ export default function TwitterEmbed({ block }: { block: TwitterBlock }) {
     </div>
   );
 }
+
+export default memo(TwitterEmbed);

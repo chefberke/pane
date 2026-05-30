@@ -1,5 +1,5 @@
 'use client';
-import { useEffect, useRef } from 'react';
+import { memo, useEffect, useRef } from 'react';
 import type { TextBlock } from '@/app/features/types';
 
 /** Props for the editable sticky-note text block. */
@@ -10,7 +10,7 @@ interface Props {
   onStopEdit: () => void;
 }
 
-export default function TextNote({ block, onUpdate, isEditing, onStopEdit }: Props) {
+function TextNote({ block, onUpdate, isEditing, onStopEdit }: Props) {
   const ref = useRef<HTMLTextAreaElement>(null);
 
   useEffect(() => {
@@ -51,3 +51,5 @@ export default function TextNote({ block, onUpdate, isEditing, onStopEdit }: Pro
     </div>
   );
 }
+
+export default memo(TextNote);

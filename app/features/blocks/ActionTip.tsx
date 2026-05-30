@@ -1,5 +1,5 @@
 'use client';
-import { useRef, useState } from 'react';
+import { memo, useRef, useState } from 'react';
 
 interface Props {
   label: string;
@@ -9,7 +9,7 @@ interface Props {
 const TIP_DELAY = 300;
 
 /** Small floating tooltip shown above an action-pill icon button after a short hover delay. */
-export default function ActionTip({ label, children }: Props) {
+function ActionTip({ label, children }: Props) {
   const [visible, setVisible] = useState(false);
   const timer = useRef<ReturnType<typeof setTimeout> | null>(null);
 
@@ -44,3 +44,5 @@ export default function ActionTip({ label, children }: Props) {
     </div>
   );
 }
+
+export default memo(ActionTip);

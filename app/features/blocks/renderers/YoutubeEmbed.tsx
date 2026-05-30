@@ -1,8 +1,9 @@
 'use client';
+import { memo } from 'react';
 import type { YouTubeBlock } from '@/app/features/types';
 
 /** Renders a privacy-enhanced YouTube embed (youtube-nocookie.com). */
-export default function YoutubeEmbed({ block }: { block: YouTubeBlock }) {
+function YoutubeEmbed({ block }: { block: YouTubeBlock }) {
   return (
     <div className="w-[400px]">
       <div className="relative aspect-video">
@@ -19,3 +20,5 @@ export default function YoutubeEmbed({ block }: { block: YouTubeBlock }) {
     </div>
   );
 }
+
+export default memo(YoutubeEmbed);

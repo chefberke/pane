@@ -1,5 +1,5 @@
 'use client';
-import { useState } from 'react';
+import { memo, useState } from 'react';
 import type { LinkBlock } from '@/app/features/types';
 
 function parseDomain(url: string): string {
@@ -7,7 +7,7 @@ function parseDomain(url: string): string {
 }
 
 /** Renders a rich link preview card with image, title, description, and favicon. */
-export default function LinkPreview({ block }: { block: LinkBlock }) {
+function LinkPreview({ block }: { block: LinkBlock }) {
   const { url, title, description, image, favicon, loading } = block;
   const [imgFailed, setImgFailed] = useState(false);
   const domain = parseDomain(url);
@@ -93,3 +93,5 @@ export default function LinkPreview({ block }: { block: LinkBlock }) {
     </a>
   );
 }
+
+export default memo(LinkPreview);

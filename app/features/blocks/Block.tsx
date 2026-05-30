@@ -1,6 +1,7 @@
 'use client';
-import { memo, useState } from 'react';
+import { memo, useCallback, useState } from 'react';
 import { MessageCircle, Trash2 } from 'lucide-react';
+import type { CSSProperties } from 'react';
 import type { Block } from '@/app/features/types';
 import type { BlockHandlers } from './types';
 import LinkPreview from './renderers/LinkPreview';
@@ -24,6 +25,13 @@ interface Props {
   handlers: BlockHandlers;
 }
 
+const DRAG_OVERLAY_STYLE: CSSProperties = { display: 'none' };
+const SELECTED_CARD_STYLE: CSSProperties = {
+  outline: '2px solid var(--color-ring-selection)',
+  outlineOffset: '1px',
+};
+const ACTION_PILL_STYLE: CSSProperties = { background: 'var(--color-surface-action)' };
+
 /** Draggable block container — renders the appropriate embed and delegates interaction via handlers. */
 function BlockContainer({ block, scale, selected, isInMultiSelection, handlers }: Props) {
   const [isEditingText, setIsEditingText] = useState(false);
@@ -31,6 +39,13 @@ function BlockContainer({ block, scale, selected, isInMultiSelection, handlers }
   const comments = block.comments ?? [];
   const commentCount = comments.length;
   const lastComment = commentCount > 0 ? comments[comments.length - 1] : null;
+
+  const { onUpdate } = handlers;
+  const onUpdateText = useCallback(
+    (content: string) => onUpdate(block.id, { content } as Partial<Block>),
+    [block.id, onUpdate],
+  );
+  const onStopEditText = useCallback(() => setIsEditingText(false), []);
 
   const { containerRef, overlayRef, onPointerDown } = useBlockDrag({
     block,
@@ -71,7 +86,7 @@ function BlockContainer({ block, scale, selected, isInMultiSelection, handlers }
       }}
     >
       {/* Overlay blocks iframe pointer events while dragging */}
-      <div ref={overlayRef} className="absolute inset-0 z-20" style={{ display: 'none' }} />
+      <div ref={overlayRef} className="absolute inset-0 z-20" style={DRAG_OVERLAY_STYLE} />
 
       {/* Comment bubble */}
       {lastComment && (
@@ -84,10 +99,7 @@ function BlockContainer({ block, scale, selected, isInMultiSelection, handlers }
           'rounded-2xl overflow-hidden transition-shadow duration-150',
           selected ? 'shadow-xl' : 'shadow-md hover:shadow-lg',
         ].join(' ')}
-        style={selected ? {
-          outline: '2px solid var(--color-ring-selection)',
-          outlineOffset: '1px',
-        } : undefined}
+        style={selected ? SELECTED_CARD_STYLE : undefined}
       >
         {block.type === 'link' && <LinkPreview block={block} />}
         {block.type === 'youtube' && <YoutubeEmbed block={block} />}
@@ -100,9 +112,9 @@ function BlockContainer({ block, scale, selected, isInMultiSelection, handlers }
         {block.type === 'text' && (
           <TextNote
             block={block}
-            onUpdate={content => handlers.onUpdate(block.id, { content } as Partial<Block>)}
+            onUpdate={onUpdateText}
             isEditing={isEditingText}
-            onStopEdit={() => setIsEditingText(false)}
+            onStopEdit={onStopEditText}
           />
         )}
       </div>
@@ -113,7 +125,7 @@ function BlockContainer({ block, scale, selected, isInMultiSelection, handlers }
           'absolute -top-8 right-0 flex items-center backdrop-blur-sm rounded-full px-0.5 py-0.5 gap-0 z-10 transition-opacity duration-150',
           selected ? 'opacity-100' : 'opacity-0 group-hover:opacity-100',
         ].join(' ')}
-        style={{ background: 'var(--color-surface-action)' }}
+        style={ACTION_PILL_STYLE}
       >
         <ActionTip label="Comments">
           <button

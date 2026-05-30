@@ -2,10 +2,19 @@
 import { useState } from 'react';
 import { motion, LayoutGroup } from 'framer-motion';
 import { MousePointer2, Hand, Search, Type, RefreshCw, Maximize2, Group } from 'lucide-react';
+import type { CSSProperties } from 'react';
 import type { ToolbarStatus, ToolbarActions } from './types';
 import Tip from './Tip';
 import { Btn, Sep } from './Btn';
 import AlignGroup from './AlignGroup';
+
+const CONTAINER_STYLE: CSSProperties = {
+  background: 'var(--color-surface-raised)',
+  border: '1px solid var(--color-border-default)',
+  boxShadow: 'var(--shadow-float)',
+};
+const SEGMENT_STYLE: CSSProperties = { background: 'var(--color-surface-sunken)' };
+const PILL_STYLE: CSSProperties = { background: 'var(--color-surface-control-active)' };
 
 /** Floating bottom toolbar with mode toggles and canvas actions. */
 export default function Toolbar({ status, actions }: { status: ToolbarStatus; actions: ToolbarActions }) {
@@ -17,11 +26,7 @@ export default function Toolbar({ status, actions }: { status: ToolbarStatus; ac
   return (
     <div
       className="absolute bottom-6 left-1/2 -translate-x-1/2 flex items-center gap-0.5 backdrop-blur-md rounded-2xl px-2 py-2 pointer-events-auto"
-      style={{
-        background: 'var(--color-surface-raised)',
-        border: '1px solid var(--color-border-default)',
-        boxShadow: 'var(--shadow-float)',
-      }}
+      style={CONTAINER_STYLE}
       onDoubleClick={e => e.stopPropagation()}
       onPointerDown={e => e.stopPropagation()}
     >
@@ -29,7 +34,7 @@ export default function Toolbar({ status, actions }: { status: ToolbarStatus; ac
       <LayoutGroup>
         <div
           className="flex items-center rounded-[11px] p-0.5 gap-0.5"
-          style={{ background: 'var(--color-surface-sunken)' }}
+          style={SEGMENT_STYLE}
         >
           <Tip label="Select" shortcut="V">
             <button
@@ -40,7 +45,7 @@ export default function Toolbar({ status, actions }: { status: ToolbarStatus; ac
                 <motion.div
                   layoutId="mode-pill"
                   className="absolute inset-0 rounded-[9px] shadow-sm"
-                  style={{ background: 'var(--color-surface-control-active)' }}
+                  style={PILL_STYLE}
                   transition={{ type: 'spring', stiffness: 500, damping: 35 }}
                 />
               )}
@@ -61,7 +66,7 @@ export default function Toolbar({ status, actions }: { status: ToolbarStatus; ac
                 <motion.div
                   layoutId="mode-pill"
                   className="absolute inset-0 rounded-[9px] shadow-sm"
-                  style={{ background: 'var(--color-surface-control-active)' }}
+                  style={PILL_STYLE}
                   transition={{ type: 'spring', stiffness: 500, damping: 35 }}
                 />
               )}
