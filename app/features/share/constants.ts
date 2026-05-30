@@ -1,5 +1,15 @@
 export const TOKEN_LENGTH = 22;
 
+/** Human-readable labels for member/share roles. Shared by RoleBadge and RoleDropdown. */
+export const ROLE_LABELS: Record<string, string> = {
+  owner: 'Owner',
+  editor: 'Can edit',
+  viewer: 'View only',
+};
+
+/** Validates an email address (no whitespace, single @, dotted domain). */
+export const EMAIL_REGEX = /^[^\s@]+@[^\s@]+\.[^\s@]+$/;
+
 export const FOLLOW_BORDER_WIDTH = 4;
 
 export const GUEST_NAME_PREFIX = 'Guest';
