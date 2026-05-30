@@ -16,6 +16,7 @@ export default function SearchModal({ blocks, onClose, onNavigate }: Props) {
   const [activeIdx, setActiveIdx] = useState(0);
   const inputRef = useRef<HTMLInputElement>(null);
   const listRef = useRef<HTMLDivElement>(null);
+  const overlayRef = useRef<HTMLDivElement>(null);
 
   const results = useMemo(() =>
     query.trim()
@@ -24,6 +25,17 @@ export default function SearchModal({ blocks, onClose, onNavigate }: Props) {
   [blocks, query]);
 
   useEffect(() => { inputRef.current?.focus(); }, []);
+
+  // The canvas viewport has a native wheel listener that preventDefaults to pan/zoom.
+  // Since the modal renders inside the viewport, stop wheel events here so the list
+  // (and not the canvas behind it) scrolls under the mouse.
+  useEffect(() => {
+    const el = overlayRef.current;
+    if (!el) return;
+    const stop = (e: WheelEvent) => e.stopPropagation();
+    el.addEventListener('wheel', stop);
+    return () => el.removeEventListener('wheel', stop);
+  }, []);
 
   const scrollActiveIntoView = useCallback((idx: number) => {
     const item = listRef.current?.children[idx] as HTMLElement | undefined;
@@ -52,6 +64,7 @@ export default function SearchModal({ blocks, onClose, onNavigate }: Props) {
 
   return (
     <div
+      ref={overlayRef}
       className="fixed inset-0 z-[200] flex items-start justify-center"
       style={{
         paddingTop: '16vh',
