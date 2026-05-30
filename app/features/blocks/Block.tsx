@@ -60,6 +60,7 @@ function BlockContainer({ block, scale, selected, isInMultiSelection, handlers }
         willChange: 'transform',
       }}
       onPointerDown={isEditingText ? undefined : onPointerDown}
+      onContextMenu={e => { e.preventDefault(); e.stopPropagation(); handlers.onContextMenu(block.id, e.clientX, e.clientY); }}
       onDoubleClick={e => {
         e.stopPropagation();
         if (block.type === 'text') {

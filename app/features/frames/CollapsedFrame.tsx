@@ -14,7 +14,7 @@ import {
   FRAME_HEADER_HEIGHT,
   FRAME_HEADER_OFFSET,
 } from './constants';
-import type { FrameDropPreview, FrameHandlers } from './types';
+import type { FrameDropPreview, FrameHandlers, FrameRenameRequest } from './types';
 
 interface Props {
   frame: Frame;
@@ -23,12 +23,20 @@ interface Props {
   handlers: FrameHandlers;
   onDragPointerDown: (e: React.PointerEvent) => void;
   dropPreview?: FrameDropPreview;
+  renameRequest?: FrameRenameRequest | null;
 }
 
 /** Collapsed frame: a dashed-bordered card with thumbnail grid, plus external header + action pill above. */
-export default function CollapsedFrame({ frame, descendantBlocks, selected, handlers, onDragPointerDown, dropPreview }: Props) {
+export default function CollapsedFrame({ frame, descendantBlocks, selected, handlers, onDragPointerDown, dropPreview, renameRequest }: Props) {
   const [isEditing, setIsEditing] = useState(false);
   const [isHovered, setIsHovered] = useState(false);
+
+  // Enter inline-edit when a new rename request targets this frame (render-phase compare; local state only).
+  const [seenRename, setSeenRename] = useState(renameRequest);
+  if (renameRequest !== seenRename) {
+    setSeenRename(renameRequest);
+    if (renameRequest && renameRequest.id === frame.id) setIsEditing(true);
+  }
   const tokens = FRAME_COLORS[frame.color];
   const comments = frame.comments ?? [];
   const lastComment = comments.length > 0 ? comments[comments.length - 1] : null;
@@ -60,6 +68,7 @@ export default function CollapsedFrame({ frame, descendantBlocks, selected, hand
       onMouseEnter={() => setIsHovered(true)}
       onMouseLeave={() => setIsHovered(false)}
       onPointerDown={e => { e.stopPropagation(); handlers.onSelect(frame.id); }}
+      onContextMenu={e => { e.preventDefault(); e.stopPropagation(); handlers.onContextMenu(frame.id, e.clientX, e.clientY); }}
     >
       {/* External header above card top-left. */}
       <div

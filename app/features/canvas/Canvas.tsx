@@ -12,6 +12,11 @@ import Toolbar from '../toolbar/Toolbar';
 import SearchModal from '../search/SearchModal';
 import CommentsPopover from '../comments/CommentsPopover';
 import { makeComment } from '../comments/utils';
+import ContextMenu from '../context-menu/ContextMenu';
+import { useContextMenu } from '../context-menu/hooks/useContextMenu';
+import { blockShareUrl } from '../context-menu/utils';
+import type { ContextMenuRow, ContextMenuTarget } from '../context-menu/types';
+import { Plus, Type, BoxSelect, Maximize2, ExternalLink, Link2, MessageCircle, Copy, FolderPlus, FolderMinus, Trash2, Pencil } from 'lucide-react';
 import ShortcutsHelp from './ShortcutsHelp';
 import ShortcutsButton from './ShortcutsButton';
 import ZoomControls from './ZoomControls';
@@ -47,7 +52,7 @@ import { useHistory } from './hooks/useHistory';
 import { usePinchZoom } from './hooks/usePinchZoom';
 import { useLatestRef } from './hooks/useLatestRef';
 import { useFrames } from '../frames/hooks/useFrames';
-import type { FrameHandlers } from '../frames/types';
+import type { FrameHandlers, FrameRenameRequest } from '../frames/types';
 import { AnimatePresence } from 'framer-motion';
 import EmptyState from './EmptyState';
 import UploadErrorFlash from './UploadErrorFlash';
@@ -83,6 +88,8 @@ export default function Canvas({
   const { selectedIds, setSelectedIds, handleBlockSelect, handleBlockClickEnd, handleMultiDragMove, handleMultiDragEnd, duplicateSelected, selectAll, nudgeSelected, alignSelected } = useSelection({ blocks, setBlocks, pushSnapshot });
 
   const [selectedFrameId, setSelectedFrameId] = useState<string | null>(null);
+  const { menu, openMenu, closeMenu } = useContextMenu();
+  const [renameFrameReq, setRenameFrameReq] = useState<FrameRenameRequest | null>(null);
   const [addPos, setAddPos] = useState<{ x: number; y: number } | null>(null);
   const [isSearchOpen, setIsSearchOpen] = useState(false);
   const [isHelpOpen, setIsHelpOpen] = useState(false);
@@ -171,13 +178,21 @@ export default function Canvas({
     setBlocks(prev => [...prev, { id: uid(), type: 'text', content: '', x: x - w / 2, y: y - h / 2 }]);
   }, [screenToCanvas, setBlocks, pushSnapshot]);
 
+  /** Adds an empty text note centered on the given screen point (used by the canvas context menu). */
+  const addTextNoteAt = useCallback((sx: number, sy: number) => {
+    const { x, y } = screenToCanvas(sx, sy);
+    const { w, h } = BLOCK_SIZES.text;
+    pushSnapshot();
+    setBlocks(prev => [...prev, { id: uid(), type: 'text', content: '', x: x - w / 2, y: y - h / 2 }]);
+  }, [screenToCanvas, setBlocks, pushSnapshot]);
+
   const { marquee, isPanMode, setIsPanMode, isPanning, onPointerDown, onPointerMove, onPointerUp, onDoubleClick } = useMarquee({
     viewportRef,
     offsetRef,
     setOffset,
     setSelectedIds,
     onDoubleClickCanvas: (sx, sy) => setAddPos({ x: sx, y: sy }),
-    onCanvasClick: () => { setAddPos(null); setSelectedFrameId(null); setCommentTarget(null); },
+    onCanvasClick: () => { setAddPos(null); setSelectedFrameId(null); setCommentTarget(null); closeMenu(); },
   });
 
   // Frame selection clears block selection and vice-versa
@@ -573,6 +588,50 @@ export default function Canvas({
     setCommentTarget(prev => (prev?.kind === 'frame' && prev.id === id) ? null : prev);
   }, [deleteFrame, pushSnapshot, selectedFrameId]);
 
+  /**
+   * Builds context-menu rows for a target. Called from event handlers (not render), so reading the
+   * latest blocks/frames/selection via refs here is safe and keeps the rows current.
+   */
+  const buildMenuRows = useCallback((target: ContextMenuTarget, sx: number, sy: number): ContextMenuRow[] => {
+    if (target.kind === 'canvas') {
+      return [
+        { kind: 'action', label: 'Add content here', icon: Plus, onClick: () => setAddPos({ x: sx, y: sy }) },
+        { kind: 'action', label: 'Add text note here', icon: Type, shortcut: ['T'], onClick: () => addTextNoteAt(sx, sy) },
+        { kind: 'separator' },
+        { kind: 'action', label: 'Select all', icon: BoxSelect, shortcut: ['⌘', 'A'], onClick: selectAll, disabled: blocksRef.current.length === 0 },
+        { kind: 'action', label: 'Reset view', icon: Maximize2, shortcut: ['0'], onClick: resetView },
+      ];
+    }
+    if (target.kind === 'block') {
+      const block = blocksRef.current.find(b => b.id === target.id);
+      if (!block) return [];
+      const url = blockShareUrl(block);
+      const rows: ContextMenuRow[] = [
+        { kind: 'action', label: 'Open', icon: ExternalLink, onClick: () => handleOpenBlock(block) },
+      ];
+      if (url) rows.push({ kind: 'action', label: 'Copy link', icon: Link2, onClick: () => { void navigator.clipboard?.writeText(url); } });
+      rows.push(
+        { kind: 'action', label: 'Comments', icon: MessageCircle, onClick: () => handleOpenComments(block, { x: sx, y: sy }) },
+        { kind: 'separator' },
+        { kind: 'action', label: 'Duplicate', icon: Copy, shortcut: ['⌘', 'D'], onClick: duplicateSelected },
+        { kind: 'action', label: 'Group selected', icon: FolderPlus, shortcut: ['⌘', 'G'], onClick: groupSelected },
+        { kind: 'separator' },
+        { kind: 'action', label: 'Delete', icon: Trash2, shortcut: ['⌫'], onClick: deleteSelectedAny, danger: true },
+      );
+      return rows;
+    }
+    const frame = framesRef.current.find(f => f.id === target.id);
+    if (!frame) return [];
+    return [
+      { kind: 'action', label: 'Rename', icon: Pencil, onClick: () => setRenameFrameReq({ id: frame.id, n: Date.now() }) },
+      { kind: 'color', current: frame.color, onSelect: c => handleFrameColor(frame.id, c) },
+      { kind: 'action', label: 'Comments', icon: MessageCircle, onClick: () => handleOpenFrameComments(frame, { x: sx, y: sy }) },
+      { kind: 'separator' },
+      { kind: 'action', label: 'Ungroup', icon: FolderMinus, shortcut: ['⌘', '⇧', 'G'], onClick: ungroupSelected },
+      { kind: 'action', label: 'Delete', icon: Trash2, shortcut: ['⌫'], onClick: () => handleFrameDelete(frame.id), danger: true },
+    ];
+  }, [blocksRef, framesRef, addTextNoteAt, selectAll, resetView, handleOpenBlock, handleOpenComments, duplicateSelected, groupSelected, deleteSelectedAny, handleFrameColor, handleOpenFrameComments, ungroupSelected, handleFrameDelete]);
+
   const frameHandlers = useMemo<FrameHandlers>(() => ({
     onSelect: handleFrameSelect,
     onRename: handleFrameRename,
@@ -584,7 +643,14 @@ export default function Canvas({
     onResize: handleFrameResize,
     onOpenComments: handleOpenFrameComments,
     onBeforeMutate: pushSnapshot,
-  }), [handleFrameSelect, handleFrameRename, handleFrameColor, handleFrameToggleCollapse, handleFrameDelete, handleFrameDragMove, handleFrameDragEnd, handleFrameResize, handleOpenFrameComments, pushSnapshot]);
+    onContextMenu: (id: string, clientX: number, clientY: number) => {
+      const rect = viewportRef.current?.getBoundingClientRect();
+      if (!rect) return;
+      setCommentTarget(null);
+      handleFrameSelect(id);
+      openMenu(buildMenuRows({ kind: 'frame', id }, clientX - rect.left, clientY - rect.top), clientX, clientY, rect);
+    },
+  }), [handleFrameSelect, handleFrameRename, handleFrameColor, handleFrameToggleCollapse, handleFrameDelete, handleFrameDragMove, handleFrameDragEnd, handleFrameResize, handleOpenFrameComments, pushSnapshot, openMenu, buildMenuRows]);
 
   // ─── Block drag → frame drop-target preview + commit ──────────────────
 
@@ -723,7 +789,14 @@ export default function Canvas({
     onMultiDragEnd: handleMultiDragEnd,
     onBeforeDragCommit: pushSnapshot,
     onDragRect: handleBlockDragRect,
-  }), [handleBlockSelectWithFrameClear, handleBlockClickEnd, handleOpenBlock, updateBlock, handleDeleteBlock, handleOpenComments, handleMultiDragMove, handleMultiDragEnd, pushSnapshot, handleBlockDragRect]);
+    onContextMenu: (id: string, clientX: number, clientY: number) => {
+      const rect = viewportRef.current?.getBoundingClientRect();
+      if (!rect) return;
+      setCommentTarget(null);
+      if (!selectedIdsRef.current.has(id)) handleBlockSelectWithFrameClear(id, false);
+      openMenu(buildMenuRows({ kind: 'block', id }, clientX - rect.left, clientY - rect.top), clientX, clientY, rect);
+    },
+  }), [handleBlockSelectWithFrameClear, handleBlockClickEnd, handleOpenBlock, updateBlock, handleDeleteBlock, handleOpenComments, handleMultiDragMove, handleMultiDragEnd, pushSnapshot, handleBlockDragRect, openMenu, selectedIdsRef, buildMenuRows]);
 
   const toolbarActions = useMemo(() => ({
     addText: addTextNote,
@@ -792,6 +865,11 @@ export default function Canvas({
       onPointerUp={isFollowing ? undefined : onPointerUp}
       onPointerCancel={isFollowing ? undefined : onPointerUp}
       onDoubleClick={canEdit && !isFollowing ? onDoubleClick : undefined}
+      onContextMenu={canEdit && !isFollowing ? (e => {
+        e.preventDefault();
+        const rect = viewportRef.current?.getBoundingClientRect();
+        if (rect) openMenu(buildMenuRows({ kind: 'canvas' }, e.clientX - rect.left, e.clientY - rect.top), e.clientX, e.clientY, rect);
+      }) : undefined}
       onDragOver={canEdit && !isFollowing ? (e => e.preventDefault()) : undefined}
       onDrop={canEdit && !isFollowing ? handleDrop : undefined}
     >
@@ -830,6 +908,7 @@ export default function Canvas({
               descendantBlocks={present?.descBlocks ?? []}
               handlers={frameHandlers}
               dropPreview={dropPreview}
+              renameRequest={renameFrameReq}
             />
           );
         })}
@@ -948,6 +1027,18 @@ export default function Canvas({
           onUploadImage={file => handleUploadImage(file, addPos.x, addPos.y)}
           onClose={() => setAddPos(null)}
         />
+      )}
+
+      {canEdit && !isFollowing && menu && (
+        <>
+          {/* Click-catcher: any pointer down / right-click outside the menu dismisses it. */}
+          <div
+            className="absolute inset-0 z-40"
+            onPointerDown={closeMenu}
+            onContextMenu={e => { e.preventDefault(); closeMenu(); }}
+          />
+          <ContextMenu x={menu.x} y={menu.y} bounds={menu.bounds} rows={menu.rows} onClose={closeMenu} />
+        </>
       )}
 
       <AnimatePresence>

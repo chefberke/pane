@@ -15,7 +15,7 @@ import {
   FRAME_RESIZE_CORNER_SIZE,
   FRAME_RESIZE_EDGE_SIZE,
 } from './constants';
-import type { FrameDropPreview, FrameHandlers } from './types';
+import type { FrameDropPreview, FrameHandlers, FrameRenameRequest } from './types';
 
 interface Props {
   frame: FrameType;
@@ -25,12 +25,22 @@ interface Props {
   descendantBlocks: Block[];
   handlers: FrameHandlers;
   dropPreview?: FrameDropPreview;
+  /** A one-shot rename request (driven by the context menu); enters inline-edit when its id matches. */
+  renameRequest?: FrameRenameRequest | null;
 }
 
 /** Frame container — dashed-bordered rectangle with external header above and floating action pill. */
-function Frame({ frame, scale, selected, memberCount, descendantBlocks, handlers, dropPreview }: Props) {
+function Frame({ frame, scale, selected, memberCount, descendantBlocks, handlers, dropPreview, renameRequest }: Props) {
   const [isEditing, setIsEditing] = useState(false);
   const [isHovered, setIsHovered] = useState(false);
+
+  // Enter inline-edit when a new rename request targets this (expanded) frame.
+  // Render-phase "compare previous prop" pattern (mirrors FrameTitle) — sets local state only.
+  const [seenRename, setSeenRename] = useState(renameRequest);
+  if (renameRequest !== seenRename) {
+    setSeenRename(renameRequest);
+    if (renameRequest && !frame.collapsed && renameRequest.id === frame.id) setIsEditing(true);
+  }
 
   const { onTitleDragPointerDown } = useFrameDrag({
     frameId: frame.id,
@@ -57,6 +67,7 @@ function Frame({ frame, scale, selected, memberCount, descendantBlocks, handlers
         handlers={handlers}
         onDragPointerDown={onTitleDragPointerDown}
         dropPreview={dropPreview}
+        renameRequest={renameRequest}
       />
     );
   }
@@ -139,6 +150,7 @@ function Frame({ frame, scale, selected, memberCount, descendantBlocks, handlers
           zIndex: 1,
         }}
         onPointerDown={onTitleDragPointerDown}
+        onContextMenu={e => { e.preventDefault(); e.stopPropagation(); handlers.onContextMenu(frame.id, e.clientX, e.clientY); }}
       />
 
       {/* Invisible perimeter resize zones — 4 edges + 4 corners (corners overlap edges via higher z). */}

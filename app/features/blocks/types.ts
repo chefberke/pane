@@ -12,4 +12,5 @@ export interface BlockHandlers {
   onMultiDragEnd: (dx: number, dy: number) => void;
   onBeforeDragCommit: () => void;
   onDragRect: (blockId: string, delta: { dx: number; dy: number } | null) => void;
+  onContextMenu: (id: string, clientX: number, clientY: number) => void;
 }
