@@ -1,6 +1,5 @@
 'use client';
 import { useState, useEffect, useRef } from 'react';
-import { Paperclip } from 'lucide-react';
 
 /** Props for the double-click popover that lets users type a URL or note. */
 interface Props {
@@ -9,18 +8,12 @@ interface Props {
   /** Viewport-relative Y position of the popover center. */
   y: number;
   onSubmit: (value: string) => void;
-  /** Called when the user selects a PDF file to upload. */
-  onUploadPdf?: (file: File) => void;
-  /** Called when the user selects an image file to upload. */
-  onUploadImage?: (file: File) => void;
   onClose: () => void;
 }
 
-export default function AddInput({ x, y, onSubmit, onUploadPdf, onUploadImage, onClose }: Props) {
+export default function AddInput({ x, y, onSubmit, onClose }: Props) {
   const [value, setValue] = useState('');
-  const [uploading, setUploading] = useState(false);
   const ref = useRef<HTMLInputElement>(null);
-  const fileRef = useRef<HTMLInputElement>(null);
 
   useEffect(() => { ref.current?.focus(); }, []);
 
@@ -28,19 +21,6 @@ export default function AddInput({ x, y, onSubmit, onUploadPdf, onUploadImage, o
     e.stopPropagation();
     if (e.key === 'Enter') onSubmit(value);
     else if (e.key === 'Escape') onClose();
-  };
-
-  const handleFileChange = async (e: React.ChangeEvent<HTMLInputElement>) => {
-    const file = e.target.files?.[0];
-    if (!file) return;
-    const handler = file.type.startsWith('image/') ? onUploadImage : onUploadPdf;
-    if (!handler) return;
-    setUploading(true);
-    try {
-      await handler(file);
-    } finally {
-      setUploading(false);
-    }
   };
 
   return (
@@ -70,31 +50,10 @@ export default function AddInput({ x, y, onSubmit, onUploadPdf, onUploadImage, o
           onChange={e => setValue(e.target.value)}
           onKeyDown={handleKeyDown}
         />
-        {(onUploadPdf || onUploadImage) && (
-          <>
-            <button
-              className="px-3 py-3.5 transition-colors hover:opacity-70 shrink-0"
-              style={{ color: 'var(--color-text-muted)' }}
-              title={uploading ? 'Uploading…' : 'Upload file'}
-              disabled={uploading}
-              onClick={() => fileRef.current?.click()}
-              onPointerDown={e => e.stopPropagation()}
-            >
-              <Paperclip size={14} />
-            </button>
-            <input
-              ref={fileRef}
-              type="file"
-              accept={[onUploadImage && 'image/*', onUploadPdf && 'application/pdf'].filter(Boolean).join(',')}
-              className="hidden"
-              onChange={handleFileChange}
-            />
-          </>
-        )}
       </div>
       <div className="px-4 pb-3 flex items-center justify-between">
         <span className="text-xs" style={{ color: 'var(--color-text-muted)' }}>
-          {uploading ? 'Uploading…' : 'Enter to add · Esc to cancel'}
+          Enter to add · Esc to cancel
         </span>
         <button
           className="text-xs font-medium transition-colors text-blue-500 hover:text-blue-400"

@@ -1,6 +1,6 @@
 'use client';
 import { memo, useMemo } from 'react';
-import { ExternalLink, FileText, Loader2 } from 'lucide-react';
+import { ExternalLink, FileText } from 'lucide-react';
 import type { PdfBlock } from '@/app/features/types';
 import { assertHttpsUrl } from '@/app/features/canvas/utils';
 import PdfUnavailable from '../PdfUnavailable';
@@ -40,13 +40,8 @@ function PdfEmbed({ block }: { block: PdfBlock }) {
         </a>
       </div>
 
-      {/* PDF content — loading placeholder while the upload is in flight */}
-      {block.uploading ? (
-        <div className="flex-1 flex flex-col items-center justify-center gap-3 p-6" style={{ color: 'var(--color-text-muted)' }}>
-          <Loader2 size={28} className="animate-spin" />
-          <p className="text-xs text-center">Uploading…</p>
-        </div>
-      ) : !safeSrc ? (
+      {/* PDF content */}
+      {!safeSrc ? (
         <PdfUnavailable filename={filename} />
       ) : (
         <div className="relative flex-1">

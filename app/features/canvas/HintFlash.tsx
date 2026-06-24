@@ -7,8 +7,8 @@ interface Props {
   message: string;
 }
 
-/** Transient red label shown on the canvas where an upload was rejected; fades out on its own. */
-export default function UploadErrorFlash({ x, y, message }: Props) {
+/** Transient neutral label shown on the canvas to hint the user (e.g. on a rejected file drop); fades out on its own. */
+export default function HintFlash({ x, y, message }: Props) {
   return (
     <motion.div
       className="absolute z-[120] pointer-events-none px-2.5 py-1.5 rounded-lg text-xs font-medium whitespace-nowrap"
@@ -17,7 +17,7 @@ export default function UploadErrorFlash({ x, y, message }: Props) {
         top: y,
         transform: 'translate(-50%, -50%)',
         background: 'var(--color-surface-raised)',
-        color: 'var(--color-text-danger)',
+        color: 'var(--color-text-secondary)',
         border: '1px solid var(--color-border-default)',
         boxShadow: 'var(--shadow-float)',
       }}

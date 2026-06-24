@@ -7,16 +7,8 @@ export const DRAG_THRESHOLD = 2;
 export const MARQUEE_THRESHOLD = 4;
 export const DOT_GRID_SIZE = 24;
 export const FOLLOW_LERP = 0.18;
-/** Safety cap on the raw image file we'll even attempt to process, in bytes (30 MB). Most images are downscaled well below this before upload. */
-export const MAX_IMAGE_BYTES = 30_000_000;
-/** Longest edge (px) an uploaded image is downscaled to before upload. */
-export const MAX_IMAGE_EDGE = 2000;
-/** WebP quality (0–1) used when re-encoding a downscaled image. */
-export const IMAGE_OUTPUT_QUALITY = 0.8;
-/** Maximum size for an uploaded PDF, in bytes (25 MB) — PDFs can't be compressed client-side. */
-export const MAX_PDF_BYTES = 25_000_000;
-/** How long the on-canvas upload error label stays visible, in ms. */
-export const UPLOAD_ERROR_MS = 2500;
+/** How long a transient on-canvas hint label stays visible, in ms. */
+export const HINT_FLASH_MS = 2500;
 /** Debounce before persisting canvas state after a change, in ms. */
 export const SAVE_DEBOUNCE_MS = 150;
 /** Screen-edge padding (px) reserved when zooming to fit all blocks. */

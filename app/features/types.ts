@@ -44,7 +44,6 @@ export interface ImageBlock extends BaseBlock {
   type: 'image';
   url: string;
   alt?: string;
-  uploading?: boolean;
 }
 
 export interface TextBlock extends BaseBlock {
@@ -56,9 +55,6 @@ export interface PdfBlock extends BaseBlock {
   type: 'pdf';
   url: string;
   title?: string;
-  source: 'url' | 'upload';
-  filePath?: string;
-  uploading?: boolean;
 }
 
 export interface SpotifyBlock extends BaseBlock {

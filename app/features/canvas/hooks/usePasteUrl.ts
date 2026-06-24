@@ -1,19 +1,19 @@
 import { useEffect, useRef, type RefObject } from 'react';
 
-/** Listens for paste events and drops pasted URLs (or images) onto the canvas at the viewport center. */
+/** Listens for paste events and drops pasted URLs onto the canvas at the viewport center; raw pasted images are not stored, only hinted. */
 export function usePasteUrl({
   viewportRef,
   addBlockFromUrl,
-  onPasteImage,
+  onPasteImageBlocked,
 }: {
   viewportRef: RefObject<HTMLDivElement | null>;
   addBlockFromUrl: (url: string, screenX: number, screenY: number) => void;
-  onPasteImage?: (file: File, screenX: number, screenY: number) => void;
+  onPasteImageBlocked?: (screenX: number, screenY: number) => void;
 }) {
   const addBlockFromUrlRef = useRef(addBlockFromUrl);
   useEffect(() => { addBlockFromUrlRef.current = addBlockFromUrl; }, [addBlockFromUrl]);
-  const onPasteImageRef = useRef(onPasteImage);
-  useEffect(() => { onPasteImageRef.current = onPasteImage; }, [onPasteImage]);
+  const onPasteImageBlockedRef = useRef(onPasteImageBlocked);
+  useEffect(() => { onPasteImageBlockedRef.current = onPasteImageBlocked; }, [onPasteImageBlocked]);
 
   useEffect(() => {
     const onPaste = (e: ClipboardEvent) => {
@@ -21,13 +21,13 @@ export function usePasteUrl({
       const cx = el ? el.clientWidth / 2 : 400;
       const cy = el ? el.clientHeight / 2 : 300;
 
-      // Pasted image (e.g. screenshot) takes priority over text.
+      // Raw pasted images (e.g. screenshots) aren't stored — hint the user to paste a link instead.
       const imageFile = Array.from(e.clipboardData?.items ?? [])
         .find(item => item.kind === 'file' && item.type.startsWith('image/'))
         ?.getAsFile();
-      if (imageFile && onPasteImageRef.current) {
+      if (imageFile) {
         e.preventDefault();
-        onPasteImageRef.current(imageFile, cx, cy);
+        onPasteImageBlockedRef.current?.(cx, cy);
         return;
       }
 

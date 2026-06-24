@@ -31,7 +31,7 @@ import { useConnectors } from '../connectors/hooks/useConnectors';
 import { useConnectorDrag } from '../connectors/hooks/useConnectorDrag';
 import { usePersistence } from './hooks/usePersistence';
 import { usePresenceSync } from './hooks/usePresenceSync';
-import { useFileUpload } from './hooks/useFileUpload';
+import { useCanvasHint } from './hooks/useCanvasHint';
 import { useComments } from './hooks/useComments';
 import { useFrameInteractions } from './hooks/useFrameInteractions';
 import { useBlockDropTarget } from './hooks/useBlockDropTarget';
@@ -145,9 +145,19 @@ export default function Canvas({
     setBlocks(prev => [...prev, { id: uid(), type: 'text', content: '', x: x - w / 2, y: y - h / 2 }]);
   }, [screenToCanvas, setBlocks, pushSnapshot]);
 
-  // ─── File upload + comments ──────────────────────────────────────────────
-  const { uploadError, handleUploadPdf, handleUploadImage, handleDrop } = useFileUpload({ screenToCanvas, setBlocks, pushSnapshot, setAddPos, viewportRef });
-  usePasteUrl({ viewportRef, addBlockFromUrl, onPasteImage: handleUploadImage });
+  // ─── Drop/paste hint + comments ──────────────────────────────────────────
+  const { hint, flashHint } = useCanvasHint();
+  usePasteUrl({ viewportRef, addBlockFromUrl, onPasteImageBlocked: (sx, sy) => flashHint(sx, sy, 'Paste an image/PDF link instead') });
+
+  /** Files aren't hosted — a dropped file just flashes a hint to use a link. */
+  const handleCanvasDrop = useCallback((e: React.DragEvent) => {
+    if (!e.dataTransfer?.files?.length) return;
+    e.preventDefault();
+    const rect = viewportRef.current?.getBoundingClientRect();
+    const sx = rect ? e.clientX - rect.left : 400;
+    const sy = rect ? e.clientY - rect.top : 300;
+    flashHint(sx, sy, 'Drop a link, not a file');
+  }, [flashHint]);
   const { commentTarget, setCommentTarget, commentHandlers } = useComments({ pushSnapshot, updateBlock, updateFrame, blocksRef, framesRef, identity });
 
   // ─── Selection helpers ───────────────────────────────────────────────────
@@ -231,12 +241,12 @@ export default function Canvas({
   const handleOpenBlock = useCallback((block: Block) => {
     // Images open in an in-app lightbox rather than a new tab.
     if (block.type === 'image') {
-      if (!block.uploading && block.url) setLightbox({ url: block.url, alt: block.alt });
+      if (block.url) setLightbox({ url: block.url, alt: block.alt });
       return;
     }
     // PDFs preview inline in a modal rather than a new tab.
     if (block.type === 'pdf') {
-      if (!block.uploading && block.url) setPdfLightbox({ url: block.url, title: block.title });
+      if (block.url) setPdfLightbox({ url: block.url, title: block.title });
       return;
     }
     let url: string | null = null;
@@ -503,7 +513,7 @@ export default function Canvas({
         if (rect) openMenu(buildMenuRows({ kind: 'canvas' }, e.clientX - rect.left, e.clientY - rect.top), e.clientX, e.clientY, rect);
       }) : undefined}
       onDragOver={canEdit && !isFollowing ? (e => e.preventDefault()) : undefined}
-      onDrop={canEdit && !isFollowing ? handleDrop : undefined}
+      onDrop={canEdit && !isFollowing ? handleCanvasDrop : undefined}
     >
       <DotGrid offset={offset} scale={scale} />
 
@@ -537,14 +547,12 @@ export default function Canvas({
       <CanvasOverlays
         canEdit={canEdit}
         isFollowing={isFollowing}
-        transient={{ marquee, addPos, menu, uploadError, commentTarget }}
+        transient={{ marquee, addPos, menu, hint, commentTarget }}
         modals={{ isSearchOpen, isHelpOpen, isItemsOpen, lightbox, pdfLightbox }}
         data={{ blocks, frames, blockById, frameById, scale, canUndo, canRedo, themeChoice, topRightSlot, toolbarStatus, toolbarActions }}
         commentHandlers={commentHandlers}
         actions={{
           handleAddSubmit,
-          handleUploadPdf,
-          handleUploadImage,
           setAddPos,
           closeMenu,
           setCommentTarget,

@@ -236,7 +236,7 @@ function labelsFor(block: Block): { primary?: string; secondary?: string } {
   switch (block.type) {
     case 'link':    return { primary: block.title ?? parseDomain(block.url), secondary: block.title ? parseDomain(block.url) : undefined };
     case 'twitter': return { primary: 'Tweet', secondary: parseDomain(block.url) };
-    case 'pdf':     return { primary: block.title ?? 'PDF', secondary: block.source === 'upload' ? 'Uploaded' : parseDomain(block.url) };
+    case 'pdf':     return { primary: block.title ?? 'PDF', secondary: parseDomain(block.url) };
     case 'spotify': return { primary: block.spotifyType.charAt(0).toUpperCase() + block.spotifyType.slice(1), secondary: 'Spotify' };
     case 'map':     return { primary: block.title ?? 'Map', secondary: 'Location' };
     case 'github':  return { primary: `${block.owner}/${block.repo}`, secondary: block.language ?? 'GitHub' };

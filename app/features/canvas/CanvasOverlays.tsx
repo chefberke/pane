@@ -15,7 +15,7 @@ import ItemsButton from '../items-panel/ItemsButton';
 import MenuButton from '../menu-panel/MenuButton';
 import ShortcutsButton from './ShortcutsButton';
 import EmptyState from './EmptyState';
-import UploadErrorFlash from './UploadErrorFlash';
+import HintFlash from './HintFlash';
 import { ZOOM_STEP } from './constants';
 
 // Heavy, conditionally-mounted overlays — code-split out of the initial canvas
@@ -30,7 +30,7 @@ interface Transient {
   marquee: Marquee | null;
   addPos: { x: number; y: number } | null;
   menu: ContextMenuState | null;
-  uploadError: { x: number; y: number; message: string } | null;
+  hint: { x: number; y: number; message: string } | null;
   commentTarget: CommentTarget;
 }
 
@@ -58,8 +58,6 @@ interface Data {
 
 interface Actions {
   handleAddSubmit: (value: string, sx: number, sy: number) => void;
-  handleUploadPdf: (file: File, sx: number, sy: number) => void;
-  handleUploadImage: (file: File, sx: number, sy: number) => void;
   setAddPos: (pos: { x: number; y: number } | null) => void;
   closeMenu: () => void;
   setCommentTarget: (t: CommentTarget) => void;
@@ -91,7 +89,7 @@ interface Props {
 
 /** The full floating overlay stack rendered above the canvas world (chrome, modals, popovers). */
 export default function CanvasOverlays({ canEdit, isFollowing, transient, modals, data, commentHandlers, actions }: Props) {
-  const { marquee, addPos, menu, uploadError, commentTarget } = transient;
+  const { marquee, addPos, menu, hint, commentTarget } = transient;
   const { isSearchOpen, isHelpOpen, isItemsOpen, lightbox, pdfLightbox } = modals;
   const { blocks, frames, blockById, frameById, scale, canUndo, canRedo, themeChoice, topRightSlot, toolbarStatus, toolbarActions } = data;
 
@@ -118,8 +116,6 @@ export default function CanvasOverlays({ canEdit, isFollowing, transient, modals
           x={addPos.x}
           y={addPos.y}
           onSubmit={val => actions.handleAddSubmit(val, addPos.x, addPos.y)}
-          onUploadPdf={file => actions.handleUploadPdf(file, addPos.x, addPos.y)}
-          onUploadImage={file => actions.handleUploadImage(file, addPos.x, addPos.y)}
           onClose={() => actions.setAddPos(null)}
         />
       )}
@@ -137,12 +133,12 @@ export default function CanvasOverlays({ canEdit, isFollowing, transient, modals
       )}
 
       <AnimatePresence>
-        {uploadError && (
-          <UploadErrorFlash
-            key={`${uploadError.x}-${uploadError.y}-${uploadError.message}`}
-            x={uploadError.x}
-            y={uploadError.y}
-            message={uploadError.message}
+        {hint && (
+          <HintFlash
+            key={`${hint.x}-${hint.y}-${hint.message}`}
+            x={hint.x}
+            y={hint.y}
+            message={hint.message}
           />
         )}
       </AnimatePresence>

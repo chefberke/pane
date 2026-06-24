@@ -101,7 +101,7 @@ export function useBlocks({ screenToCanvas }: {
     }
     if (type === 'pdf') {
       const { w, h } = BLOCK_SIZES.pdf;
-      setBlocks(prev => [...prev, { id: uid(), type: 'pdf', url, source: 'url', x: pos.x - w / 2, y: pos.y - h / 2 }]);
+      setBlocks(prev => [...prev, { id: uid(), type: 'pdf', url, x: pos.x - w / 2, y: pos.y - h / 2 }]);
       return;
     }
 
