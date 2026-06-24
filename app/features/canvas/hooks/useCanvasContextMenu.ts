@@ -1,7 +1,7 @@
 'use client';
 import { useCallback } from 'react';
 import { Plus, Type, BoxSelect, Maximize2, ExternalLink, Link2, MessageCircle, Copy, FolderPlus, FolderMinus, Trash2, Pencil } from 'lucide-react';
-import type { Block, Frame, FrameColor } from '@/app/features/types';
+import type { Block, Frame, Connector, FrameColor } from '@/app/features/types';
 import { useContextMenu } from '../../context-menu/hooks/useContextMenu';
 import { blockShareUrl } from '../../context-menu/utils';
 import type { ContextMenuRow, ContextMenuTarget } from '../../context-menu/types';
@@ -22,17 +22,19 @@ interface ContextMenuActions {
   ungroupSelected: () => void;
   handleFrameDelete: (id: string) => void;
   setRenameFrameReq: (req: FrameRenameRequest | null) => void;
+  deleteConnector: (id: string) => void;
 }
 
 interface Refs {
   blocksRef: React.RefObject<Block[]>;
   framesRef: React.RefObject<Frame[]>;
+  connectorsRef: React.RefObject<Connector[]>;
 }
 
 /** Wraps the context-menu primitive and builds target-specific menu rows from a stable action bag. */
 export function useCanvasContextMenu(actions: ContextMenuActions, refs: Refs) {
   const { menu, openMenu, closeMenu } = useContextMenu();
-  const { blocksRef, framesRef } = refs;
+  const { blocksRef, framesRef, connectorsRef } = refs;
 
   /**
    * Builds context-menu rows for a target. Called from event handlers (not render), so reading the
@@ -66,6 +68,13 @@ export function useCanvasContextMenu(actions: ContextMenuActions, refs: Refs) {
       );
       return rows;
     }
+    if (target.kind === 'connector') {
+      const connector = connectorsRef.current.find(c => c.id === target.id);
+      if (!connector) return [];
+      return [
+        { kind: 'action', label: 'Delete connector', icon: Trash2, shortcut: ['⌫'], onClick: () => actions.deleteConnector(connector.id), danger: true },
+      ];
+    }
     const frame = framesRef.current.find(f => f.id === target.id);
     if (!frame) return [];
     return [
@@ -76,7 +85,7 @@ export function useCanvasContextMenu(actions: ContextMenuActions, refs: Refs) {
       { kind: 'action', label: 'Ungroup', icon: FolderMinus, shortcut: ['⌘', '⇧', 'G'], onClick: actions.ungroupSelected },
       { kind: 'action', label: 'Delete', icon: Trash2, shortcut: ['⌫'], onClick: () => actions.handleFrameDelete(frame.id), danger: true },
     ];
-  }, [actions, blocksRef, framesRef]);
+  }, [actions, blocksRef, framesRef, connectorsRef]);
 
   return { menu, openMenu, closeMenu, buildMenuRows };
 }

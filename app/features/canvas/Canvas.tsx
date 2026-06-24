@@ -2,7 +2,8 @@
 import { useState, useRef, useCallback, useMemo } from 'react';
 import type { Block, Frame } from '@/app/features/types';
 import type { CanvasProps } from './types';
-import { BLOCK_SIZES, MIN_SCALE, MAX_SCALE, ZOOM_TO_FIT_PADDING } from './constants';
+import type { Rect } from '../frames/types';
+import { BLOCK_SIZES, MIN_SCALE, MAX_SCALE, ZOOM_TO_FIT_PADDING, CONNECTOR_DRAG_SHIELD_Z } from './constants';
 import { uid } from './utils';
 import {
   blockRect,
@@ -26,6 +27,8 @@ import { usePinchZoom } from './hooks/usePinchZoom';
 import { useLatestRef } from './hooks/useLatestRef';
 import { useFollowViewport } from './hooks/useFollowViewport';
 import { useFrames } from '../frames/hooks/useFrames';
+import { useConnectors } from '../connectors/hooks/useConnectors';
+import { useConnectorDrag } from '../connectors/hooks/useConnectorDrag';
 import { usePersistence } from './hooks/usePersistence';
 import { usePresenceSync } from './hooks/usePresenceSync';
 import { useFileUpload } from './hooks/useFileUpload';
@@ -61,14 +64,19 @@ export default function Canvas({
     frames, setFrames, createFromSelection, updateFrame, deleteFrame,
     toggleCollapse, renameFrame, setFrameColor,
   } = useFrames();
+  const { connectors, setConnectors, addConnector, deleteConnector, pruneByBlocks } = useConnectors();
 
   const blocksRef = useLatestRef(blocks);
   const framesRef = useLatestRef(frames);
-  const { pushSnapshot, undo, redo, canUndo, canRedo } = useHistory({ setBlocks, blocksRef, setFrames, framesRef });
+  const connectorsRef = useLatestRef(connectors);
+  const { pushSnapshot, undo, redo, canUndo, canRedo } = useHistory({ setBlocks, blocksRef, setFrames, framesRef, setConnectors, connectorsRef });
   const { selectedIds, setSelectedIds, handleBlockSelect, handleBlockClickEnd, handleMultiDragMove, handleMultiDragEnd, duplicateSelected, selectAll, nudgeSelected, alignSelected } = useSelection({ blocks, setBlocks, pushSnapshot });
 
   // ─── Local UI state ──────────────────────────────────────────────────────
   const [selectedFrameId, setSelectedFrameId] = useState<string | null>(null);
+  const [selectedConnectorId, setSelectedConnectorId] = useState<string | null>(null);
+  const selectedConnectorIdRef = useLatestRef(selectedConnectorId);
+  const [liveDrag, setLiveDrag] = useState<{ ids: Set<string>; dx: number; dy: number } | null>(null);
   const [renameFrameReq, setRenameFrameReq] = useState<FrameRenameRequest | null>(null);
   const [addPos, setAddPos] = useState<{ x: number; y: number } | null>(null);
   const [isSearchOpen, setIsSearchOpen] = useState(false);
@@ -79,9 +87,18 @@ export default function Canvas({
   const selectedIdsRef = useLatestRef(selectedIds);
 
   usePinchZoom({ viewportRef, setOffset, setScale, offsetRef, scaleRef, disabled: isFollowing });
-  usePersistence({ initialState, onSave, canEdit, blocks, frames, offset, scale, setBlocks, setFrames, setScale, setOffset });
+  usePersistence({ initialState, onSave, canEdit, blocks, frames, connectors, offset, scale, setBlocks, setFrames, setConnectors, setScale, setOffset });
   usePresenceSync({ selectedIds, selectedFrameId, onSelectionChange, offset, scale, isFollowing, onViewportChange, viewportRef });
   useFollowViewport({ isFollowing, followTarget, viewportRef, offset, scale, setOffset, setScale });
+
+  // Live block id → world rect map, used to render connector endpoints and hit-test drop targets.
+  const blockRectById = useMemo(() => {
+    const m = new Map<string, Rect>();
+    for (const b of blocks) m.set(b.id, blockRect(b));
+    return m;
+  }, [blocks]);
+  const blockRectByIdRef = useLatestRef(blockRectById);
+  const { pending, startConnector } = useConnectorDrag({ viewportRef, screenToCanvas, rectByIdRef: blockRectByIdRef, addConnector, pushSnapshot });
 
   const zoomToFit = useCallback(() => {
     const el = viewportRef.current;
@@ -136,6 +153,7 @@ export default function Canvas({
   // ─── Selection helpers ───────────────────────────────────────────────────
   const handleFrameSelect = useCallback((id: string) => {
     setSelectedIds(new Set());
+    setSelectedConnectorId(null);
     setSelectedFrameId(id);
   }, [setSelectedIds]);
 
@@ -143,8 +161,24 @@ export default function Canvas({
 
   const handleBlockSelectWithFrameClear = useCallback((id: string, shiftKey: boolean) => {
     setSelectedFrameId(null);
+    setSelectedConnectorId(null);
     handleBlockSelect(id, shiftKey);
   }, [handleBlockSelect]);
+
+  /** Selects a single connector, clearing any block/frame selection. */
+  const handleSelectConnector = useCallback((id: string) => {
+    setSelectedIds(new Set());
+    setSelectedFrameId(null);
+    setCommentTarget(null);
+    setSelectedConnectorId(id);
+  }, [setSelectedIds, setCommentTarget]);
+
+  /** Deletes a connector by id (with an undo checkpoint). */
+  const handleDeleteConnector = useCallback((id: string) => {
+    pushSnapshot();
+    deleteConnector(id);
+    setSelectedConnectorId(prev => (prev === id ? null : prev));
+  }, [deleteConnector, pushSnapshot]);
 
   /** Group currently selected blocks into a new frame. */
   const groupSelected = useCallback(() => {
@@ -167,6 +201,12 @@ export default function Canvas({
 
   /** Unified delete: removes the selected frame if one is selected, otherwise blocks (plus any frames whose all descendant blocks are being deleted). */
   const deleteSelectedAny = useCallback(() => {
+    if (selectedConnectorIdRef.current) {
+      pushSnapshot();
+      deleteConnector(selectedConnectorIdRef.current);
+      setSelectedConnectorId(null);
+      return;
+    }
     if (selectedFrameId) {
       pushSnapshot();
       deleteFrame(selectedFrameId);
@@ -181,11 +221,12 @@ export default function Canvas({
     });
     pushSnapshot();
     setBlocks(prev => prev.filter(b => !selectedIdsRef.current.has(b.id)));
+    pruneByBlocks(selectedIdsRef.current);
     setSelectedIds(new Set());
     if (toDeleteFrames.length > 0) {
       setFrames(prev => prev.filter(f => !toDeleteFrames.some(df => df.id === f.id)));
     }
-  }, [selectedFrameId, deleteFrame, framesRef, blocksRef, selectedIdsRef, pushSnapshot, setBlocks, setSelectedIds, setFrames]);
+  }, [selectedConnectorIdRef, deleteConnector, selectedFrameId, deleteFrame, framesRef, blocksRef, selectedIdsRef, pushSnapshot, setBlocks, pruneByBlocks, setSelectedIds, setFrames]);
 
   const handleOpenBlock = useCallback((block: Block) => {
     // Images open in an in-app lightbox rather than a new tab.
@@ -210,9 +251,10 @@ export default function Canvas({
   const handleDeleteBlock = useCallback((id: string) => {
     pushSnapshot();
     deleteBlock(id);
+    pruneByBlocks(new Set([id]));
     setSelectedIds(prev => { const n = new Set(prev); n.delete(id); return n; });
     setCommentTarget(prev => (prev?.kind === 'block' && prev.id === id) ? null : prev);
-  }, [deleteBlock, setSelectedIds, pushSnapshot, setCommentTarget]);
+  }, [deleteBlock, pruneByBlocks, setSelectedIds, pushSnapshot, setCommentTarget]);
 
   // ─── Frame interactions + block drop-target ──────────────────────────────
   const {
@@ -225,6 +267,21 @@ export default function Canvas({
   });
 
   const { dragHover, handleBlockDragRect } = useBlockDropTarget({ blocksRef, framesRef, selectedIdsRef, setFrames });
+
+  /** Wraps the drop-target signal so connectors follow blocks live (and smoothly) during a drag, before state commits on drop. */
+  const handleBlockDragLive = useCallback((blockId: string, delta: { dx: number; dy: number } | null) => {
+    handleBlockDragRect(blockId, delta);
+    if (!delta) { setLiveDrag(null); return; }
+    const sel = selectedIdsRef.current;
+    const ids = sel.size > 1 && sel.has(blockId) ? sel : new Set([blockId]);
+    setLiveDrag({ ids, dx: delta.dx, dy: delta.dy });
+  }, [handleBlockDragRect, selectedIdsRef]);
+
+  /** Clears the live offset in the same synchronous flush that commits the group move, avoiding a one-frame jump. */
+  const handleMultiDragEndLive = useCallback((dx: number, dy: number) => {
+    setLiveDrag(null);
+    handleMultiDragEnd(dx, dy);
+  }, [handleMultiDragEnd]);
 
   const handleAddSubmit = useCallback((value: string, sx: number, sy: number) => {
     setAddPos(null);
@@ -285,9 +342,19 @@ export default function Canvas({
     ungroupSelected,
     handleFrameDelete,
     setRenameFrameReq,
-  }), [addTextNoteAt, selectAll, resetView, handleOpenBlock, commentHandlers, duplicateSelected, groupSelected, deleteSelectedAny, handleFrameColor, ungroupSelected, handleFrameDelete]);
+    deleteConnector: handleDeleteConnector,
+  }), [addTextNoteAt, selectAll, resetView, handleOpenBlock, commentHandlers, duplicateSelected, groupSelected, deleteSelectedAny, handleFrameColor, ungroupSelected, handleFrameDelete, handleDeleteConnector]);
 
-  const { menu, openMenu, closeMenu, buildMenuRows } = useCanvasContextMenu(contextMenuActions, { blocksRef, framesRef });
+  const { menu, openMenu, closeMenu, buildMenuRows } = useCanvasContextMenu(contextMenuActions, { blocksRef, framesRef, connectorsRef });
+
+  /** Opens the right-click menu for a connector (selects it first). No-op for viewers. */
+  const handleConnectorContextMenu = useCallback((id: string, clientX: number, clientY: number) => {
+    if (!canEdit) return;
+    const rect = viewportRef.current?.getBoundingClientRect();
+    if (!rect) return;
+    handleSelectConnector(id);
+    openMenu(buildMenuRows({ kind: 'connector', id }, clientX - rect.left, clientY - rect.top), clientX, clientY, rect);
+  }, [canEdit, openMenu, buildMenuRows, handleSelectConnector]);
 
   // ─── Marquee + keyboard ──────────────────────────────────────────────────
   const { marquee, isPanMode, setIsPanMode, isPanning, onPointerDown, onPointerMove, onPointerUp, onDoubleClick } = useMarquee({
@@ -296,7 +363,7 @@ export default function Canvas({
     setOffset,
     setSelectedIds,
     onDoubleClickCanvas: (sx, sy) => setAddPos({ x: sx, y: sy }),
-    onCanvasClick: () => { setAddPos(null); setSelectedFrameId(null); setCommentTarget(null); closeMenu(); },
+    onCanvasClick: () => { setAddPos(null); setSelectedFrameId(null); setSelectedConnectorId(null); setCommentTarget(null); closeMenu(); },
   });
 
   useCanvasKeyboard({
@@ -336,9 +403,9 @@ export default function Canvas({
     onDelete: handleDeleteBlock,
     onOpenComments: commentHandlers.handleOpenComments,
     onMultiDragMove: handleMultiDragMove,
-    onMultiDragEnd: handleMultiDragEnd,
+    onMultiDragEnd: handleMultiDragEndLive,
     onBeforeDragCommit: pushSnapshot,
-    onDragRect: handleBlockDragRect,
+    onDragRect: handleBlockDragLive,
     onContextMenu: (id: string, clientX: number, clientY: number) => {
       const rect = viewportRef.current?.getBoundingClientRect();
       if (!rect) return;
@@ -346,7 +413,8 @@ export default function Canvas({
       if (!selectedIdsRef.current.has(id)) handleBlockSelectWithFrameClear(id, false);
       openMenu(buildMenuRows({ kind: 'block', id }, clientX - rect.left, clientY - rect.top), clientX, clientY, rect);
     },
-  }), [handleBlockSelectWithFrameClear, handleBlockClickEnd, handleOpenBlock, updateBlock, handleDeleteBlock, commentHandlers, handleMultiDragMove, handleMultiDragEnd, pushSnapshot, handleBlockDragRect, openMenu, selectedIdsRef, buildMenuRows, setCommentTarget]);
+    onConnectorStart: canEdit ? startConnector : undefined,
+  }), [handleBlockSelectWithFrameClear, handleBlockClickEnd, handleOpenBlock, updateBlock, handleDeleteBlock, commentHandlers, handleMultiDragMove, handleMultiDragEndLive, pushSnapshot, handleBlockDragLive, openMenu, selectedIdsRef, buildMenuRows, setCommentTarget, canEdit, startConnector]);
 
   const toolbarActions = useMemo(() => ({
     addText: addTextNote,
@@ -394,6 +462,16 @@ export default function Canvas({
   // and comment targets — avoids repeated O(n) `.find()` scans per peer/selection.
   const blockById = useMemo(() => new Map(blocks.map(b => [b.id, b])), [blocks]);
   const frameById = useMemo(() => new Map(frames.map(f => [f.id, f])), [frames]);
+
+  const connectorLayer = useMemo(() => ({
+    connectors,
+    rectById: blockRectById,
+    drag: liveDrag,
+    pending,
+    selectedId: selectedConnectorId,
+    onSelect: handleSelectConnector,
+    onContextMenu: handleConnectorContextMenu,
+  }), [connectors, blockRectById, liveDrag, pending, selectedConnectorId, handleSelectConnector, handleConnectorContextMenu]);
 
   return (
     <div
@@ -445,8 +523,14 @@ export default function Canvas({
           selectedIds,
           handlers: blockHandlers,
         }}
+        connectorLayer={connectorLayer}
         peerLayer={{ peers, blockById, frameById }}
       />
+
+      {/* Transparent shield during a connector drag so pointer events keep flowing over iframes. */}
+      {pending && (
+        <div className="absolute inset-0" style={{ zIndex: CONNECTOR_DRAG_SHIELD_Z, cursor: 'crosshair' }} />
+      )}
 
       <PeerCursors peers={peers} scale={scale} offset={offset} />
 

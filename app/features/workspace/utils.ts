@@ -18,6 +18,7 @@ export function deserializeState(raw: string): CanvasState | null {
     return {
       blocks: parsed.blocks,
       frames: Array.isArray(parsed.frames) ? parsed.frames : [],
+      connectors: Array.isArray(parsed.connectors) ? parsed.connectors : [],
       offset: parsed.offset ?? { x: 0, y: 0 },
       scale: typeof parsed.scale === 'number' ? parsed.scale : 1,
     };

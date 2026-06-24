@@ -1,11 +1,13 @@
 'use client';
 import { memo } from 'react';
 import type { CSSProperties } from 'react';
-import type { Block, Frame, RemotePresencePeer } from '@/app/features/types';
+import type { Block, Frame, Connector, RemotePresencePeer } from '@/app/features/types';
 import BlockContainer from '../blocks/Block';
 import FrameView from '../frames/Frame';
+import Connectors from '../connectors/Connectors';
 import type { BlockHandlers } from '../blocks/types';
 import type { FrameHandlers, FrameRenameRequest, Rect } from '../frames/types';
+import type { PendingConnector } from '../connectors/types';
 import { PeerSelections } from './PeerLayer';
 
 interface DragHover {
@@ -28,6 +30,16 @@ interface BlockLayer {
   handlers: BlockHandlers;
 }
 
+interface ConnectorLayer {
+  connectors: Connector[];
+  rectById: Map<string, Rect>;
+  drag: { ids: Set<string>; dx: number; dy: number } | null;
+  pending: PendingConnector | null;
+  selectedId: string | null;
+  onSelect: (id: string) => void;
+  onContextMenu: (id: string, clientX: number, clientY: number) => void;
+}
+
 interface PeerLayerProps {
   peers: RemotePresencePeer[];
   blockById: Map<string, Block>;
@@ -39,13 +51,14 @@ interface Props {
   scale: number;
   frameLayer: FrameLayer;
   blockLayer: BlockLayer;
+  connectorLayer: ConnectorLayer;
   peerLayer: PeerLayerProps;
 }
 
 const WORLD_BASE_STYLE: CSSProperties = { transformOrigin: '0 0', willChange: 'transform' };
 
 /** The transformed world: frames (outer→inner), blocks, and peer selection outlines. */
-function CanvasWorld({ offset, scale, frameLayer, blockLayer, peerLayer }: Props) {
+function CanvasWorld({ offset, scale, frameLayer, blockLayer, connectorLayer, peerLayer }: Props) {
   const { visibleFrames, framePresent, dragHover, selectedFrameId, handlers: frameHandlers, renameRequest } = frameLayer;
   const { visibleBlocks, selectedIds, handlers: blockHandlers } = blockLayer;
 
@@ -78,6 +91,17 @@ function CanvasWorld({ offset, scale, frameLayer, blockLayer, peerLayer }: Props
           />
         );
       })}
+
+      {/* Connectors (above frames, below blocks) */}
+      <Connectors
+        connectors={connectorLayer.connectors}
+        rectById={connectorLayer.rectById}
+        drag={connectorLayer.drag}
+        pending={connectorLayer.pending}
+        selectedId={connectorLayer.selectedId}
+        onSelect={connectorLayer.onSelect}
+        onContextMenu={connectorLayer.onContextMenu}
+      />
 
       {/* Blocks (skip those inside a collapsed frame) */}
       {visibleBlocks.map(block => (

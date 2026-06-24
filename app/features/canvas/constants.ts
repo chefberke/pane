@@ -23,6 +23,8 @@ export const SAVE_DEBOUNCE_MS = 150;
 export const ZOOM_TO_FIT_PADDING = 64;
 /** Stacking order for screen-space remote peer cursors. */
 export const PEER_CURSOR_Z = 150;
+/** Stacking order for the transparent shield shown while dragging out a connector (covers iframes so pointer events keep flowing). */
+export const CONNECTOR_DRAG_SHIELD_Z = 50;
 
 /** Approximate rendered dimensions per block type — used to center blocks on drop. */
 export const BLOCK_SIZES: Record<Block['type'], { w: number; h: number }> = {

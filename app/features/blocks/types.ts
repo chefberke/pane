@@ -1,4 +1,4 @@
-import type { Block } from '@/app/features/types';
+import type { Block, ConnectorSide } from '@/app/features/types';
 
 /** Callback handlers passed to BlockContainer for interaction delegation. */
 export interface BlockHandlers {
@@ -13,4 +13,6 @@ export interface BlockHandlers {
   onBeforeDragCommit: () => void;
   onDragRect: (blockId: string, delta: { dx: number; dy: number } | null) => void;
   onContextMenu: (id: string, clientX: number, clientY: number) => void;
+  /** Starts a connector drag from a block edge. Absent when editing is disabled (viewer mode). */
+  onConnectorStart?: (blockId: string, side: ConnectorSide, e: React.PointerEvent) => void;
 }

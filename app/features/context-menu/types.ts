@@ -5,6 +5,7 @@ import type { FrameColor } from '@/app/features/types';
 export type ContextMenuTarget =
   | { kind: 'block'; id: string }
   | { kind: 'frame'; id: string }
+  | { kind: 'connector'; id: string }
   | { kind: 'canvas' };
 
 /** Open menu state — x/y are viewport-relative (like `addPos`); bounds is the viewport size for clamping. */

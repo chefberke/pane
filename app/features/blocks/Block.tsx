@@ -2,7 +2,7 @@
 import { memo, useCallback, useState } from 'react';
 import { MessageCircle, Trash2 } from 'lucide-react';
 import type { CSSProperties } from 'react';
-import type { Block } from '@/app/features/types';
+import type { Block, ConnectorSide } from '@/app/features/types';
 import type { BlockHandlers } from './types';
 import LinkPreview from './renderers/LinkPreview';
 import YoutubeEmbed from './renderers/YoutubeEmbed';
@@ -16,6 +16,7 @@ import GithubEmbed from './renderers/GithubEmbed';
 import { useBlockDrag } from './hooks/useBlockDrag';
 import CommentBubble from '../comments/CommentBubble';
 import ActionTip from './ActionTip';
+import BlockEdgeHandles from './BlockEdgeHandles';
 
 interface Props {
   block: Block;
@@ -40,12 +41,16 @@ function BlockContainer({ block, scale, selected, isInMultiSelection, handlers }
   const commentCount = comments.length;
   const lastComment = commentCount > 0 ? comments[comments.length - 1] : null;
 
-  const { onUpdate } = handlers;
+  const { onUpdate, onConnectorStart } = handlers;
   const onUpdateText = useCallback(
     (content: string) => onUpdate(block.id, { content } as Partial<Block>),
     [block.id, onUpdate],
   );
   const onStopEditText = useCallback(() => setIsEditingText(false), []);
+  const handleConnectorStart = useCallback(
+    (side: ConnectorSide, e: React.PointerEvent) => onConnectorStart?.(block.id, side, e),
+    [onConnectorStart, block.id],
+  );
 
   const { containerRef, overlayRef, onPointerDown } = useBlockDrag({
     block,
@@ -152,6 +157,11 @@ function BlockContainer({ block, scale, selected, isInMultiSelection, handlers }
           </button>
         </ActionTip>
       </div>
+
+      {/* Edge connection handles (hover) */}
+      {onConnectorStart && !isEditingText && isHovered && (
+        <BlockEdgeHandles onStart={handleConnectorStart} />
+      )}
     </div>
   );
 }

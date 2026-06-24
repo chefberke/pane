@@ -1,4 +1,4 @@
-import type { Block, Frame, RemotePresencePeer } from '@/app/features/types';
+import type { Block, Frame, Connector, RemotePresencePeer } from '@/app/features/types';
 
 export type Marquee = { x1: number; y1: number; x2: number; y2: number };
 
@@ -20,6 +20,7 @@ export interface CommentHandlers {
 export interface CanvasState {
   blocks: Block[];
   frames: Frame[];
+  connectors?: Connector[];
   offset: { x: number; y: number };
   scale: number;
 }

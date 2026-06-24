@@ -92,6 +92,17 @@ export type Block = LinkBlock | YouTubeBlock | TwitterBlock | ImageBlock | TextB
 
 export type AlignMode = 'distributeH' | 'distributeV';
 
+/** The side of a block an edge connection can start from. */
+export type ConnectorSide = 'top' | 'right' | 'bottom' | 'left';
+
+/** A directed arrow linking two blocks. Endpoints auto-route to the nearest facing edges. */
+export interface Connector {
+  id: string;
+  sourceId: string;
+  targetId: string;
+  color?: string;
+}
+
 export interface RemotePresencePeer {
   id: string;
   name: string;
