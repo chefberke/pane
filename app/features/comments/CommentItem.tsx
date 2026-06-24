@@ -1,25 +1,13 @@
 'use client';
 import { Trash2, CornerDownRight } from 'lucide-react';
 import type { Comment } from '@/app/features/types';
+import Avatar from '@/app/features/ui/Avatar';
 import { formatTimestamp } from './utils';
 
 interface Props {
   comment: Comment;
   onDelete: (commentId: string) => void;
   onStartReply: (comment: Comment) => void;
-}
-
-/** Avatar disc showing the author's initial in their presence color. */
-function Avatar({ name, color }: { name?: string; color?: string }) {
-  const initial = (name?.[0] ?? '?').toUpperCase();
-  return (
-    <div
-      className="flex items-center justify-center shrink-0 mt-0.5 rounded-full text-[9px] font-semibold"
-      style={{ width: 18, height: 18, background: color ?? 'var(--color-surface-sunken)', color: '#fff' }}
-    >
-      {initial}
-    </div>
-  );
 }
 
 /** A single comment with author, timestamp, reply/delete actions, and nested replies. */
@@ -32,7 +20,9 @@ export default function CommentItem({ comment, onDelete, onStartReply }: Props) 
       onMouseLeave={e => { (e.currentTarget as HTMLDivElement).style.background = ''; }}
     >
       <div className="flex items-start gap-2">
-        <Avatar name={comment.authorName} color={comment.authorColor} />
+        <span className="mt-0.5 shrink-0">
+          <Avatar name={comment.authorName} color={comment.authorColor} size="xs" />
+        </span>
         <div className="flex-1 min-w-0">
           <div className="flex items-center gap-1.5">
             <span className="text-[11px] font-medium truncate" style={{ color: 'var(--color-text-secondary)' }}>
@@ -54,7 +44,9 @@ export default function CommentItem({ comment, onDelete, onStartReply }: Props) 
             <div className="mt-2 flex flex-col gap-2 pl-2" style={{ borderLeft: '1px solid var(--color-border-default)' }}>
               {comment.replies!.map(r => (
                 <div key={r.id} className="flex items-start gap-1.5">
-                  <Avatar name={r.authorName} color={r.authorColor} />
+                  <span className="mt-0.5 shrink-0">
+                    <Avatar name={r.authorName} color={r.authorColor} size="xs" />
+                  </span>
                   <div className="flex-1 min-w-0">
                     <div className="flex items-center gap-1.5">
                       <span className="text-[10px] font-medium truncate" style={{ color: 'var(--color-text-secondary)' }}>

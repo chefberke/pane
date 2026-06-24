@@ -1,6 +1,7 @@
 'use client';
 import { memo } from 'react';
 import { User, ChevronRight, LogOut } from 'lucide-react';
+import Avatar from '../ui/Avatar';
 
 interface Props {
   isLoading: boolean;
@@ -17,23 +18,17 @@ function AccountRow({ isLoading, email, onSignIn, onSignOut }: Props) {
         className="w-full flex items-center gap-2.5 px-3"
         style={{ height: 56, borderBottom: '1px solid var(--color-border-default)', opacity: 0.5 }}
       >
-        <div className="flex-shrink-0" style={{ width: 28, height: 28, borderRadius: 'var(--radius-lg)', background: 'var(--color-surface-sunken)' }} />
+        <div className="flex-shrink-0" style={{ width: 28, height: 28, borderRadius: '50%', background: 'var(--color-surface-sunken)' }} />
         <span className="text-[13px]" style={{ color: 'var(--color-text-muted)' }}>Loading…</span>
       </div>
     );
   }
 
   if (email) {
-    const initial = email[0]?.toUpperCase() ?? '?';
     return (
       <div style={{ borderBottom: '1px solid var(--color-border-default)' }}>
         <div className="w-full flex items-center gap-2.5 px-3" style={{ height: 56 }}>
-          <div
-            className="flex items-center justify-center flex-shrink-0"
-            style={{ width: 28, height: 28, borderRadius: 'var(--radius-lg)', background: 'var(--brand-gradient)', color: 'var(--color-text-on-action)', fontSize: 12, fontWeight: 600 }}
-          >
-            {initial}
-          </div>
+          <Avatar name={email} seed={email} size="md" />
           <div className="flex flex-col items-start flex-1 min-w-0">
             <span className="text-[13px] font-medium leading-tight truncate w-full text-left" style={{ color: 'var(--color-text-primary)' }}>{email}</span>
             <span className="text-[11px] leading-tight" style={{ color: 'var(--color-text-muted)' }}>Signed in</span>
@@ -65,7 +60,7 @@ function AccountRow({ isLoading, email, onSignIn, onSignOut }: Props) {
     >
       <div
         className="flex items-center justify-center flex-shrink-0"
-        style={{ width: 28, height: 28, borderRadius: 'var(--radius-lg)', border: '1px dashed var(--color-border-default)', color: 'var(--color-text-muted)' }}
+        style={{ width: 28, height: 28, borderRadius: '50%', border: '1px dashed var(--color-border-default)', color: 'var(--color-text-muted)' }}
       >
         <User size={12} />
       </div>

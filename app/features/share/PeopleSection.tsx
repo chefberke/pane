@@ -1,10 +1,10 @@
 'use client';
 import { memo, useMemo } from 'react';
 import type { RemotePresencePeer } from '@/app/features/types';
-import { Section, Avatar, RoleBadge } from './SharePrimitives';
+import Avatar from '../ui/Avatar';
+import { Section, RoleBadge } from './SharePrimitives';
 import MemberRow from './MemberRow';
 import { useMembers } from './hooks/useMembers';
-import { initials } from './utils';
 
 interface Props {
   workspaceId: string;
@@ -39,7 +39,7 @@ function PeopleSection({ workspaceId, isOwner, peers, userId }: Props) {
 
       {guestPeers.map(peer => (
         <div key={peer.id} className="flex items-center gap-3" style={{ height: 36 }}>
-          <Avatar label={initials(peer.name)} isOnline color={peer.color} />
+          <Avatar name={peer.name} color={peer.color} isOnline />
           <span className="flex-1 text-[12px] truncate" style={{ color: 'var(--color-text-primary)' }}>
             {peer.name}
           </span>

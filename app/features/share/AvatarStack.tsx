@@ -1,7 +1,7 @@
 'use client';
 import { useState, useRef } from 'react';
 import type { RemotePresencePeer } from '@/app/features/types';
-import { initials } from './utils';
+import Avatar from '../ui/Avatar';
 
 interface Props {
   peers: RemotePresencePeer[];
@@ -21,7 +21,7 @@ export default function AvatarStack({ peers, followedPeerId, onSelectPeer }: Pro
   return (
     <div className="flex items-center" style={{ gap: -6 }}>
       {visible.map((peer, i) => (
-        <Avatar
+        <PeerAvatar
           key={peer.id}
           peer={peer}
           zIndex={MAX_VISIBLE - i}
@@ -46,7 +46,8 @@ export default function AvatarStack({ peers, followedPeerId, onSelectPeer }: Pro
   );
 }
 
-function Avatar({
+/** A single stacked presence avatar with hover tooltip and click-to-follow. */
+function PeerAvatar({
   peer,
   zIndex,
   isFollowing,
@@ -93,17 +94,19 @@ function Avatar({
         tabIndex={onSelect ? 0 : undefined}
         onClick={() => onSelect?.(peer.id)}
         onKeyDown={e => { if (e.key === 'Enter' || e.key === ' ') onSelect?.(peer.id); }}
-        className="w-8 h-8 rounded-full flex items-center justify-center text-[11px] font-bold border-2 select-none"
+        className="rounded-full"
         style={{
-          background:  peer.color,
-          borderColor: isFollowing ? peer.color : 'var(--color-canvas)',
-          color:       '#ffffff',
-          cursor:      onSelect ? 'pointer' : 'default',
-          outline:     isFollowing ? `2px solid ${peer.color}` : 'none',
+          cursor:        onSelect ? 'pointer' : 'default',
+          outline:       isFollowing ? `2px solid ${peer.color}` : 'none',
           outlineOffset: '2px',
         }}
       >
-        {initials(peer.name)}
+        <Avatar
+          size="lg"
+          name={peer.name}
+          color={peer.color}
+          ring={{ color: isFollowing ? peer.color : 'var(--color-canvas)', width: 2 }}
+        />
       </div>
     </div>
   );

@@ -19,30 +19,6 @@ function SectionImpl({ label, children }: { label?: string; children: React.Reac
 }
 export const Section = memo(SectionImpl);
 
-/** Circular initials avatar with an optional online indicator dot. */
-function AvatarImpl({ label, isOnline = false, color }: { label: string; isOnline?: boolean; color?: string }) {
-  return (
-    <div className="relative flex-shrink-0">
-      <div
-        className="w-7 h-7 rounded-full flex items-center justify-center text-[10px] font-bold"
-        style={{
-          background: color ?? 'var(--color-bg-active)',
-          color: color ? '#fff' : 'var(--color-text-secondary)',
-        }}
-      >
-        {label}
-      </div>
-      {isOnline && (
-        <div
-          className="absolute -bottom-0.5 -right-0.5 w-2.5 h-2.5 rounded-full border-2"
-          style={{ background: '#22c55e', borderColor: 'var(--color-surface)' }}
-        />
-      )}
-    </div>
-  );
-}
-export const Avatar = memo(AvatarImpl);
-
 /** Static, non-interactive role label (used for owners and non-owner viewers). */
 function RoleBadgeImpl({ role }: { role: string }) {
   return (
