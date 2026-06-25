@@ -26,4 +26,6 @@ export interface PendingConnector {
   sourceId: string;
   side: ConnectorSide;
   cursor: Point;
+  /** Block currently hovered as a drop target, or null when over empty canvas. */
+  targetId: string | null;
 }

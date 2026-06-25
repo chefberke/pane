@@ -33,13 +33,14 @@ export function useConnectorDrag({ viewportRef, screenToCanvas, rectByIdRef, add
     e.preventDefault();
     sourceRef.current = { sourceId: blockId, side };
     const start = toWorld(e.clientX, e.clientY) ?? { x: 0, y: 0 };
-    setPending({ sourceId: blockId, side, cursor: start });
+    setPending({ sourceId: blockId, side, cursor: start, targetId: null });
 
     function onMove(ev: PointerEvent) {
       const src = sourceRef.current;
       const w = toWorld(ev.clientX, ev.clientY);
       if (!src || !w) return;
-      setPending({ sourceId: src.sourceId, side: src.side, cursor: w });
+      const targetId = findTargetAt(w, rectByIdRef.current, src.sourceId);
+      setPending({ sourceId: src.sourceId, side: src.side, cursor: w, targetId });
     }
     function cleanup() {
       window.removeEventListener('pointermove', onMove);

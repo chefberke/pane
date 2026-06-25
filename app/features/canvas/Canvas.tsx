@@ -531,6 +531,7 @@ export default function Canvas({
         blockLayer={{
           visibleBlocks,
           selectedIds,
+          dropTargetId: pending?.targetId ?? null,
           handlers: blockHandlers,
         }}
         connectorLayer={connectorLayer}

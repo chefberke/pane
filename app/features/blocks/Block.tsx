@@ -23,6 +23,7 @@ interface Props {
   scale: number;
   selected: boolean;
   isInMultiSelection: boolean;
+  isDropTarget: boolean;
   handlers: BlockHandlers;
 }
 
@@ -31,10 +32,15 @@ const SELECTED_CARD_STYLE: CSSProperties = {
   outline: '2px solid var(--color-ring-selection)',
   outlineOffset: '1px',
 };
+const DROP_TARGET_CARD_STYLE: CSSProperties = {
+  outline: '2px solid var(--color-ring-selection)',
+  outlineOffset: '2px',
+  boxShadow: '0 0 0 4px color-mix(in srgb, var(--color-ring-selection) 22%, transparent)',
+};
 const ACTION_PILL_STYLE: CSSProperties = { background: 'var(--color-surface-action)' };
 
 /** Draggable block container — renders the appropriate embed and delegates interaction via handlers. */
-function BlockContainer({ block, scale, selected, isInMultiSelection, handlers }: Props) {
+function BlockContainer({ block, scale, selected, isInMultiSelection, isDropTarget, handlers }: Props) {
   const [isEditingText, setIsEditingText] = useState(false);
   const [isHovered, setIsHovered] = useState(false);
   const comments = block.comments ?? [];
@@ -104,7 +110,7 @@ function BlockContainer({ block, scale, selected, isInMultiSelection, handlers }
           'rounded-2xl overflow-hidden transition-shadow duration-150',
           selected ? 'shadow-xl' : 'shadow-md hover:shadow-lg',
         ].join(' ')}
-        style={selected ? SELECTED_CARD_STYLE : undefined}
+        style={selected ? SELECTED_CARD_STYLE : isDropTarget ? DROP_TARGET_CARD_STYLE : undefined}
       >
         {block.type === 'link' && <LinkPreview block={block} />}
         {block.type === 'youtube' && <YoutubeEmbed block={block} />}

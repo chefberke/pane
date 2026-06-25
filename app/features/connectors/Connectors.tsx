@@ -33,12 +33,19 @@ function Connectors({ connectors, rectById, drag, pending, selectedId, onSelect,
   };
 
   let ghost: string | null = null;
+  let locked = false; // ghost snapped to a hovered target block (vs. free-floating to the cursor)
   if (pending) {
     const src = rectOf(pending.sourceId);
     if (src) {
-      const a = anchorToPoint(src, pending.cursor);
-      const b = pointAnchor(pending.cursor, a);
-      ghost = bezierPath(a, b);
+      const tgt = pending.targetId ? rectOf(pending.targetId) : undefined;
+      if (tgt) {
+        const { a, b } = resolveAnchors(src, tgt);
+        ghost = bezierPath(a, b);
+        locked = true;
+      } else {
+        const a = anchorToPoint(src, pending.cursor);
+        ghost = bezierPath(a, pointAnchor(pending.cursor, a));
+      }
     }
   }
 
@@ -72,7 +79,7 @@ function Connectors({ connectors, rectById, drag, pending, selectedId, onSelect,
       })}
 
       {ghost && (
-        <path d={ghost} fill="none" stroke={STROKE_COLOR} strokeWidth={STROKE_WIDTH} strokeDasharray="6 5" strokeLinecap="round" markerEnd="url(#conn-arrow)" opacity={0.85} style={GHOST_STYLE} />
+        <path d={ghost} fill="none" stroke={STROKE_COLOR} strokeWidth={STROKE_WIDTH} strokeDasharray={locked ? undefined : '6 5'} strokeLinecap="round" markerEnd="url(#conn-arrow)" opacity={locked ? 1 : 0.85} style={GHOST_STYLE} />
       )}
     </svg>
   );

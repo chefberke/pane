@@ -27,6 +27,8 @@ interface FrameLayer {
 interface BlockLayer {
   visibleBlocks: Block[];
   selectedIds: Set<string>;
+  /** Block currently hovered while dragging out a connector, highlighted as a drop target. */
+  dropTargetId: string | null;
   handlers: BlockHandlers;
 }
 
@@ -60,7 +62,7 @@ const WORLD_BASE_STYLE: CSSProperties = { transformOrigin: '0 0', willChange: 't
 /** The transformed world: frames (outer→inner), blocks, and peer selection outlines. */
 function CanvasWorld({ offset, scale, frameLayer, blockLayer, connectorLayer, peerLayer }: Props) {
   const { visibleFrames, framePresent, dragHover, selectedFrameId, handlers: frameHandlers, renameRequest } = frameLayer;
-  const { visibleBlocks, selectedIds, handlers: blockHandlers } = blockLayer;
+  const { visibleBlocks, selectedIds, dropTargetId, handlers: blockHandlers } = blockLayer;
 
   return (
     <div
@@ -111,6 +113,7 @@ function CanvasWorld({ offset, scale, frameLayer, blockLayer, connectorLayer, pe
           scale={scale}
           selected={selectedIds.has(block.id)}
           isInMultiSelection={selectedIds.size > 1 && selectedIds.has(block.id)}
+          isDropTarget={block.id === dropTargetId}
           handlers={blockHandlers}
         />
       ))}
