@@ -24,6 +24,8 @@ interface Props {
   selected: boolean;
   isInMultiSelection: boolean;
   isDropTarget: boolean;
+  /** Colors of remote peers currently selecting this block — drawn as outline ring(s) on the card. */
+  peerColors?: string[];
   handlers: BlockHandlers;
 }
 
@@ -40,7 +42,7 @@ const DROP_TARGET_CARD_STYLE: CSSProperties = {
 const ACTION_PILL_STYLE: CSSProperties = { background: 'var(--color-surface-action)' };
 
 /** Draggable block container — renders the appropriate embed and delegates interaction via handlers. */
-function BlockContainer({ block, scale, selected, isInMultiSelection, isDropTarget, handlers }: Props) {
+function BlockContainer({ block, scale, selected, isInMultiSelection, isDropTarget, peerColors, handlers }: Props) {
   const [isEditingText, setIsEditingText] = useState(false);
   const [isHovered, setIsHovered] = useState(false);
   const comments = block.comments ?? [];
@@ -130,6 +132,15 @@ function BlockContainer({ block, scale, selected, isInMultiSelection, isDropTarg
           />
         )}
       </div>
+
+      {/* Remote peer selection outline(s) — painted on the real card so they always hug its
+          rendered size (e.g. a tall image), unlike a separately-measured box. */}
+      {peerColors && peerColors.length > 0 && (
+        <div
+          className="absolute inset-0 rounded-2xl pointer-events-none"
+          style={{ boxShadow: peerColors.map((c, i) => `0 0 0 ${2 * (i + 1)}px ${c}`).join(', ') }}
+        />
+      )}
 
       {/* Action toolbar pill (editors only — viewers get no delete/comment affordances) */}
       {canEdit && (

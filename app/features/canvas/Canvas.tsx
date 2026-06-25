@@ -478,6 +478,19 @@ export default function Canvas({
   const blockById = useMemo(() => new Map(blocks.map(b => [b.id, b])), [blocks]);
   const frameById = useMemo(() => new Map(frames.map(f => [f.id, f])), [frames]);
 
+  // block id → colors of peers currently selecting it; feeds on-card peer outlines (see Block.tsx).
+  const peerColorsById = useMemo(() => {
+    const m = new Map<string, string[]>();
+    for (const peer of peers) {
+      for (const bid of peer.selection.blockIds) {
+        const list = m.get(bid);
+        if (list) list.push(peer.color);
+        else m.set(bid, [peer.color]);
+      }
+    }
+    return m;
+  }, [peers]);
+
   const connectorLayer = useMemo(() => ({
     connectors,
     rectById: blockRectById,
@@ -537,10 +550,11 @@ export default function Canvas({
           visibleBlocks,
           selectedIds,
           dropTargetId: pending?.targetId ?? null,
+          peerColorsById,
           handlers: blockHandlers,
         }}
         connectorLayer={connectorLayer}
-        peerLayer={{ peers, blockById, frameById }}
+        peerLayer={{ peers, frameById }}
       />
 
       {/* Transparent shield during a connector drag so pointer events keep flowing over iframes. */}

@@ -1,41 +1,19 @@
 'use client';
 import { memo } from 'react';
-import type { Block, Frame, RemotePresencePeer } from '@/app/features/types';
+import type { Frame, RemotePresencePeer } from '@/app/features/types';
 import { AVATAR_TEXT_ON_COLOR } from '../ui/constants';
-import { BLOCK_SIZES, PEER_CURSOR_Z } from './constants';
+import { PEER_CURSOR_Z } from './constants';
 
 interface SelectionsProps {
   peers: RemotePresencePeer[];
-  blockById: Map<string, Block>;
   frameById: Map<string, Frame>;
 }
 
-/** Remote peer selection outlines, rendered in canvas space (inside the world transform). */
-function PeerSelectionsImpl({ peers, blockById, frameById }: SelectionsProps) {
+/** Remote peer frame-selection outlines, rendered in canvas space (inside the world transform).
+ *  Block selections are drawn on the block card itself (see Block.tsx) so they hug the real size. */
+function PeerSelectionsImpl({ peers, frameById }: SelectionsProps) {
   return (
     <>
-      {peers.map(peer =>
-        peer.selection.blockIds.map(bid => {
-          const block = blockById.get(bid);
-          if (!block) return null;
-          const w = block.width  ?? BLOCK_SIZES[block.type]?.w ?? 240;
-          const h = block.height ?? BLOCK_SIZES[block.type]?.h ?? 160;
-          return (
-            <div
-              key={`${peer.id}-${bid}`}
-              className="absolute pointer-events-none rounded-xl"
-              style={{
-                left:    block.x - 3,
-                top:     block.y - 3,
-                width:   w + 6,
-                height:  h + 6,
-                outline: `2px solid ${peer.color}`,
-                outlineOffset: 0,
-              }}
-            />
-          );
-        })
-      )}
       {peers.map(peer => {
         if (!peer.selection.frameId) return null;
         const frame = frameById.get(peer.selection.frameId);

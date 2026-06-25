@@ -29,6 +29,8 @@ interface BlockLayer {
   selectedIds: Set<string>;
   /** Block currently hovered while dragging out a connector, highlighted as a drop target. */
   dropTargetId: string | null;
+  /** block id → colors of remote peers selecting it (drawn as outline ring(s) on the card). */
+  peerColorsById: Map<string, string[]>;
   handlers: BlockHandlers;
 }
 
@@ -44,7 +46,6 @@ interface ConnectorLayer {
 
 interface PeerLayerProps {
   peers: RemotePresencePeer[];
-  blockById: Map<string, Block>;
   frameById: Map<string, Frame>;
 }
 
@@ -62,7 +63,7 @@ const WORLD_BASE_STYLE: CSSProperties = { transformOrigin: '0 0', willChange: 't
 /** The transformed world: frames (outer→inner), blocks, and peer selection outlines. */
 function CanvasWorld({ offset, scale, frameLayer, blockLayer, connectorLayer, peerLayer }: Props) {
   const { visibleFrames, framePresent, dragHover, selectedFrameId, handlers: frameHandlers, renameRequest } = frameLayer;
-  const { visibleBlocks, selectedIds, dropTargetId, handlers: blockHandlers } = blockLayer;
+  const { visibleBlocks, selectedIds, dropTargetId, peerColorsById, handlers: blockHandlers } = blockLayer;
 
   return (
     <div
@@ -114,12 +115,14 @@ function CanvasWorld({ offset, scale, frameLayer, blockLayer, connectorLayer, pe
           selected={selectedIds.has(block.id)}
           isInMultiSelection={selectedIds.size > 1 && selectedIds.has(block.id)}
           isDropTarget={block.id === dropTargetId}
+          peerColors={peerColorsById.get(block.id)}
           handlers={blockHandlers}
         />
       ))}
 
-      {/* Remote peer selection outlines (canvas-space, scale-correct) */}
-      <PeerSelections peers={peerLayer.peers} blockById={peerLayer.blockById} frameById={peerLayer.frameById} />
+      {/* Remote peer frame-selection outlines (canvas-space, scale-correct).
+          Block selections are drawn on each block's card (see Block.tsx). */}
+      <PeerSelections peers={peerLayer.peers} frameById={peerLayer.frameById} />
     </div>
   );
 }
