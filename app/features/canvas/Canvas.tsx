@@ -382,6 +382,7 @@ export default function Canvas({
     addTextNote, toggleTheme, resetView, zoomBy, undo, redo,
     groupSelected, ungroupSelected, clearFrameSelection,
     disabled: isFollowing,
+    canEdit,
   });
 
   // ─── Handler bags for memoized children ──────────────────────────────────
@@ -397,13 +398,15 @@ export default function Canvas({
     onOpenComments: commentHandlers.handleOpenFrameComments,
     onBeforeMutate: pushSnapshot,
     onContextMenu: (id: string, clientX: number, clientY: number) => {
+      if (!canEdit) return;
       const rect = viewportRef.current?.getBoundingClientRect();
       if (!rect) return;
       setCommentTarget(null);
       handleFrameSelect(id);
       openMenu(buildMenuRows({ kind: 'frame', id }, clientX - rect.left, clientY - rect.top), clientX, clientY, rect);
     },
-  }), [handleFrameSelect, handleFrameRename, handleFrameColor, handleFrameToggleCollapse, handleFrameDelete, handleFrameDragMove, handleFrameDragEnd, handleFrameResize, commentHandlers, pushSnapshot, openMenu, buildMenuRows, setCommentTarget]);
+    canEdit,
+  }), [handleFrameSelect, handleFrameRename, handleFrameColor, handleFrameToggleCollapse, handleFrameDelete, handleFrameDragMove, handleFrameDragEnd, handleFrameResize, commentHandlers, pushSnapshot, openMenu, buildMenuRows, setCommentTarget, canEdit]);
 
   const blockHandlers = useMemo(() => ({
     onSelect: (id: string, shiftKey: boolean) => { setCommentTarget(null); handleBlockSelectWithFrameClear(id, shiftKey); },
@@ -417,6 +420,7 @@ export default function Canvas({
     onBeforeDragCommit: pushSnapshot,
     onDragRect: handleBlockDragLive,
     onContextMenu: (id: string, clientX: number, clientY: number) => {
+      if (!canEdit) return;
       const rect = viewportRef.current?.getBoundingClientRect();
       if (!rect) return;
       setCommentTarget(null);
@@ -424,6 +428,7 @@ export default function Canvas({
       openMenu(buildMenuRows({ kind: 'block', id }, clientX - rect.left, clientY - rect.top), clientX, clientY, rect);
     },
     onConnectorStart: canEdit ? startConnector : undefined,
+    canEdit,
   }), [handleBlockSelectWithFrameClear, handleBlockClickEnd, handleOpenBlock, updateBlock, handleDeleteBlock, commentHandlers, handleMultiDragMove, handleMultiDragEndLive, pushSnapshot, handleBlockDragLive, openMenu, selectedIdsRef, buildMenuRows, setCommentTarget, canEdit, startConnector]);
 
   const toolbarActions = useMemo(() => ({

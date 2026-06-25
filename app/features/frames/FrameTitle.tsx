@@ -9,6 +9,8 @@ interface Props {
   frame: Frame;
   memberCount: number;
   isEditing: boolean;
+  /** When false (viewer), the title shows no grab affordance (drag is gated upstream). */
+  canEdit: boolean;
   onToggleCollapse: () => void;
   onCommitRename: (title: string) => void;
   onCancelRename: () => void;
@@ -17,7 +19,7 @@ interface Props {
 
 /** Outside header for a frame — chevron + title (or input) + member count. Sits above the frame, no background. */
 export default function FrameTitle({
-  frame, memberCount, isEditing,
+  frame, memberCount, isEditing, canEdit,
   onToggleCollapse, onCommitRename, onCancelRename, onDragPointerDown,
 }: Props) {
   const [draft, setDraft] = useState(frame.title);
@@ -48,7 +50,7 @@ export default function FrameTitle({
   return (
     <div
       className="flex items-center gap-1 select-none"
-      style={{ cursor: isEditing ? 'text' : 'grab' }}
+      style={{ cursor: isEditing ? 'text' : canEdit ? 'grab' : 'default' }}
       onPointerDown={e => { if (!isEditing) onDragPointerDown(e); }}
     >
       <button

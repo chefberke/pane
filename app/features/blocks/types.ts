@@ -15,4 +15,6 @@ export interface BlockHandlers {
   onContextMenu: (id: string, clientX: number, clientY: number) => void;
   /** Starts a connector drag from a block edge. Absent when editing is disabled (viewer mode). */
   onConnectorStart?: (blockId: string, side: ConnectorSide, e: React.PointerEvent) => void;
+  /** When false, the block is read-only (viewer): no drag, edit, delete, or comment affordances. */
+  canEdit: boolean;
 }

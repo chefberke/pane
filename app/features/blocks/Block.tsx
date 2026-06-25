@@ -47,7 +47,7 @@ function BlockContainer({ block, scale, selected, isInMultiSelection, isDropTarg
   const commentCount = comments.length;
   const lastComment = commentCount > 0 ? comments[comments.length - 1] : null;
 
-  const { onUpdate, onConnectorStart } = handlers;
+  const { onUpdate, onConnectorStart, canEdit } = handlers;
   const onUpdateText = useCallback(
     (content: string) => onUpdate(block.id, { content } as Partial<Block>),
     [block.id, onUpdate],
@@ -62,6 +62,7 @@ function BlockContainer({ block, scale, selected, isInMultiSelection, isDropTarg
     block,
     scale,
     isInMultiSelection,
+    canEdit,
     onSelect: handlers.onSelect,
     onClickEnd: handlers.onClickEnd,
     onUpdate: handlers.onUpdate,
@@ -82,7 +83,7 @@ function BlockContainer({ block, scale, selected, isInMultiSelection, isDropTarg
         left: block.x,
         top: block.y,
         zIndex: selected ? 100 : 1,
-        cursor: 'grab',
+        cursor: canEdit ? 'grab' : 'default',
         willChange: 'transform',
       }}
       onPointerDown={isEditingText ? undefined : onPointerDown}
@@ -90,9 +91,9 @@ function BlockContainer({ block, scale, selected, isInMultiSelection, isDropTarg
       onDoubleClick={e => {
         e.stopPropagation();
         if (block.type === 'text') {
-          setIsEditingText(true);
+          if (canEdit) setIsEditingText(true);
         } else {
-          handlers.onOpen(block);
+          handlers.onOpen(block);   // opening links/embeds is a view action — allowed for viewers
         }
       }}
     >
@@ -130,7 +131,8 @@ function BlockContainer({ block, scale, selected, isInMultiSelection, isDropTarg
         )}
       </div>
 
-      {/* Action toolbar pill */}
+      {/* Action toolbar pill (editors only — viewers get no delete/comment affordances) */}
+      {canEdit && (
       <div
         className={[
           'absolute -top-8 right-0 flex items-center backdrop-blur-sm rounded-full px-0.5 py-0.5 gap-0 z-10 transition-opacity duration-150',
@@ -163,6 +165,7 @@ function BlockContainer({ block, scale, selected, isInMultiSelection, isDropTarg
           </button>
         </ActionTip>
       </div>
+      )}
 
       {/* Edge connection handles (hover) */}
       {onConnectorStart && !isEditingText && isHovered && (

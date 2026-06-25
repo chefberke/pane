@@ -4,6 +4,7 @@ import { DRAG_THRESHOLD } from '@/app/features/canvas/constants';
 interface UseFrameDragArgs {
   frameId: string;
   scale: number;
+  canEdit: boolean;
   onSelect: (id: string) => void;
   onMove: (id: string, dx: number, dy: number) => void;
   onEnd: (id: string, dx: number, dy: number) => void;
@@ -11,7 +12,7 @@ interface UseFrameDragArgs {
 }
 
 /** Handles drag gesture for a frame's title bar — moves frame + all descendants together. */
-export function useFrameDrag({ frameId, scale, onSelect, onMove, onEnd, onBeforeMutate }: UseFrameDragArgs) {
+export function useFrameDrag({ frameId, scale, canEdit, onSelect, onMove, onEnd, onBeforeMutate }: UseFrameDragArgs) {
   const dragging = useRef(false);
   const hasDragged = useRef(false);
   const start = useRef({ mx: 0, my: 0 });
@@ -24,12 +25,13 @@ export function useFrameDrag({ frameId, scale, onSelect, onMove, onEnd, onBefore
     if (e.button !== 0 && e.pointerType === 'mouse') return;
     e.stopPropagation();
     onSelect(frameId);
+    if (!canEdit) return;   // viewers: select only, never start a drag
 
     dragging.current = true;
     hasDragged.current = false;
     delta.current = { dx: 0, dy: 0 };
     start.current = { mx: e.clientX, my: e.clientY };
-  }, [frameId, onSelect]);
+  }, [frameId, onSelect, canEdit]);
 
   useEffect(() => {
     const onPointerMove = (e: PointerEvent) => {

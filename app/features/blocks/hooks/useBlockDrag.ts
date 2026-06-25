@@ -6,6 +6,7 @@ interface UseBlockDragArgs {
   block: Block;
   scale: number;
   isInMultiSelection: boolean;
+  canEdit: boolean;
   onSelect: (id: string, shiftKey: boolean) => void;
   onClickEnd: (id: string, wasDragged: boolean) => void;
   onUpdate: (id: string, updates: Partial<Block>) => void;
@@ -17,7 +18,7 @@ interface UseBlockDragArgs {
 
 /** Handles the drag gesture for a single block, supporting both solo and group drag via Pointer Events. */
 export function useBlockDrag({
-  block, scale, isInMultiSelection,
+  block, scale, isInMultiSelection, canEdit,
   onSelect, onClickEnd, onUpdate, onMultiDragMove, onMultiDragEnd, onBeforeDragCommit, onDragRect,
 }: UseBlockDragArgs) {
   const containerRef = useRef<HTMLDivElement>(null);
@@ -40,7 +41,7 @@ export function useBlockDrag({
     e.stopPropagation();
 
     onSelect(block.id, e.shiftKey);
-    if (e.shiftKey) return;
+    if (e.shiftKey || !canEdit) return;   // viewers: select only, never start a drag
 
     dragging.current = true;
     hasDragged.current = false;
@@ -51,7 +52,7 @@ export function useBlockDrag({
 
     if (containerRef.current) containerRef.current.style.cursor = 'grabbing';
     if (overlayRef.current) overlayRef.current.style.display = 'block';
-  }, [block.id, block.x, block.y, onSelect]);
+  }, [block.id, block.x, block.y, onSelect, canEdit]);
 
   useEffect(() => {
     const onMove = (e: PointerEvent) => {

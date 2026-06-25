@@ -33,6 +33,7 @@ interface Props {
 function Frame({ frame, scale, selected, memberCount, descendantBlocks, handlers, dropPreview, renameRequest }: Props) {
   const [isEditing, setIsEditing] = useState(false);
   const [isHovered, setIsHovered] = useState(false);
+  const canEdit = handlers.canEdit;
 
   // Enter inline-edit when a new rename request targets this (expanded) frame.
   // Render-phase "compare previous prop" pattern (mirrors FrameTitle) — sets local state only.
@@ -45,6 +46,7 @@ function Frame({ frame, scale, selected, memberCount, descendantBlocks, handlers
   const { onTitleDragPointerDown } = useFrameDrag({
     frameId: frame.id,
     scale,
+    canEdit,
     onMove: handlers.onDragMove,
     onEnd: handlers.onDragEnd,
     onSelect: handlers.onSelect,
@@ -123,6 +125,7 @@ function Frame({ frame, scale, selected, memberCount, descendantBlocks, handlers
           frame={frame}
           memberCount={memberCount}
           isEditing={isEditing}
+          canEdit={canEdit}
           onToggleCollapse={() => handlers.onToggleCollapse(frame.id)}
           onCommitRename={title => { handlers.onRename(frame.id, title); setIsEditing(false); }}
           onCancelRename={() => setIsEditing(false)}
@@ -130,15 +133,17 @@ function Frame({ frame, scale, selected, memberCount, descendantBlocks, handlers
         />
       </div>
 
-      {/* Floating action pill — outside frame, above top-right corner */}
-      <FrameActionPill
-        frame={frame}
-        visible={pillVisible}
-        onOpenComments={anchor => handlers.onOpenComments(frame, anchor)}
-        onStartRename={() => setIsEditing(true)}
-        onColorChange={c => handlers.onColorChange(frame.id, c)}
-        onDelete={() => handlers.onDelete(frame.id)}
-      />
+      {/* Floating action pill — outside frame, above top-right corner (editors only) */}
+      {canEdit && (
+        <FrameActionPill
+          frame={frame}
+          visible={pillVisible}
+          onOpenComments={anchor => handlers.onOpenComments(frame, anchor)}
+          onStartRename={() => setIsEditing(true)}
+          onColorChange={c => handlers.onColorChange(frame.id, c)}
+          onDelete={() => handlers.onDelete(frame.id)}
+        />
+      )}
 
       {/* Full-area drag zone — sits below blocks so they still receive pointer events, above nothing. */}
       <div
@@ -146,22 +151,26 @@ function Frame({ frame, scale, selected, memberCount, descendantBlocks, handlers
           position: 'absolute',
           inset: 0,
           pointerEvents: 'auto',
-          cursor: 'grab',
+          cursor: canEdit ? 'grab' : 'default',
           zIndex: 1,
         }}
         onPointerDown={onTitleDragPointerDown}
         onContextMenu={e => { e.preventDefault(); e.stopPropagation(); handlers.onContextMenu(frame.id, e.clientX, e.clientY); }}
       />
 
-      {/* Invisible perimeter resize zones — 4 edges + 4 corners (corners overlap edges via higher z). */}
-      <EdgeZone dir="n" onPointerDown={onHandlePointerDown('n')} />
-      <EdgeZone dir="s" onPointerDown={onHandlePointerDown('s')} />
-      <EdgeZone dir="w" onPointerDown={onHandlePointerDown('w')} />
-      <EdgeZone dir="e" onPointerDown={onHandlePointerDown('e')} />
-      <CornerZone dir="nw" onPointerDown={onHandlePointerDown('nw')} />
-      <CornerZone dir="ne" onPointerDown={onHandlePointerDown('ne')} />
-      <CornerZone dir="sw" onPointerDown={onHandlePointerDown('sw')} />
-      <CornerZone dir="se" onPointerDown={onHandlePointerDown('se')} />
+      {/* Invisible perimeter resize zones — 4 edges + 4 corners (editors only). */}
+      {canEdit && (
+        <>
+          <EdgeZone dir="n" onPointerDown={onHandlePointerDown('n')} />
+          <EdgeZone dir="s" onPointerDown={onHandlePointerDown('s')} />
+          <EdgeZone dir="w" onPointerDown={onHandlePointerDown('w')} />
+          <EdgeZone dir="e" onPointerDown={onHandlePointerDown('e')} />
+          <CornerZone dir="nw" onPointerDown={onHandlePointerDown('nw')} />
+          <CornerZone dir="ne" onPointerDown={onHandlePointerDown('ne')} />
+          <CornerZone dir="sw" onPointerDown={onHandlePointerDown('sw')} />
+          <CornerZone dir="se" onPointerDown={onHandlePointerDown('se')} />
+        </>
+      )}
     </div>
   );
 }

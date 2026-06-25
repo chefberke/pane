@@ -30,6 +30,7 @@ interface Props {
 export default function CollapsedFrame({ frame, descendantBlocks, selected, handlers, onDragPointerDown, dropPreview, renameRequest }: Props) {
   const [isEditing, setIsEditing] = useState(false);
   const [isHovered, setIsHovered] = useState(false);
+  const canEdit = handlers.canEdit;
 
   // Enter inline-edit when a new rename request targets this frame (render-phase compare; local state only).
   const [seenRename, setSeenRename] = useState(renameRequest);
@@ -88,6 +89,7 @@ export default function CollapsedFrame({ frame, descendantBlocks, selected, hand
           frame={frame}
           memberCount={descendantBlocks.length}
           isEditing={isEditing}
+          canEdit={canEdit}
           onToggleCollapse={() => handlers.onToggleCollapse(frame.id)}
           onCommitRename={title => { handlers.onRename(frame.id, title); setIsEditing(false); }}
           onCancelRename={() => setIsEditing(false)}
@@ -95,14 +97,16 @@ export default function CollapsedFrame({ frame, descendantBlocks, selected, hand
         />
       </div>
 
-      <FrameActionPill
-        frame={frame}
-        visible={pillVisible}
-        onOpenComments={anchor => handlers.onOpenComments(frame, anchor)}
-        onStartRename={() => setIsEditing(true)}
-        onColorChange={c => handlers.onColorChange(frame.id, c)}
-        onDelete={() => handlers.onDelete(frame.id)}
-      />
+      {canEdit && (
+        <FrameActionPill
+          frame={frame}
+          visible={pillVisible}
+          onOpenComments={anchor => handlers.onOpenComments(frame, anchor)}
+          onStartRename={() => setIsEditing(true)}
+          onColorChange={c => handlers.onColorChange(frame.id, c)}
+          onDelete={() => handlers.onDelete(frame.id)}
+        />
+      )}
 
       <div className="w-full h-full p-2">
         <ThumbnailGrid

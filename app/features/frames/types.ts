@@ -13,6 +13,8 @@ export interface FrameHandlers {
   onOpenComments: (frame: Frame, anchor: { x: number; y: number }) => void;
   onBeforeMutate: () => void;
   onContextMenu: (id: string, clientX: number, clientY: number) => void;
+  /** When false, the frame is read-only (viewer): no drag, resize, rename, recolor, or delete. */
+  canEdit: boolean;
 }
 
 /** A one-shot request (unique per click via `n`) to put a frame's title into inline-edit mode. */
