@@ -31,7 +31,7 @@ export default function AvatarStack({ peers, followedPeerId, onSelectPeer }: Pro
       ))}
       {overflow > 0 && (
         <div
-          className="w-8 h-8 rounded-full flex items-center justify-center text-[10px] font-semibold border-2 -ml-2"
+          className="w-7 h-7 rounded-full flex items-center justify-center text-[10px] font-semibold border-2 -ml-2"
           style={{
             background:  'var(--color-surface-raised)',
             borderColor: 'var(--color-border-default)',
@@ -102,7 +102,7 @@ function PeerAvatar({
         }}
       >
         <Avatar
-          size="lg"
+          size="md"
           name={peer.name}
           color={peer.color}
           ring={{ color: isFollowing ? peer.color : 'var(--color-canvas)', width: 2 }}
