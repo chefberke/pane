@@ -8,7 +8,7 @@ import LoadingScreen from '@/app/features/loading/LoadingScreen';
 import Share from '@/app/features/share/Share';
 import FollowOverlay from '@/app/features/share/FollowOverlay';
 import { usePresence } from '@/app/features/share/hooks/usePresence';
-import { guestName, colorForId } from '@/app/features/share/utils';
+import { guestName, colorForId, displayNameFromEmail } from '@/app/features/share/utils';
 import { deserializeState } from '@/app/features/workspace/utils';
 import type { CanvasState } from '@/app/features/canvas/types';
 
@@ -52,7 +52,8 @@ export default function SharePage({ params }: Props) {
   const identity = useMemo(() => {
     const role = share?.role ?? 'viewer';
     if (user) {
-      return { id: user.id, name: user.email ?? 'User', color: colorForId(user.id), role };
+      // Broadcast a display name, not the raw email — share-link guests can read presence.
+      return { id: user.id, name: displayNameFromEmail(user.email ?? ''), color: colorForId(user.id), role };
     }
     const key = `guest-id-${token}`;
     let id = typeof sessionStorage !== 'undefined' ? sessionStorage.getItem(key) : null;

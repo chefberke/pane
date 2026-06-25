@@ -13,11 +13,17 @@ interface Bucket {
 
 const buckets = new Map<string, Bucket>();
 
-/** Derives a client key from the request's forwarded IP (falls back to a constant). */
+/**
+ * Derives a client key from the request IP. Prefers the platform-set `x-real-ip`
+ * (Vercel and most reverse proxies set it to the true peer and overwrite any
+ * client-sent value); only falls back to the first `x-forwarded-for` hop — which a
+ * client can spoof to rotate buckets — when `x-real-ip` is absent.
+ */
 export function clientKey(request: Request): string {
+  const realIp = request.headers.get('x-real-ip')?.trim();
+  if (realIp) return realIp;
   const fwd = request.headers.get('x-forwarded-for');
-  const ip = fwd ? fwd.split(',')[0]!.trim() : request.headers.get('x-real-ip');
-  return ip || 'unknown';
+  return (fwd ? fwd.split(',')[0]!.trim() : '') || 'unknown';
 }
 
 /**

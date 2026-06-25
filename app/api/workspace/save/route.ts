@@ -43,6 +43,14 @@ export async function POST(request: NextRequest) {
     logDevResult('workspace-save', 413, 'state too large');
     return Response.json({ error: 'Canvas state too large' }, { status: 413 });
   }
+  // Reject malformed payloads so an editor can't persist garbage that breaks the
+  // owner's canvas load (size is already capped above).
+  try {
+    JSON.parse(stateJson);
+  } catch {
+    logDevResult('workspace-save', 400, 'stateJson not valid JSON');
+    return Response.json({ error: 'stateJson must be valid JSON' }, { status: 400 });
+  }
 
   const authorized = shareToken
     ? await authorizeShare(shareToken, id)

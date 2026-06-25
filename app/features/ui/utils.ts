@@ -14,6 +14,18 @@ export function colorForId(id: string): string {
   return AVATAR_COLORS[hashId(id) % AVATAR_COLORS.length];
 }
 
+/**
+ * Returns a privacy-friendly display name for presence/labels: the local-part of an
+ * email ('berke' from 'berke@x.com'), or the value unchanged when it isn't an email.
+ * Used so share-link guests never see collaborators' full email addresses.
+ */
+export function displayNameFromEmail(nameOrEmail: string): string {
+  const raw = (nameOrEmail ?? '').trim();
+  if (!raw) return 'User';
+  if (!raw.includes('@')) return raw;
+  return raw.split('@')[0] || 'User';
+}
+
 /** Returns up to 2 uppercase initials from a name or email ('?' when empty). */
 export function initials(nameOrEmail: string): string {
   const raw = (nameOrEmail ?? '').trim();

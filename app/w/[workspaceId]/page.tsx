@@ -7,7 +7,7 @@ import LoadingScreen from '@/app/features/loading/LoadingScreen';
 import Share from '@/app/features/share/Share';
 import FollowOverlay from '@/app/features/share/FollowOverlay';
 import { usePresence } from '@/app/features/share/hooks/usePresence';
-import { colorForId } from '@/app/features/share/utils';
+import { colorForId, displayNameFromEmail } from '@/app/features/share/utils';
 import { useWorkspaceCanvas } from '@/app/features/workspace/hooks/useWorkspaceCanvas';
 import { db } from '@/app/lib/db';
 
@@ -23,7 +23,8 @@ export default function WorkspacePage({ params }: Props) {
 
   const identity = {
     id:    user?.id    ?? 'anon',
-    name:  user?.email ?? 'User',
+    // Display name, not the raw email — presence is visible to share-link guests.
+    name:  displayNameFromEmail(user?.email ?? ''),
     color: colorForId(user?.id ?? 'anon'),
     role:  'owner' as const,
   };

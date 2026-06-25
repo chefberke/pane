@@ -13,6 +13,9 @@ export function safeNext(next: string | null | undefined): string {
   if (!next) return DEFAULT_NEXT_PATH;
   if (!next.startsWith('/')) return DEFAULT_NEXT_PATH;
   if (next.startsWith('//')) return DEFAULT_NEXT_PATH;
+  // Browsers can normalise '\' to '/', so '/\evil.com' would escape same-origin like
+  // '//evil.com'. Reject any backslash to close that bypass.
+  if (next.includes('\\')) return DEFAULT_NEXT_PATH;
   return next;
 }
 

@@ -1,4 +1,5 @@
 import type { InstantRules } from '@instantdb/react';
+import type { Schema } from './instant.schema';
 
 // Authorization model (see instant.schema.ts for the links these rules traverse):
 //  • Owner is identified by workspaces.userId.
@@ -9,6 +10,9 @@ import type { InstantRules } from '@instantdb/react';
 //    of which validate the share token with the admin token (bypassing these rules).
 //  • Non-owner edits (members + share guests) also go through /api/workspace/save,
 //    which is why workspaces.update stays owner-only here.
+//
+// Rate limits ($rateLimits, bottom) are enforced server-side by InstantDB on the
+// create/update rules below — InstantDB does NOT rate-limit writes automatically.
 
 const rules = {
   // ── workspaces ──────────────────────────────────────────────────────────────
@@ -20,9 +24,11 @@ const rules = {
       // Owner or any linked member may read.
       view: "isOwner || (auth.id != null && auth.id in data.ref('members.userId'))",
       // Only authenticated users may create workspaces, and only their own.
-      create: 'auth.id != null && auth.id == newData.userId',
+      // Per-user rate limit so a script can't mass-create workspaces.
+      create: 'auth.id != null && auth.id == newData.userId && rateLimit.workspaceCreate.limit(auth.id)',
       // Direct client writes are owner-only; everyone else uses /api/workspace/save.
-      update: 'isOwner',
+      // Per-user rate limit caps runaway save loops (debounced saves stay well under).
+      update: 'isOwner && rateLimit.workspaceWrite.limit(auth.id)',
       delete: 'isOwner',
     },
   },
@@ -35,7 +41,7 @@ const rules = {
       // /api/share/[token], so anonymous read is no longer needed here — this also
       // removes the token-enumeration surface.
       view: 'isCreator',
-      create: 'auth.id != null && auth.id == newData.createdBy',
+      create: 'auth.id != null && auth.id == newData.createdBy && rateLimit.shareCreate.limit(auth.id)',
       update: 'isCreator',
       delete: 'isCreator',
     },
@@ -68,11 +74,34 @@ const rules = {
       // Only the inviter manages invites client-side. Invitees read + accept via
       // /api/invite/[token]/accept (admin token validates the email binding).
       view: 'isInviter',
-      create: 'auth.id != null && auth.id == newData.invitedBy',
+      create: 'auth.id != null && auth.id == newData.invitedBy && rateLimit.inviteCreate.limit(auth.id)',
       update: 'isInviter',
       delete: 'isInviter',
     },
   },
-} satisfies InstantRules;
+
+  // ── deny-all fallback ─────────────────────────────────────────────────────────
+  // Any namespace not explicitly listed above — InstantDB built-ins ($users/$files)
+  // and any future entity — defaults to closed, so a forgotten rule fails safe
+  // instead of leaking data. All four entities above have explicit rules that
+  // override this, and the client never queries any other namespace.
+  $default: {
+    allow: { $default: 'false' },
+  },
+
+  // ── rate limits ───────────────────────────────────────────────────────────────
+  // Token-bucket limits InstantDB enforces server-side on the create/update rules
+  // above, keyed per user (auth.id). These are the ONLY rate limits on direct
+  // client→DB writes. Starting values — tune from real usage. Periods are duration
+  // strings ("1 hour", "1 minute"); refill defaults to greedy (continuous trickle).
+  $rateLimits: {
+    workspaceCreate: { limits: [{ capacity: 30,  refill: { amount: 30,  period: '1 hour'   } }] },
+    workspaceWrite:  { limits: [{ capacity: 300, refill: { amount: 300, period: '1 minute' } }] },
+    shareCreate:     { limits: [{ capacity: 60,  refill: { amount: 60,  period: '1 hour'   } }] },
+    inviteCreate:    { limits: [{ capacity: 60,  refill: { amount: 60,  period: '1 hour'   } }] },
+  },
+  // Typed against the app schema (not bare `InstantRules`) so the `$rateLimits` /
+  // `$default` special keys resolve correctly instead of being treated as entities.
+} satisfies InstantRules<Schema>;
 
 export default rules;

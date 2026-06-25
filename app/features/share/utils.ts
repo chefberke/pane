@@ -2,7 +2,7 @@ import { TOKEN_LENGTH, GUEST_NAME_PREFIX } from './constants';
 import { hashId } from '../ui/utils';
 
 // Avatar/identity helpers live in the shared ui primitives; re-exported here for back-compat.
-export { colorForId, initials } from '../ui/utils';
+export { colorForId, initials, displayNameFromEmail } from '../ui/utils';
 
 /** Generates a URL-safe random share token. */
 export function mintToken(): string {
