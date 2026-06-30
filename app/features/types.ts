@@ -91,12 +91,18 @@ export type AlignMode = 'distributeH' | 'distributeV';
 /** The side of a block an edge connection can start from. */
 export type ConnectorSide = 'top' | 'right' | 'bottom' | 'left';
 
+/** Line rendering style for a connector. 'wide' is a dashed line with larger gaps. Defaults to 'solid'. */
+export type ConnectorStyle = 'solid' | 'dashed' | 'wide';
+
 /** A directed arrow linking two blocks. Endpoints auto-route to the nearest facing edges. */
 export interface Connector {
   id: string;
   sourceId: string;
   targetId: string;
+  /** CSS colour of the line and arrowhead; defaults to STROKE_COLOR when unset. */
   color?: string;
+  /** Line style; defaults to 'solid' when unset. */
+  style?: ConnectorStyle;
 }
 
 export interface RemotePresencePeer {

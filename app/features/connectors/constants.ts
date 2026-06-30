@@ -1,9 +1,15 @@
+import type { ConnectorStyle } from '@/app/features/types';
+
 /** Stroke width (world units) for an idle connector line. */
 export const STROKE_WIDTH = 2.5;
 /** Stroke width (world units) for a selected connector line. */
 export const STROKE_WIDTH_SELECTED = 3.5;
 /** Width (world units) of the invisible hit path that makes the thin line clickable. */
 export const HIT_STROKE_WIDTH = 16;
+/** Stroke width (world units) of the translucent selection halo drawn behind a selected connector. */
+export const HALO_STROKE_WIDTH = 9;
+/** Opacity of the selection halo. */
+export const HALO_OPACITY = 0.3;
 /** Arrowhead marker size in world units. */
 export const ARROW_SIZE = 10;
 /** Minimum bezier control-point offset (world units). */
@@ -16,3 +22,24 @@ export const CURVE_RATIO = 0.4;
 export const STROKE_COLOR = '#94a3b8';
 /** Selected connector stroke colour — reuses the canvas selection ring var. */
 export const STROKE_COLOR_SELECTED = 'var(--color-ring-selection)';
+/** strokeDasharray (world units) per line style; 'solid' omits the dash. 'wide' keeps the dash but widens the gaps. */
+export const LINE_DASH: Record<ConnectorStyle, string | undefined> = {
+  solid: undefined,
+  dashed: '7 7',
+  wide: '7 18',
+};
+/** Selectable line styles shown in the connector toolbar, in display order. */
+export const STYLE_OPTIONS: { value: ConnectorStyle; label: string }[] = [
+  { value: 'solid', label: 'Solid' },
+  { value: 'dashed', label: 'Dashed' },
+  { value: 'wide', label: 'Wide dashes' },
+];
+/** Connector colour swatches — `value` is the CSS colour stored on the connector, `swatch` the picker dot. Kept local (mirrors the frame palette) to avoid a cross-feature import. */
+export const CONNECTOR_SWATCHES: { value: string; swatch: string }[] = [
+  { value: '#94a3b8', swatch: 'rgb(148,163,184)' },
+  { value: '#60a5fa', swatch: 'rgb(96,165,250)' },
+  { value: '#4ade80', swatch: 'rgb(74,222,128)' },
+  { value: '#fbbf24', swatch: 'rgb(251,191,36)' },
+  { value: '#fb7185', swatch: 'rgb(251,113,133)' },
+  { value: '#a78bfa', swatch: 'rgb(167,139,250)' },
+];

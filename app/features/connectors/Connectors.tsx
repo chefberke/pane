@@ -4,8 +4,8 @@ import type { CSSProperties } from 'react';
 import type { Connector } from '@/app/features/types';
 import type { PendingConnector, Rect } from './types';
 import ConnectorPath from './ConnectorPath';
-import { resolveAnchors, bezierPath, anchorToPoint, pointAnchor, shiftRect } from './utils';
-import { STROKE_COLOR, STROKE_WIDTH, ARROW_SIZE } from './constants';
+import { resolveAnchors, bezierPath, anchorToPoint, pointAnchor, shiftRect, markerIdForColor } from './utils';
+import { STROKE_COLOR, STROKE_WIDTH, ARROW_SIZE, CONNECTOR_SWATCHES } from './constants';
 
 interface Props {
   connectors: Connector[];
@@ -52,12 +52,16 @@ function Connectors({ connectors, rectById, drag, pending, selectedId, onSelect,
   return (
     <svg style={SVG_STYLE}>
       <defs>
+        {/* Default (slate) arrowhead — used by the drag ghost and colourless connectors. */}
         <marker id="conn-arrow" markerWidth={ARROW_SIZE} markerHeight={ARROW_SIZE} refX={ARROW_SIZE * 0.85} refY={ARROW_SIZE / 2} orient="auto" markerUnits="userSpaceOnUse">
           <path d={ARROW_PATH} fill={STROKE_COLOR} />
         </marker>
-        <marker id="conn-arrow-sel" markerWidth={ARROW_SIZE} markerHeight={ARROW_SIZE} refX={ARROW_SIZE * 0.85} refY={ARROW_SIZE / 2} orient="auto" markerUnits="userSpaceOnUse">
-          <path d={ARROW_PATH} fill="var(--color-ring-selection)" />
-        </marker>
+        {/* One arrowhead per swatch so the head colour matches the line colour. */}
+        {CONNECTOR_SWATCHES.map((s, i) => (
+          <marker key={s.value} id={`conn-arrow-${i}`} markerWidth={ARROW_SIZE} markerHeight={ARROW_SIZE} refX={ARROW_SIZE * 0.85} refY={ARROW_SIZE / 2} orient="auto" markerUnits="userSpaceOnUse">
+            <path d={ARROW_PATH} fill={s.value} />
+          </marker>
+        ))}
       </defs>
 
       {connectors.map(c => {
@@ -72,6 +76,8 @@ function Connectors({ connectors, rectById, drag, pending, selectedId, onSelect,
             d={bezierPath(a, b)}
             selected={selectedId === c.id}
             color={c.color}
+            style={c.style ?? 'solid'}
+            markerId={markerIdForColor(c.color)}
             onSelect={onSelect}
             onContextMenu={onContextMenu}
           />

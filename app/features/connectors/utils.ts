@@ -1,6 +1,6 @@
 import type { Connector, ConnectorSide } from '@/app/features/types';
 import type { Anchor, Point, Rect } from './types';
-import { MIN_CURVE, MAX_CURVE, CURVE_RATIO } from './constants';
+import { MIN_CURVE, MAX_CURVE, CURVE_RATIO, CONNECTOR_SWATCHES } from './constants';
 
 /** Generates a UUID for a new connector. */
 export function uid(): string {
@@ -60,15 +60,35 @@ export function pointAnchor(p: Point, from: Point): Anchor {
   return { x: p.x, y: p.y, dir: { x: -dx / len, y: -dy / len } };
 }
 
-/** Builds an SVG cubic-bezier `d` string between two anchors, curving along each anchor's direction. */
-export function bezierPath(a: Anchor, b: Anchor): string {
+/** The two cubic-bezier control points between anchors `a` and `b`, offset along each anchor's direction. */
+function controlPoints(a: Anchor, b: Anchor): { c1: Point; c2: Point } {
   const dist = Math.hypot(b.x - a.x, b.y - a.y);
   const k = Math.max(MIN_CURVE, Math.min(MAX_CURVE, dist * CURVE_RATIO));
-  const c1x = a.x + a.dir.x * k;
-  const c1y = a.y + a.dir.y * k;
-  const c2x = b.x + b.dir.x * k;
-  const c2y = b.y + b.dir.y * k;
-  return `M ${a.x} ${a.y} C ${c1x} ${c1y}, ${c2x} ${c2y}, ${b.x} ${b.y}`;
+  return {
+    c1: { x: a.x + a.dir.x * k, y: a.y + a.dir.y * k },
+    c2: { x: b.x + b.dir.x * k, y: b.y + b.dir.y * k },
+  };
+}
+
+/** Builds an SVG cubic-bezier `d` string between two anchors, curving along each anchor's direction. */
+export function bezierPath(a: Anchor, b: Anchor): string {
+  const { c1, c2 } = controlPoints(a, b);
+  return `M ${a.x} ${a.y} C ${c1.x} ${c1.y}, ${c2.x} ${c2.y}, ${b.x} ${b.y}`;
+}
+
+/** The world-space midpoint of the connector curve (the cubic evaluated at t=0.5) — used to anchor the toolbar. */
+export function connectorMidpoint(a: Anchor, b: Anchor): Point {
+  const { c1, c2 } = controlPoints(a, b);
+  return {
+    x: 0.125 * a.x + 0.375 * c1.x + 0.375 * c2.x + 0.125 * b.x,
+    y: 0.125 * a.y + 0.375 * c1.y + 0.375 * c2.y + 0.125 * b.y,
+  };
+}
+
+/** SVG marker id whose arrowhead colour matches a connector's colour (falls back to the default marker). */
+export function markerIdForColor(color?: string): string {
+  const i = color ? CONNECTOR_SWATCHES.findIndex(s => s.value === color) : -1;
+  return i >= 0 ? `conn-arrow-${i}` : 'conn-arrow';
 }
 
 /** Returns the id of the topmost block whose rect contains `p`, excluding `excludeId`, or null. */

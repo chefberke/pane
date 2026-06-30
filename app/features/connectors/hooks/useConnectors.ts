@@ -21,10 +21,15 @@ export function useConnectors() {
     setConnectors(prev => prev.filter(c => c.id !== id));
   }, []);
 
+  /** Merges a partial patch (e.g. color or style) into the connector with the given id. */
+  const updateConnector = useCallback((id: string, patch: Partial<Omit<Connector, 'id'>>) => {
+    setConnectors(prev => prev.map(c => (c.id === id ? { ...c, ...patch } : c)));
+  }, []);
+
   /** Removes every connector touching one of the given block ids. */
   const pruneByBlocks = useCallback((removed: Set<string>) => {
     setConnectors(prev => prev.filter(c => !removed.has(c.sourceId) && !removed.has(c.targetId)));
   }, []);
 
-  return { connectors, setConnectors, addConnector, deleteConnector, pruneByBlocks };
+  return { connectors, setConnectors, addConnector, deleteConnector, updateConnector, pruneByBlocks };
 }

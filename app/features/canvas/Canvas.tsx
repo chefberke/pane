@@ -1,6 +1,6 @@
 'use client';
 import { useState, useRef, useCallback, useMemo } from 'react';
-import type { Block, Frame } from '@/app/features/types';
+import type { Block, Frame, Connector } from '@/app/features/types';
 import type { CanvasProps } from './types';
 import type { Rect } from '../frames/types';
 import { BLOCK_SIZES, MIN_SCALE, MAX_SCALE, ZOOM_TO_FIT_PADDING, CONNECTOR_DRAG_SHIELD_Z } from './constants';
@@ -29,6 +29,8 @@ import { useFollowViewport } from './hooks/useFollowViewport';
 import { useFrames } from '../frames/hooks/useFrames';
 import { useConnectors } from '../connectors/hooks/useConnectors';
 import { useConnectorDrag } from '../connectors/hooks/useConnectorDrag';
+import ConnectorToolbar from '../connectors/ConnectorToolbar';
+import { resolveAnchors, connectorMidpoint } from '../connectors/utils';
 import { usePersistence } from './hooks/usePersistence';
 import { usePresenceSync } from './hooks/usePresenceSync';
 import { useCanvasHint } from './hooks/useCanvasHint';
@@ -64,7 +66,7 @@ export default function Canvas({
     frames, setFrames, createFromSelection, updateFrame, deleteFrame,
     toggleCollapse, renameFrame, setFrameColor,
   } = useFrames();
-  const { connectors, setConnectors, addConnector, deleteConnector, pruneByBlocks } = useConnectors();
+  const { connectors, setConnectors, addConnector, deleteConnector, updateConnector, pruneByBlocks } = useConnectors();
 
   const blocksRef = useLatestRef(blocks);
   const framesRef = useLatestRef(frames);
@@ -189,6 +191,12 @@ export default function Canvas({
     deleteConnector(id);
     setSelectedConnectorId(prev => (prev === id ? null : prev));
   }, [deleteConnector, pushSnapshot]);
+
+  /** Patches a connector's style or colour (with an undo checkpoint). */
+  const handleUpdateConnector = useCallback((id: string, patch: Partial<Pick<Connector, 'color' | 'style'>>) => {
+    pushSnapshot();
+    updateConnector(id, patch);
+  }, [updateConnector, pushSnapshot]);
 
   /** Group currently selected blocks into a new frame. */
   const groupSelected = useCallback(() => {
@@ -501,6 +509,19 @@ export default function Canvas({
     onContextMenu: handleConnectorContextMenu,
   }), [connectors, blockRectById, liveDrag, pending, selectedConnectorId, handleSelectConnector, handleConnectorContextMenu]);
 
+  // Screen-space anchor (viewport px) for the selected connector's floating toolbar, or null when none/missing.
+  const connectorToolbar = useMemo(() => {
+    if (!selectedConnectorId) return null;
+    const c = connectors.find(conn => conn.id === selectedConnectorId);
+    if (!c) return null;
+    const s = blockRectById.get(c.sourceId);
+    const t = blockRectById.get(c.targetId);
+    if (!s || !t) return null;
+    const { a, b } = resolveAnchors(s, t);
+    const mid = connectorMidpoint(a, b);
+    return { connector: c, x: mid.x * scale + offset.x, y: mid.y * scale + offset.y };
+  }, [selectedConnectorId, connectors, blockRectById, scale, offset]);
+
   return (
     <div
       ref={viewportRef}
@@ -563,6 +584,18 @@ export default function Canvas({
       )}
 
       <PeerCursors peers={peers} scale={scale} offset={offset} />
+
+      {canEdit && !isFollowing && connectorToolbar && (
+        <ConnectorToolbar
+          x={connectorToolbar.x}
+          y={connectorToolbar.y}
+          style={connectorToolbar.connector.style ?? 'solid'}
+          color={connectorToolbar.connector.color}
+          onStyle={s => handleUpdateConnector(connectorToolbar.connector.id, { style: s })}
+          onColor={col => handleUpdateConnector(connectorToolbar.connector.id, { color: col })}
+          onDelete={() => handleDeleteConnector(connectorToolbar.connector.id)}
+        />
+      )}
 
       <CanvasOverlays
         canEdit={canEdit}
