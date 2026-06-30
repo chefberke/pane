@@ -52,63 +52,70 @@ export function useBlocks({ screenToCanvas }: {
   const [blocks, setBlocks] = useState<Block[]>([]);
   const [isRefreshing, setIsRefreshing] = useState(false);
 
-  /** Adds a block from a URL, auto-detecting the type and fetching link metadata. */
-  const addBlockFromUrl = useCallback(async (url: string, screenX: number, screenY: number) => {
+  /** Adds a block from a URL, auto-detecting the type and fetching link metadata. Returns the new block's id, or null if the URL yielded no block. */
+  const addBlockFromUrl = useCallback(async (url: string, screenX: number, screenY: number): Promise<string | null> => {
     const pos = screenToCanvas(screenX, screenY);
     const type = detectType(url);
 
     if (type === 'youtube') {
       const videoId = extractYouTubeId(url);
-      if (!videoId) return;
+      if (!videoId) return null;
+      const id = uid();
       const { w, h } = BLOCK_SIZES.youtube;
-      setBlocks(prev => [...prev, { id: uid(), type: 'youtube', videoId, x: pos.x - w / 2, y: pos.y - h / 2 }]);
-      return;
+      setBlocks(prev => [...prev, { id, type: 'youtube', videoId, x: pos.x - w / 2, y: pos.y - h / 2 }]);
+      return id;
     }
     if (type === 'twitter') {
       const tweetId = extractTweetId(url);
-      if (!tweetId) return;
+      if (!tweetId) return null;
+      const id = uid();
       const { w, h } = BLOCK_SIZES.twitter;
-      setBlocks(prev => [...prev, { id: uid(), type: 'twitter', tweetId, url, x: pos.x - w / 2, y: pos.y - h / 2 }]);
-      return;
+      setBlocks(prev => [...prev, { id, type: 'twitter', tweetId, url, x: pos.x - w / 2, y: pos.y - h / 2 }]);
+      return id;
     }
     if (type === 'image') {
+      const id = uid();
       const { w, h } = BLOCK_SIZES.image;
-      setBlocks(prev => [...prev, { id: uid(), type: 'image', url, x: pos.x - w / 2, y: pos.y - h / 2 }]);
-      return;
+      setBlocks(prev => [...prev, { id, type: 'image', url, x: pos.x - w / 2, y: pos.y - h / 2 }]);
+      return id;
     }
     if (type === 'spotify') {
       const info = extractSpotifyInfo(url);
-      if (!info) return;
+      if (!info) return null;
+      const id = uid();
       const { w, h } = BLOCK_SIZES.spotify;
-      setBlocks(prev => [...prev, { id: uid(), type: 'spotify', ...info, url, x: pos.x - w / 2, y: pos.y - h / 2 }]);
-      return;
+      setBlocks(prev => [...prev, { id, type: 'spotify', ...info, url, x: pos.x - w / 2, y: pos.y - h / 2 }]);
+      return id;
     }
     if (type === 'map') {
       const embedUrl = extractMapEmbedUrl(url);
-      if (!embedUrl) return;
+      if (!embedUrl) return null;
+      const id = uid();
       const { w, h } = BLOCK_SIZES.map;
-      setBlocks(prev => [...prev, { id: uid(), type: 'map', embedUrl, x: pos.x - w / 2, y: pos.y - h / 2 }]);
-      return;
+      setBlocks(prev => [...prev, { id, type: 'map', embedUrl, x: pos.x - w / 2, y: pos.y - h / 2 }]);
+      return id;
     }
     if (type === 'github') {
       const info = extractGitHubRepo(url);
-      if (!info) return;
+      if (!info) return null;
       const id = uid();
       const { w, h } = BLOCK_SIZES.github;
       setBlocks(prev => [...prev, { id, type: 'github', ...info, url, loading: true, x: pos.x - w / 2, y: pos.y - h / 2 }]);
-      await hydrateGitHubBlock(id, info.owner, info.repo, setBlocks);
-      return;
+      void hydrateGitHubBlock(id, info.owner, info.repo, setBlocks);
+      return id;
     }
     if (type === 'pdf') {
+      const id = uid();
       const { w, h } = BLOCK_SIZES.pdf;
-      setBlocks(prev => [...prev, { id: uid(), type: 'pdf', url, x: pos.x - w / 2, y: pos.y - h / 2 }]);
-      return;
+      setBlocks(prev => [...prev, { id, type: 'pdf', url, x: pos.x - w / 2, y: pos.y - h / 2 }]);
+      return id;
     }
 
     const id = uid();
     const { w, h } = BLOCK_SIZES.link;
     setBlocks(prev => [...prev, { id, type: 'link', url, loading: true, x: pos.x - w / 2, y: pos.y - h / 2 }]);
-    await hydrateLinkBlock(id, url, setBlocks);
+    void hydrateLinkBlock(id, url, setBlocks);
+    return id;
   }, [screenToCanvas]);
 
   /** Refreshes metadata for all link + github blocks on the canvas. */
