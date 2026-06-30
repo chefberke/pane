@@ -28,7 +28,7 @@ const ItemsSheet = dynamic(() => import('../items-panel/ItemsSheet'), { ssr: fal
 
 interface Transient {
   marquee: Marquee | null;
-  addPos: { x: number; y: number } | null;
+  addPos: { x: number; y: number; connectSourceId?: string } | null;
   menu: ContextMenuState | null;
   hint: { x: number; y: number; message: string } | null;
   commentTarget: CommentTarget;
@@ -57,8 +57,8 @@ interface Data {
 }
 
 interface Actions {
-  handleAddSubmit: (value: string, sx: number, sy: number) => void;
-  setAddPos: (pos: { x: number; y: number } | null) => void;
+  handleAddSubmit: (value: string, sx: number, sy: number, connectSourceId?: string) => void;
+  setAddPos: (pos: { x: number; y: number; connectSourceId?: string } | null) => void;
   closeMenu: () => void;
   setCommentTarget: (t: CommentTarget) => void;
   navigateToBlock: (block: Block) => void;
@@ -115,7 +115,7 @@ export default function CanvasOverlays({ canEdit, isFollowing, transient, modals
         <AddInput
           x={addPos.x}
           y={addPos.y}
-          onSubmit={val => actions.handleAddSubmit(val, addPos.x, addPos.y)}
+          onSubmit={val => actions.handleAddSubmit(val, addPos.x, addPos.y, addPos.connectSourceId)}
           onClose={() => actions.setAddPos(null)}
         />
       )}

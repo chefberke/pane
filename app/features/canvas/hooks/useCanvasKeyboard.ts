@@ -25,7 +25,7 @@ export function useCanvasKeyboard({
   canEdit = true,
 }: {
   setSelectedIds: Dispatch<SetStateAction<Set<string>>>;
-  setAddPos: Dispatch<SetStateAction<{ x: number; y: number } | null>>;
+  setAddPos: Dispatch<SetStateAction<{ x: number; y: number; connectSourceId?: string } | null>>;
   setIsSearchOpen: Dispatch<SetStateAction<boolean>>;
   setIsHelpOpen: Dispatch<SetStateAction<boolean>>;
   setIsPanMode: Dispatch<SetStateAction<boolean>>;

@@ -8,7 +8,7 @@ import type { ContextMenuRow, ContextMenuTarget } from '../../context-menu/types
 import type { FrameRenameRequest } from '../../frames/types';
 
 interface ContextMenuActions {
-  setAddPos: (pos: { x: number; y: number } | null) => void;
+  setAddPos: (pos: { x: number; y: number; connectSourceId?: string } | null) => void;
   addTextNoteAt: (sx: number, sy: number) => void;
   selectAll: () => void;
   resetView: () => void;

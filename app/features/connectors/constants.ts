@@ -18,6 +18,8 @@ export const MIN_CURVE = 24;
 export const MAX_CURVE = 160;
 /** Fraction of endpoint distance used for the bezier control-point offset. */
 export const CURVE_RATIO = 0.4;
+/** Minimum drag distance (world units) before releasing on empty canvas opens the add-content popover; below this a stray click on a handle is ignored. */
+export const EMPTY_DROP_DRAG_MIN = 6;
 /** Default connector stroke colour — a mid slate that reads on both light and dark canvases. */
 export const STROKE_COLOR = '#94a3b8';
 /** Selected connector stroke colour — reuses the canvas selection ring var. */

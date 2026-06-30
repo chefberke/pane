@@ -80,7 +80,7 @@ export default function Canvas({
   const selectedConnectorIdRef = useLatestRef(selectedConnectorId);
   const [liveDrag, setLiveDrag] = useState<{ ids: Set<string>; dx: number; dy: number } | null>(null);
   const [renameFrameReq, setRenameFrameReq] = useState<FrameRenameRequest | null>(null);
-  const [addPos, setAddPos] = useState<{ x: number; y: number } | null>(null);
+  const [addPos, setAddPos] = useState<{ x: number; y: number; connectSourceId?: string } | null>(null);
   const [isSearchOpen, setIsSearchOpen] = useState(false);
   const [isHelpOpen, setIsHelpOpen] = useState(false);
   const [isItemsOpen, setIsItemsOpen] = useState(false);
@@ -100,7 +100,10 @@ export default function Canvas({
     return m;
   }, [blocks]);
   const blockRectByIdRef = useLatestRef(blockRectById);
-  const { pending, startConnector } = useConnectorDrag({ viewportRef, screenToCanvas, rectByIdRef: blockRectByIdRef, addConnector, pushSnapshot });
+  const { pending, startConnector } = useConnectorDrag({
+    viewportRef, screenToCanvas, rectByIdRef: blockRectByIdRef, addConnector, pushSnapshot,
+    onDropInEmpty: canEdit ? (sx, sy, sourceId) => setAddPos({ x: sx, y: sy, connectSourceId: sourceId }) : undefined,
+  });
 
   const zoomToFit = useCallback(() => {
     const el = viewportRef.current;
@@ -301,19 +304,23 @@ export default function Canvas({
     handleMultiDragEnd(dx, dy);
   }, [handleMultiDragEnd]);
 
-  const handleAddSubmit = useCallback((value: string, sx: number, sy: number) => {
+  const handleAddSubmit = useCallback(async (value: string, sx: number, sy: number, connectSourceId?: string) => {
     setAddPos(null);
     const trimmed = value.trim();
     if (!trimmed) return;
     pushSnapshot();
+    let newId: string | null = null;
     if (/^https?:\/\//i.test(trimmed) || trimmed.startsWith('<iframe')) {
-      addBlockFromUrl(trimmed, sx, sy);
+      newId = await addBlockFromUrl(trimmed, sx, sy);
     } else {
       const { x, y } = screenToCanvas(sx, sy);
       const { w, h } = BLOCK_SIZES.text;
-      setBlocks(prev => [...prev, { id: uid(), type: 'text', content: trimmed, x: x - w / 2, y: y - h / 2 }]);
+      const id = uid();
+      setBlocks(prev => [...prev, { id, type: 'text', content: trimmed, x: x - w / 2, y: y - h / 2 }]);
+      newId = id;
     }
-  }, [addBlockFromUrl, screenToCanvas, setBlocks, pushSnapshot]);
+    if (connectSourceId && newId) addConnector(connectSourceId, newId);
+  }, [addBlockFromUrl, screenToCanvas, setBlocks, pushSnapshot, addConnector]);
 
   const navigateToBlock = useCallback((block: Block) => {
     setIsSearchOpen(false);

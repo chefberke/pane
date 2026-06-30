@@ -3,6 +3,7 @@ import { useState, useRef, useCallback, type RefObject } from 'react';
 import type { ConnectorSide } from '@/app/features/types';
 import type { PendingConnector, Point, Rect } from '../types';
 import { findTargetAt } from '../utils';
+import { EMPTY_DROP_DRAG_MIN } from '../constants';
 
 interface Params {
   viewportRef: RefObject<HTMLDivElement | null>;
@@ -11,6 +12,8 @@ interface Params {
   rectByIdRef: RefObject<Map<string, Rect>>;
   addConnector: (sourceId: string, targetId: string) => void;
   pushSnapshot: () => void;
+  /** Called when the arrow is released on empty canvas (no target block) after a real drag; opens the add-content popover at the given viewport-relative screen point. */
+  onDropInEmpty?: (screenX: number, screenY: number, sourceId: string) => void;
 }
 
 /**
@@ -18,7 +21,7 @@ interface Params {
  * edge handles; it tracks the cursor in world space, exposes `pending` for the ghost line, and
  * commits a connector when the pointer is released over a different block.
  */
-export function useConnectorDrag({ viewportRef, screenToCanvas, rectByIdRef, addConnector, pushSnapshot }: Params) {
+export function useConnectorDrag({ viewportRef, screenToCanvas, rectByIdRef, addConnector, pushSnapshot, onDropInEmpty }: Params) {
   const [pending, setPending] = useState<PendingConnector | null>(null);
   const sourceRef = useRef<{ sourceId: string; side: ConnectorSide } | null>(null);
 
@@ -59,6 +62,9 @@ export function useConnectorDrag({ viewportRef, screenToCanvas, rectByIdRef, add
       if (targetId) {
         pushSnapshot();
         addConnector(src.sourceId, targetId);
+      } else if (onDropInEmpty && Math.hypot(w.x - start.x, w.y - start.y) >= EMPTY_DROP_DRAG_MIN) {
+        const rect = viewportRef.current?.getBoundingClientRect();
+        if (rect) onDropInEmpty(ev.clientX - rect.left, ev.clientY - rect.top, src.sourceId);
       }
     }
     function onUp(ev: PointerEvent) { finish(ev); }
@@ -67,7 +73,7 @@ export function useConnectorDrag({ viewportRef, screenToCanvas, rectByIdRef, add
     window.addEventListener('pointermove', onMove);
     window.addEventListener('pointerup', onUp);
     window.addEventListener('keydown', onKey);
-  }, [toWorld, rectByIdRef, addConnector, pushSnapshot]);
+  }, [toWorld, rectByIdRef, addConnector, pushSnapshot, onDropInEmpty, viewportRef]);
 
   return { pending, startConnector };
 }
