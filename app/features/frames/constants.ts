@@ -7,6 +7,8 @@ export const FRAME_MIN_W = 200;
 export const FRAME_MIN_H = 120;
 export const FRAME_COLLAPSED_W = 260;
 export const FRAME_COLLAPSED_H = 200;
+/** Corner radius (px) of the frame card. */
+export const FRAME_RADIUS = 11;
 
 export const FRAME_RESIZE_EDGE_SIZE = 8;
 export const FRAME_RESIZE_CORNER_SIZE = 14;

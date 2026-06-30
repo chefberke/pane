@@ -6,6 +6,7 @@ import FrameTitle from './FrameTitle';
 import FrameActionPill from './FrameActionPill';
 import ThumbnailGrid from './ThumbnailGrid';
 import CommentBubble from '../comments/CommentBubble';
+import SelectionOutline from '../ui/SelectionOutline';
 import {
   FRAME_COLLAPSED_H,
   FRAME_COLLAPSED_W,
@@ -13,6 +14,7 @@ import {
   FRAME_DROP_COLLAPSED_SCALE,
   FRAME_HEADER_HEIGHT,
   FRAME_HEADER_OFFSET,
+  FRAME_RADIUS,
 } from './constants';
 import type { FrameDropPreview, FrameHandlers, FrameRenameRequest } from './types';
 
@@ -55,12 +57,10 @@ export default function CollapsedFrame({ frame, descendantBlocks, selected, hand
         height: FRAME_COLLAPSED_H,
         background: dropActive ? tokens.bgHover : tokens.bg,
         border: `1.5px dashed ${dropActive ? tokens.borderActive : tokens.border}`,
-        borderRadius: 11,
+        borderRadius: FRAME_RADIUS,
         boxShadow: dropActive
           ? `var(--shadow-float-hover), 0 0 0 5px ${tokens.glow}`
           : (selected ? 'var(--shadow-float-hover)' : 'var(--shadow-card)'),
-        outline: selected ? '2px solid var(--color-ring-selection)' : 'none',
-        outlineOffset: 1,
         transform: dropActive ? `scale(${FRAME_DROP_COLLAPSED_SCALE})` : undefined,
         transformOrigin: 'center center',
         transition: 'transform 180ms ease-out, box-shadow 180ms ease-out, background 150ms ease-out, border-color 150ms ease-out',
@@ -71,6 +71,9 @@ export default function CollapsedFrame({ frame, descendantBlocks, selected, hand
       onPointerDown={e => { e.stopPropagation(); handlers.onSelect(frame.id); }}
       onContextMenu={e => { e.preventDefault(); e.stopPropagation(); handlers.onContextMenu(frame.id, e.clientX, e.clientY); }}
     >
+      {/* Local selection — animated marching-ants ring just outside the card. */}
+      {selected && <SelectionOutline radius={FRAME_RADIUS} />}
+
       {/* External header above card top-left. */}
       <div
         className="absolute"

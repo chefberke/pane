@@ -5,6 +5,7 @@ import FrameTitle from './FrameTitle';
 import CollapsedFrame from './CollapsedFrame';
 import FrameActionPill from './FrameActionPill';
 import CommentBubble from '../comments/CommentBubble';
+import SelectionOutline from '../ui/SelectionOutline';
 import { useFrameDrag } from './hooks/useFrameDrag';
 import { useFrameResize, type ResizeDir } from './hooks/useFrameResize';
 import {
@@ -12,6 +13,7 @@ import {
   FRAME_DROP_TRANSITION_MS,
   FRAME_HEADER_HEIGHT,
   FRAME_HEADER_OFFSET,
+  FRAME_RADIUS,
   FRAME_RESIZE_CORNER_SIZE,
   FRAME_RESIZE_EDGE_SIZE,
 } from './constants';
@@ -96,9 +98,7 @@ function Frame({ frame, scale, selected, memberCount, descendantBlocks, handlers
         height: boxHeight,
         background: dropActive ? tokens.bgHover : tokens.bg,
         border: `1.5px dashed ${dropActive ? tokens.borderActive : tokens.border}`,
-        borderRadius: 11,
-        outline: selected ? '2px solid var(--color-ring-selection)' : 'none',
-        outlineOffset: 1,
+        borderRadius: FRAME_RADIUS,
         boxShadow: dropActive ? `0 0 0 4px ${tokens.glow}` : undefined,
         transition: `left ${FRAME_DROP_TRANSITION_MS}ms ease-out, top ${FRAME_DROP_TRANSITION_MS}ms ease-out, width ${FRAME_DROP_TRANSITION_MS}ms ease-out, height ${FRAME_DROP_TRANSITION_MS}ms ease-out, background 150ms ease-out, border-color 150ms ease-out, box-shadow 150ms ease-out`,
         zIndex: 0,
@@ -107,6 +107,9 @@ function Frame({ frame, scale, selected, memberCount, descendantBlocks, handlers
       onMouseEnter={() => setIsHovered(true)}
       onMouseLeave={() => setIsHovered(false)}
     >
+      {/* Local selection — animated marching-ants ring just outside the frame border. */}
+      {selected && <SelectionOutline radius={FRAME_RADIUS} />}
+
       {/* External header (chevron + title + count) above frame top-left. */}
       <div
         className="absolute"

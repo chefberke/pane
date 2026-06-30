@@ -3,9 +3,12 @@ import { memo } from 'react';
 import type { CSSProperties } from 'react';
 import type { ConnectorStyle } from '@/app/features/types';
 import {
-  STROKE_COLOR, STROKE_COLOR_SELECTED, STROKE_WIDTH, STROKE_WIDTH_SELECTED,
-  HIT_STROKE_WIDTH, HALO_STROKE_WIDTH, HALO_OPACITY, LINE_DASH,
+  STROKE_COLOR, STROKE_WIDTH, STROKE_WIDTH_SELECTED, HIT_STROKE_WIDTH, LINE_DASH,
 } from './constants';
+import {
+  SELECTION_ARROW_STROKE_WIDTH, SELECTION_DASH, SELECTION_DASH_PERIOD, SELECTION_MARCH_MS,
+  SELECTION_COLOR,
+} from '../ui/constants';
 
 interface Props {
   id: string;
@@ -20,6 +23,11 @@ interface Props {
 
 const HIT_STYLE: CSSProperties = { pointerEvents: 'stroke', cursor: 'pointer' };
 const LINE_STYLE: CSSProperties = { pointerEvents: 'none' };
+const SELECTION_MARCH_STYLE = {
+  pointerEvents: 'none',
+  '--sel-march-distance': `-${SELECTION_DASH_PERIOD}`,
+  '--sel-march-duration': `${SELECTION_MARCH_MS}ms`,
+} as CSSProperties;
 
 /** A single connector: a wide invisible hit path for clicks, a selection halo, and the visible bezier line with an arrowhead. */
 function ConnectorPath({ id, d, selected, color, style, markerId, onSelect, onContextMenu }: Props) {
@@ -40,11 +48,12 @@ function ConnectorPath({ id, d, selected, color, style, markerId, onSelect, onCo
         <path
           d={d}
           fill="none"
-          stroke={STROKE_COLOR_SELECTED}
-          strokeWidth={HALO_STROKE_WIDTH}
+          stroke={SELECTION_COLOR}
+          strokeWidth={SELECTION_ARROW_STROKE_WIDTH}
           strokeLinecap="round"
-          opacity={HALO_OPACITY}
-          style={LINE_STYLE}
+          strokeDasharray={SELECTION_DASH}
+          className="selection-march"
+          style={SELECTION_MARCH_STYLE}
         />
       )}
       <path

@@ -17,6 +17,7 @@ import { useBlockDrag } from './hooks/useBlockDrag';
 import CommentBubble from '../comments/CommentBubble';
 import ActionTip from './ActionTip';
 import BlockEdgeHandles from './BlockEdgeHandles';
+import SelectionOutline from '../ui/SelectionOutline';
 
 interface Props {
   block: Block;
@@ -30,10 +31,8 @@ interface Props {
 }
 
 const DRAG_OVERLAY_STYLE: CSSProperties = { display: 'none' };
-const SELECTED_CARD_STYLE: CSSProperties = {
-  outline: '2px solid var(--color-ring-selection)',
-  outlineOffset: '1px',
-};
+/** Card corner radius (px) — matches `rounded-2xl` (--radius-2xl = 11px in the theme). */
+const CARD_RADIUS = 11;
 const DROP_TARGET_CARD_STYLE: CSSProperties = {
   outline: '2px solid var(--color-ring-selection)',
   outlineOffset: '2px',
@@ -113,7 +112,7 @@ function BlockContainer({ block, scale, selected, isInMultiSelection, isDropTarg
           'rounded-2xl overflow-hidden transition-shadow duration-150',
           selected ? 'shadow-xl' : 'shadow-md hover:shadow-lg',
         ].join(' ')}
-        style={selected ? SELECTED_CARD_STYLE : isDropTarget ? DROP_TARGET_CARD_STYLE : undefined}
+        style={!selected && isDropTarget ? DROP_TARGET_CARD_STYLE : undefined}
       >
         {block.type === 'link' && <LinkPreview block={block} />}
         {block.type === 'youtube' && <YoutubeEmbed block={block} />}
@@ -132,6 +131,9 @@ function BlockContainer({ block, scale, selected, isInMultiSelection, isDropTarg
           />
         )}
       </div>
+
+      {/* Local selection — animated marching-ants ring hugging the card. */}
+      {selected && <SelectionOutline radius={CARD_RADIUS} />}
 
       {/* Remote peer selection outline(s) — painted on the real card so they always hug its
           rendered size (e.g. a tall image), unlike a separately-measured box. */}

@@ -26,3 +26,18 @@ export const AVATAR_SIZES: Record<AvatarSize, { box: number; font: number; dot: 
 
 /** Online presence indicator dot color (green). */
 export const AVATAR_ONLINE_COLOR = '#22c55e';
+
+/** Dash/gap pattern (SVG strokeDasharray) for the marching-ants selection outline. */
+export const SELECTION_DASH = '6 6';
+/** One dash+gap period of SELECTION_DASH; feeds --sel-march-distance so the loop is seamless. */
+export const SELECTION_DASH_PERIOD = 12;
+/** Stroke width of the marching-ants selection outline. */
+export const SELECTION_STROKE_WIDTH = 2;
+/** Loop duration (ms) of one marching-ants cycle. */
+export const SELECTION_MARCH_MS = 600;
+/** Distance (px) the selection ring sits outside the shape; mirrors the old outlineOffset. */
+export const SELECTION_OFFSET = 3;
+/** Selection outline colour — the comment-hover blue (Tailwind blue-500). */
+export const SELECTION_COLOR = '#3b82f6';
+/** Stroke width (world units) of the marching-ants ring drawn around a selected arrow. */
+export const SELECTION_ARROW_STROKE_WIDTH = 6;

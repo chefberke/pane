@@ -267,6 +267,15 @@
   to   { opacity: 1; transform: translateY(0); }
 }
 
+/* Marching-ants selection outline. --sel-march-distance must equal one dash+gap
+   period (set inline from a constant) so the loop is seamless. */
+@keyframes selection-march {
+  to { stroke-dashoffset: var(--sel-march-distance, -12); }
+}
+.selection-march {
+  animation: selection-march var(--sel-march-duration, 600ms) linear infinite;
+}
+
 /* ─── Global reset ───────────────────────────────────────────────────── */
 *, *::before, *::after {
   box-sizing: border-box;
