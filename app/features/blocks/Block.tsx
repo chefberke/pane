@@ -108,11 +108,12 @@ function BlockContainer({ block, scale, selected, isInMultiSelection, isDropTarg
 
       {/* Card */}
       <div
-        className={[
-          'rounded-2xl overflow-hidden transition-shadow duration-150',
-          selected ? 'shadow-xl' : 'shadow-md hover:shadow-lg',
-        ].join(' ')}
-        style={!selected && isDropTarget ? DROP_TARGET_CARD_STYLE : undefined}
+        className="rounded-2xl overflow-hidden transition-shadow duration-150"
+        style={
+          !selected && isDropTarget
+            ? DROP_TARGET_CARD_STYLE
+            : { boxShadow: selected || isHovered ? 'var(--shadow-card-hover)' : 'var(--shadow-card)' }
+        }
       >
         {block.type === 'link' && <LinkPreview block={block} />}
         {block.type === 'youtube' && <YoutubeEmbed block={block} />}

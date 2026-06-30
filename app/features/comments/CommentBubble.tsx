@@ -10,7 +10,7 @@ interface Props {
 }
 
 const WRAPPER_STYLE: CSSProperties = { bottom: 'calc(100% + 10px)', left: 0, maxWidth: 180 };
-const BUBBLE_STYLE: CSSProperties = { background: 'var(--color-surface-action)' };
+const BUBBLE_STYLE: CSSProperties = { background: 'var(--color-surface-action)', boxShadow: 'var(--shadow-float)' };
 const TEXT_STYLE: CSSProperties = { color: 'var(--color-text-on-action)' };
 const ARROW_STYLE: CSSProperties = {
   borderLeft: '5px solid transparent',
@@ -33,7 +33,7 @@ function CommentBubble({ comment, visible }: Props) {
           style={WRAPPER_STYLE}
         >
           <div
-            className="relative backdrop-blur-md rounded-2xl px-3 py-2 shadow-xl"
+            className="relative backdrop-blur-md rounded-2xl px-3 py-2"
             style={BUBBLE_STYLE}
           >
             <p

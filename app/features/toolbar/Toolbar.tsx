@@ -14,7 +14,7 @@ const CONTAINER_STYLE: CSSProperties = {
   boxShadow: 'var(--shadow-float)',
 };
 const SEGMENT_STYLE: CSSProperties = { background: 'var(--color-surface-sunken)' };
-const PILL_STYLE: CSSProperties = { background: 'var(--color-surface-control-active)' };
+const PILL_STYLE: CSSProperties = { background: 'var(--color-surface-control-active)', boxShadow: 'var(--shadow-float-sm)' };
 
 /** Floating bottom toolbar with mode toggles and canvas actions. */
 export default function Toolbar({ status, actions }: { status: ToolbarStatus; actions: ToolbarActions }) {
@@ -44,7 +44,7 @@ export default function Toolbar({ status, actions }: { status: ToolbarStatus; ac
               {!isPanMode && (
                 <motion.div
                   layoutId="mode-pill"
-                  className="absolute inset-0 rounded-[9px] shadow-sm"
+                  className="absolute inset-0 rounded-[9px]"
                   style={PILL_STYLE}
                   transition={{ type: 'spring', stiffness: 500, damping: 35 }}
                 />
@@ -65,7 +65,7 @@ export default function Toolbar({ status, actions }: { status: ToolbarStatus; ac
               {isPanMode && (
                 <motion.div
                   layoutId="mode-pill"
-                  className="absolute inset-0 rounded-[9px] shadow-sm"
+                  className="absolute inset-0 rounded-[9px]"
                   style={PILL_STYLE}
                   transition={{ type: 'spring', stiffness: 500, damping: 35 }}
                 />
