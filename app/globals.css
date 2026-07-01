@@ -276,6 +276,23 @@
   animation: selection-march var(--sel-march-duration, 600ms) linear infinite;
 }
 
+/* Idle "double-click to add" hint — the pointer icon gives a soft double-tap. */
+@keyframes idle-pointer-tap {
+  0%   { transform: scale(1); }
+  8%   { transform: scale(0.8); }
+  16%  { transform: scale(1); }
+  24%  { transform: scale(0.8); }
+  32%  { transform: scale(1); }
+  100% { transform: scale(1); }
+}
+.idle-pointer-tap {
+  transform-origin: top center;
+  animation: idle-pointer-tap 2.4s var(--ease-out-soft) infinite;
+}
+@media (prefers-reduced-motion: reduce) {
+  .idle-pointer-tap { animation: none; }
+}
+
 /* ─── Global reset ───────────────────────────────────────────────────── */
 *, *::before, *::after {
   box-sizing: border-box;

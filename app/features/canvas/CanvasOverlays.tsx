@@ -16,6 +16,7 @@ import MenuButton from '../menu-panel/MenuButton';
 import ShortcutsButton from './ShortcutsButton';
 import EmptyState from './EmptyState';
 import HintFlash from './HintFlash';
+import IdleHint from './IdleHint';
 import { ZOOM_STEP } from './constants';
 
 // Heavy, conditionally-mounted overlays — code-split out of the initial canvas
@@ -31,6 +32,7 @@ interface Transient {
   addPos: { x: number; y: number; connectSourceId?: string } | null;
   menu: ContextMenuState | null;
   hint: { x: number; y: number; message: string } | null;
+  idleHint: { x: number; y: number } | null;
   commentTarget: CommentTarget;
 }
 
@@ -89,7 +91,7 @@ interface Props {
 
 /** The full floating overlay stack rendered above the canvas world (chrome, modals, popovers). */
 export default function CanvasOverlays({ canEdit, isFollowing, transient, modals, data, commentHandlers, actions }: Props) {
-  const { marquee, addPos, menu, hint, commentTarget } = transient;
+  const { marquee, addPos, menu, hint, idleHint, commentTarget } = transient;
   const { isSearchOpen, isHelpOpen, isItemsOpen, lightbox, pdfLightbox } = modals;
   const { blocks, frames, blockById, frameById, scale, canUndo, canRedo, themeChoice, topRightSlot, toolbarStatus, toolbarActions } = data;
 
@@ -141,6 +143,10 @@ export default function CanvasOverlays({ canEdit, isFollowing, transient, modals
             message={hint.message}
           />
         )}
+      </AnimatePresence>
+
+      <AnimatePresence>
+        {idleHint && <IdleHint key="idle-hint" x={idleHint.x} y={idleHint.y} />}
       </AnimatePresence>
 
       {!isFollowing && commentTarget && (

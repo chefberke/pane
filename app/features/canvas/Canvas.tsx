@@ -34,6 +34,7 @@ import { resolveAnchors, connectorMidpoint } from '../connectors/utils';
 import { usePersistence } from './hooks/usePersistence';
 import { usePresenceSync } from './hooks/usePresenceSync';
 import { useCanvasHint } from './hooks/useCanvasHint';
+import { useCanvasIdleHint } from './hooks/useCanvasIdleHint';
 import { useComments } from './hooks/useComments';
 import { useFrameInteractions } from './hooks/useFrameInteractions';
 import { useBlockDropTarget } from './hooks/useBlockDropTarget';
@@ -461,6 +462,20 @@ export default function Canvas({
   const toolbarStatus = { isPanMode, hasRefreshable: blocks.some(b => b.type === 'link' || b.type === 'github'), isRefreshing, canUndo, canRedo, selectedCount: selectedIds.size };
   const inPanMode = isPanMode || isPanning.current;
 
+  // The idle "double-click to add" hint may show only when editing is allowed and nothing else is going on.
+  const idleHintEnabled = useMemo(() => (
+    canEdit && !isFollowing &&
+    (blocks.length + frames.length) > 0 &&   // EmptyState already advertises this on an empty canvas
+    !addPos && !menu && !commentTarget && !selectedConnectorId &&
+    !isSearchOpen && !isHelpOpen && !isItemsOpen && !lightbox && !pdfLightbox &&
+    !liveDrag && !pending && !dragHover && !marquee && !isPanMode && !renameFrameReq
+  ), [
+    canEdit, isFollowing, blocks.length, frames.length, addPos, menu, commentTarget,
+    selectedConnectorId, isSearchOpen, isHelpOpen, isItemsOpen, lightbox, pdfLightbox,
+    liveDrag, pending, dragHover, marquee, isPanMode, renameFrameReq,
+  ]);
+  const { idleHint, reportPointer } = useCanvasIdleHint({ enabled: idleHintEnabled });
+
   // ─── Derived render data ─────────────────────────────────────────────────
 
   // Sort frames so outer renders first (lower z), inner on top. Skip frames whose ancestor is collapsed.
@@ -541,10 +556,12 @@ export default function Canvas({
       onPointerDown={isFollowing ? undefined : onPointerDown}
       onPointerMove={e => {
         if (!isFollowing) onPointerMove(e);
-        if (onCursorMove) {
-          const rect = viewportRef.current?.getBoundingClientRect();
-          if (rect) {
-            const { x, y } = screenToCanvas(e.clientX - rect.left, e.clientY - rect.top);
+        const rect = viewportRef.current?.getBoundingClientRect();
+        if (rect) {
+          const sx = e.clientX - rect.left, sy = e.clientY - rect.top;
+          reportPointer(sx, sy);
+          if (onCursorMove) {
+            const { x, y } = screenToCanvas(sx, sy);
             onCursorMove(x, y);
           }
         }
@@ -607,7 +624,7 @@ export default function Canvas({
       <CanvasOverlays
         canEdit={canEdit}
         isFollowing={isFollowing}
-        transient={{ marquee, addPos, menu, hint, commentTarget }}
+        transient={{ marquee, addPos, menu, hint, commentTarget, idleHint }}
         modals={{ isSearchOpen, isHelpOpen, isItemsOpen, lightbox, pdfLightbox }}
         data={{ blocks, frames, blockById, frameById, scale, canUndo, canRedo, themeChoice, topRightSlot, toolbarStatus, toolbarActions }}
         commentHandlers={commentHandlers}

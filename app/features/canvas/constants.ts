@@ -17,6 +17,18 @@ export const ZOOM_TO_FIT_PADDING = 64;
 export const PEER_CURSOR_Z = 150;
 /** Stacking order for the transparent shield shown while dragging out a connector (covers iframes so pointer events keep flowing). */
 export const CONNECTOR_DRAG_SHIELD_Z = 50;
+/** How long (ms) the user must go without an action before the "double-click to add" nudge starts blinking. */
+export const IDLE_HINT_MS = 30000;
+/** Interval (ms) between blinks once the idle nudge is active. */
+export const IDLE_HINT_BLINK_PERIOD_MS = 6000;
+/** How long (ms) each blink stays visible before fading back out. */
+export const IDLE_HINT_BLINK_VISIBLE_MS = 3800;
+/** Stacking order for the idle cursor hint (above selected blocks, below menus/modals). */
+export const IDLE_HINT_Z = 120;
+/** Px the idle hint sits below the cursor tip so it reads as "just under the pointer". */
+export const IDLE_HINT_OFFSET_Y = 22;
+/** Rendered px size of the pointer icon; also used to center it under the cursor. */
+export const IDLE_HINT_ICON_SIZE = 16;
 
 /** Approximate rendered dimensions per block type — used to center blocks on drop. */
 export const BLOCK_SIZES: Record<Block['type'], { w: number; h: number }> = {
