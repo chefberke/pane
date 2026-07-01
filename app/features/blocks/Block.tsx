@@ -1,5 +1,5 @@
 'use client';
-import { memo, useCallback, useState } from 'react';
+import { memo, useCallback, useRef, useState } from 'react';
 import { MessageCircle, Trash2 } from 'lucide-react';
 import type { CSSProperties } from 'react';
 import type { Block, ConnectorSide } from '@/app/features/types';
@@ -14,10 +14,13 @@ import MapEmbed from './renderers/MapEmbed';
 import PdfEmbed from './renderers/PdfEmbed';
 import GithubEmbed from './renderers/GithubEmbed';
 import { useBlockDrag } from './hooks/useBlockDrag';
+import { useBlockResize } from './hooks/useBlockResize';
 import CommentBubble from '../comments/CommentBubble';
 import ActionTip from './ActionTip';
 import BlockEdgeHandles from './BlockEdgeHandles';
+import BlockResizeHandles from './BlockResizeHandles';
 import SelectionOutline from '../ui/SelectionOutline';
+import { NOTE_DEFAULT_H, NOTE_DEFAULT_W } from './constants';
 
 interface Props {
   block: Block;
@@ -73,6 +76,20 @@ function BlockContainer({ block, scale, selected, isInMultiSelection, isDropTarg
     onDragRect: handlers.onDragRect,
   });
 
+  // Note (text) resize — width is free; height floors at the note's content ("content is the floor").
+  const cardRef = useRef<HTMLDivElement>(null);
+  const noteContentRef = useRef<HTMLDivElement>(null);
+  const { onHandlePointerDown } = useBlockResize({
+    block,
+    scale,
+    onUpdate,
+    onBeforeMutate: handlers.onBeforeDragCommit,
+    boxRef: cardRef,
+    contentRef: noteContentRef,
+  });
+  const isNote = block.type === 'text';
+  const showResizeHandles = isNote && canEdit && (selected || isHovered) && !isEditingText;
+
   return (
     <div
       ref={containerRef}
@@ -108,12 +125,21 @@ function BlockContainer({ block, scale, selected, isInMultiSelection, isDropTarg
 
       {/* Card */}
       <div
+        ref={cardRef}
         className="rounded-2xl overflow-hidden transition-shadow duration-150"
-        style={
-          !selected && isDropTarget
+        style={{
+          ...(!selected && isDropTarget
             ? DROP_TARGET_CARD_STYLE
-            : { boxShadow: selected || isHovered ? 'var(--shadow-card-hover)' : 'var(--shadow-card)' }
-        }
+            : { boxShadow: selected || isHovered ? 'var(--shadow-card-hover)' : 'var(--shadow-card)' }),
+          // Notes are resizable: width is user-driven, height floors at content (see useBlockResize).
+          ...(isNote
+            ? {
+                width: block.width ?? NOTE_DEFAULT_W,
+                minHeight: block.height ?? NOTE_DEFAULT_H,
+                background: 'var(--color-surface-note)',
+              }
+            : null),
+        }}
       >
         {block.type === 'link' && <LinkPreview block={block} />}
         {block.type === 'youtube' && <YoutubeEmbed block={block} />}
@@ -129,6 +155,7 @@ function BlockContainer({ block, scale, selected, isInMultiSelection, isDropTarg
             onUpdate={onUpdateText}
             isEditing={isEditingText}
             onStopEdit={onStopEditText}
+            rootRef={noteContentRef}
           />
         )}
       </div>
@@ -185,6 +212,9 @@ function BlockContainer({ block, scale, selected, isInMultiSelection, isDropTarg
       {onConnectorStart && !isEditingText && isHovered && (
         <BlockEdgeHandles onStart={handleConnectorStart} />
       )}
+
+      {/* Note resize handles — 4 edges + 4 corners, hugging the card box (editors only). */}
+      {showResizeHandles && <BlockResizeHandles onHandlePointerDown={onHandlePointerDown} />}
     </div>
   );
 }

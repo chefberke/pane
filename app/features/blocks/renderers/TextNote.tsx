@@ -1,5 +1,5 @@
 'use client';
-import { memo } from 'react';
+import { memo, type RefObject } from 'react';
 import type { TextBlock } from '@/app/features/types';
 import { useAutoGrowTextarea } from '../hooks/useAutoGrowTextarea';
 
@@ -9,14 +9,17 @@ interface Props {
   onUpdate: (content: string) => void;
   isEditing: boolean;
   onStopEdit: () => void;
+  /** Root element ref — its measured height is the resize floor (box never shrinks below the text). */
+  rootRef?: RefObject<HTMLDivElement | null>;
 }
 
-function TextNote({ block, onUpdate, isEditing, onStopEdit }: Props) {
+function TextNote({ block, onUpdate, isEditing, onStopEdit, rootRef }: Props) {
   const ref = useAutoGrowTextarea(isEditing, block.content);
 
   return (
     <div
-      className="w-56 min-h-[88px] p-3.5 cursor-default"
+      ref={rootRef}
+      className="w-full min-h-[88px] p-3.5 cursor-default"
       style={{ background: 'var(--color-surface-note)' }}
       onPointerDown={e => { if (isEditing) e.stopPropagation(); }}
     >
