@@ -1,6 +1,7 @@
 'use client';
-import { memo, useEffect, useRef } from 'react';
+import { memo } from 'react';
 import type { TextBlock } from '@/app/features/types';
+import { useAutoGrowTextarea } from '../hooks/useAutoGrowTextarea';
 
 /** Props for the editable sticky-note text block. */
 interface Props {
@@ -11,11 +12,7 @@ interface Props {
 }
 
 function TextNote({ block, onUpdate, isEditing, onStopEdit }: Props) {
-  const ref = useRef<HTMLTextAreaElement>(null);
-
-  useEffect(() => {
-    if (isEditing) ref.current?.focus();
-  }, [isEditing]);
+  const ref = useAutoGrowTextarea(isEditing, block.content);
 
   return (
     <div
@@ -26,13 +23,12 @@ function TextNote({ block, onUpdate, isEditing, onStopEdit }: Props) {
       {isEditing ? (
         <textarea
           ref={ref}
-          className="w-full min-h-[60px] bg-transparent resize-none outline-none text-xs leading-relaxed font-medium"
+          className="w-full min-h-[60px] bg-transparent resize-none overflow-hidden outline-none text-xs leading-relaxed font-medium"
           style={{
             color: 'var(--color-text-primary)',
           }}
           value={block.content}
           placeholder="Write something..."
-          rows={4}
           onChange={e => onUpdate(e.target.value)}
           onBlur={onStopEdit}
           onPointerDown={e => e.stopPropagation()}
