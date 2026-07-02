@@ -49,6 +49,7 @@ export default function CommentsSheet({ targetId, targetLabel, comments, onAdd, 
           onMouseDown={e => e.stopPropagation()}
           onDoubleClick={e => e.stopPropagation()}
           onPointerDown={e => e.stopPropagation()}
+          onWheel={e => e.stopPropagation()}
         >
           {/* Header */}
           <div
@@ -82,7 +83,7 @@ export default function CommentsSheet({ targetId, targetLabel, comments, onAdd, 
           </div>
 
           {/* Messages */}
-          <div ref={listRef} className="flex-1 overflow-y-auto overflow-x-hidden">
+          <div ref={listRef} className="ui-scrollbar flex-1 overflow-y-auto overflow-x-hidden">
             {comments.length > 0 ? (
               <CommentList
                 comments={comments}

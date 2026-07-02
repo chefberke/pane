@@ -109,6 +109,7 @@ export default function ItemsSheet({ blocks, frames, onClose, onNavigate, onNavi
           exit={{ x: '100%' }}
           transition={{ type: 'tween', duration: 0.2, ease: [0.22, 1, 0.36, 1] }}
           onMouseDown={e => e.stopPropagation()}
+          onWheel={e => e.stopPropagation()}
         >
           {/* Header */}
           <div
@@ -173,7 +174,7 @@ export default function ItemsSheet({ blocks, frames, onClose, onNavigate, onNavi
           )}
 
           {/* List */}
-          <div className="flex-1 overflow-y-auto overflow-x-hidden py-1">
+          <div className="ui-scrollbar flex-1 overflow-y-auto overflow-x-hidden py-1">
             {blocks.length === 0 && frames.length === 0 ? (
               <div className="flex flex-col items-center justify-center h-full gap-1">
                 <span className="text-[13px]" style={{ color: 'var(--color-text-tertiary)' }}>No items yet</span>
