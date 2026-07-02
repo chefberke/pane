@@ -22,6 +22,8 @@ export const ACTION_MENU_OFFSET_X = 100;
 export const RENAME_MODAL_WIDTH = 340;
 export const TRASH_MODAL_WIDTH = 380;
 export const DELETE_MODAL_WIDTH = 360;
+export const EXPORT_MODAL_WIDTH = 360;
+export const IMPORT_MODAL_WIDTH = 380;
 
 /** Stacking layers. */
 export const Z_PANEL = 200;

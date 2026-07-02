@@ -8,4 +8,6 @@ export interface WorkspaceItem {
   name: string;
   createdAt: number;
   deletedAt?: number;
+  /** Serialized canvas state; present on loaded rows, used for export. */
+  stateJson?: string;
 }

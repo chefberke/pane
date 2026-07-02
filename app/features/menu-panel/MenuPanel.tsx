@@ -5,9 +5,13 @@ import { motion } from 'framer-motion';
 import { useRouter, usePathname } from 'next/navigation';
 import { db } from '@/app/lib/db';
 import { useAuth } from '../auth/hooks/useAuth';
+import { exportFilename } from '../workspace/utils';
+import type { ImportPreview } from '../workspace/types';
 import { PANEL_WIDTH, Z_PANEL } from './constants';
 import { useWorkspaceCrud } from './hooks/useWorkspaceCrud';
 import { useActionMenu } from './hooks/useActionMenu';
+import { useWorkspaceTransfer } from './hooks/useWorkspaceTransfer';
+import type { ExportSource } from './hooks/useWorkspaceTransfer';
 import BrandRow from './BrandRow';
 import AccountRow from './AccountRow';
 import WorkspaceList from './WorkspaceList';
@@ -17,7 +21,16 @@ import ActionDropdown from './ActionDropdown';
 import RenameModal from './RenameModal';
 import TrashModal from './TrashModal';
 import DeleteModal from './DeleteModal';
+import ExportModal from './ExportModal';
+import ImportModal from './ImportModal';
 import type { ThemeChoice, WorkspaceItem } from './types';
+
+/** A pending export: what to export, the file name, and the dialog title. */
+interface ExportTarget {
+  title: string;
+  filename: string;
+  rows: ExportSource[];
+}
 
 interface Props {
   themeChoice: ThemeChoice;
@@ -28,6 +41,7 @@ interface Props {
 /** Anchored dropdown menu panel that opens below the MenuButton. */
 export default function MenuPanel({ themeChoice, onSetTheme, onClose }: Props) {
   const panelRef = useRef<HTMLDivElement>(null);
+  const fileInputRef = useRef<HTMLInputElement>(null);
   const router = useRouter();
   const pathname = usePathname();
   const { isLoading, user } = useAuth();
@@ -35,16 +49,48 @@ export default function MenuPanel({ themeChoice, onSetTheme, onClose }: Props) {
   const [renameTarget, setRenameTarget] = useState<WorkspaceItem | null>(null);
   const [deleteTarget, setDeleteTarget] = useState<WorkspaceItem | null>(null);
   const [trashOpen, setTrashOpen] = useState(false);
-  const modalOpen = !!(renameTarget || deleteTarget || trashOpen);
+  const [exportTarget, setExportTarget] = useState<ExportTarget | null>(null);
+  const [importPreview, setImportPreview] = useState<ImportPreview | null>(null);
+  const [importBusy, setImportBusy] = useState(false);
+  const modalOpen = !!(renameTarget || deleteTarget || trashOpen || exportTarget || importPreview);
 
   const { workspaces, deletedWorkspaces, createCanvas, rename, softDelete, restore, deleteForever } =
     useWorkspaceCrud(user?.id ?? null, onClose);
+  const { readImportFile, importWorkspaces } = useWorkspaceTransfer();
 
   const {
     hoveredId, setHoveredId, actionMenuId, setActionMenuId, actionMenuPos, openActionMenu, registerDotRef,
   } = useActionMenu(panelRef, onClose, modalOpen);
 
   const onNavigate = useCallback((id: string) => { onClose(); router.push(`/w/${id}`); }, [onClose, router]);
+
+  const onExportAll = useCallback(() => {
+    setExportTarget({ title: 'Export all canvases', filename: exportFilename(null), rows: workspaces });
+  }, [workspaces]);
+
+  const onPickImportFile = useCallback(() => fileInputRef.current?.click(), []);
+
+  const onFileChange = useCallback(async (e: React.ChangeEvent<HTMLInputElement>) => {
+    const file = e.target.files?.[0];
+    e.target.value = ''; // reset so re-selecting the same file re-triggers change
+    if (!file) return;
+    setImportPreview(await readImportFile(file));
+  }, [readImportFile]);
+
+  const onConfirmImport = useCallback(async () => {
+    if (!importPreview || importPreview.workspaces.length === 0) return;
+    setImportBusy(true);
+    try {
+      const ids = await importWorkspaces(importPreview.workspaces);
+      setImportPreview(null);
+      if (ids.length === 1) { onClose(); router.push(`/w/${ids[0]}`); }
+    } catch (err) {
+      const message = err instanceof Error ? err.message : 'Import failed.';
+      setImportPreview(p => (p ? { ...p, errors: [...p.errors, message] } : p));
+    } finally {
+      setImportBusy(false);
+    }
+  }, [importPreview, importWorkspaces, onClose, router]);
 
   const actionMenu = useMemo(() => ({
     hoveredId,
@@ -91,6 +137,7 @@ export default function MenuPanel({ themeChoice, onSetTheme, onClose }: Props) {
           hasUser={!!user}
           onNavigate={onNavigate}
           onCreateCanvas={user ? createCanvas : undefined}
+          onImport={onPickImportFile}
           actionMenu={actionMenu}
         />
 
@@ -99,9 +146,20 @@ export default function MenuPanel({ themeChoice, onSetTheme, onClose }: Props) {
         <SettingsGroup
           hasUser={!!user}
           trashCount={deletedWorkspaces.length}
+          canExportAll={workspaces.length > 0}
           onOpenTrash={() => setTrashOpen(true)}
+          onExportAll={onExportAll}
         />
       </motion.div>
+
+      {/* Hidden file input backing the "Import canvas…" action */}
+      <input
+        ref={fileInputRef}
+        type="file"
+        accept="application/json,.json"
+        className="hidden"
+        onChange={onFileChange}
+      />
 
       {/* Trash modal */}
       {trashOpen && createPortal(
@@ -119,8 +177,34 @@ export default function MenuPanel({ themeChoice, onSetTheme, onClose }: Props) {
         <ActionDropdown
           pos={actionMenuPos}
           onRename={() => { setRenameTarget(activeWs); setActionMenuId(null); }}
+          onExport={() => {
+            setExportTarget({ title: 'Export canvas', filename: exportFilename(activeWs.name), rows: [activeWs] });
+            setActionMenuId(null);
+          }}
           onDelete={() => { setDeleteTarget(activeWs); setActionMenuId(null); }}
           onClose={() => setActionMenuId(null)}
+        />,
+        document.body
+      )}
+
+      {/* Export modal — download or copy the selected canvas(es) as JSON */}
+      {exportTarget && createPortal(
+        <ExportModal
+          title={exportTarget.title}
+          rows={exportTarget.rows}
+          filename={exportTarget.filename}
+          onClose={() => setExportTarget(null)}
+        />,
+        document.body
+      )}
+
+      {/* Import modal — preview an import file, then create new workspaces */}
+      {importPreview && createPortal(
+        <ImportModal
+          preview={importPreview}
+          busy={importBusy}
+          onConfirm={onConfirmImport}
+          onClose={() => setImportPreview(null)}
         />,
         document.body
       )}

@@ -1,5 +1,5 @@
 'use client';
-import { Plus } from 'lucide-react';
+import { Plus, FileUp } from 'lucide-react';
 import WorkspaceRow from './WorkspaceRow';
 import { Row } from './primitives';
 import type { WorkspaceItem } from './types';
@@ -18,12 +18,13 @@ interface Props {
   hasUser: boolean;
   onNavigate: (id: string) => void;
   onCreateCanvas?: () => void;
+  onImport?: () => void;
   actionMenu: ActionMenuBag;
 }
 
-/** The "Canvases" section: workspace rows plus the New canvas action. */
+/** The "Canvases" section: workspace rows plus the New canvas and Import actions. */
 export default function WorkspaceList({
-  workspaces, currentPath, hasUser, onNavigate, onCreateCanvas, actionMenu,
+  workspaces, currentPath, hasUser, onNavigate, onCreateCanvas, onImport, actionMenu,
 }: Props) {
   return (
     <div className="py-2">
@@ -49,6 +50,7 @@ export default function WorkspaceList({
       ))}
 
       <Row icon={<Plus size={14} />} label="New canvas" onClick={onCreateCanvas} />
+      {hasUser && <Row icon={<FileUp size={14} />} label="Import canvas…" onClick={onImport} />}
     </div>
   );
 }

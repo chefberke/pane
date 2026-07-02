@@ -1,17 +1,18 @@
 'use client';
 import { memo, useEffect, useRef } from 'react';
-import { Pencil, Trash2 } from 'lucide-react';
+import { Pencil, Trash2, Download } from 'lucide-react';
 import { ACTION_MENU_WIDTH, Z_ACTION_DROPDOWN } from './constants';
 
 interface Props {
   pos: { top: number; left: number };
   onRename: () => void;
+  onExport: () => void;
   onDelete: () => void;
   onClose: () => void;
 }
 
-/** Portaled rename/delete dropdown anchored to a workspace row's 3-dot button. */
-function ActionDropdown({ pos, onRename, onDelete, onClose }: Props) {
+/** Portaled rename/export/delete dropdown anchored to a workspace row's 3-dot button. */
+function ActionDropdown({ pos, onRename, onExport, onDelete, onClose }: Props) {
   const ref = useRef<HTMLDivElement>(null);
 
   useEffect(() => {
@@ -47,6 +48,17 @@ function ActionDropdown({ pos, onRename, onDelete, onClose }: Props) {
       >
         <Pencil size={13} style={{ color: 'var(--color-text-muted)', flexShrink: 0 }} />
         <span className="text-[13px]" style={{ color: 'var(--color-text-primary)' }}>Rename</span>
+      </button>
+      <button
+        type="button"
+        className="w-full flex items-center gap-2.5 px-3 cursor-pointer"
+        style={{ height: 34, background: 'transparent', border: 'none' }}
+        onMouseEnter={e => { (e.currentTarget as HTMLButtonElement).style.background = 'var(--color-bg-hover)'; }}
+        onMouseLeave={e => { (e.currentTarget as HTMLButtonElement).style.background = 'transparent'; }}
+        onClick={onExport}
+      >
+        <Download size={13} style={{ color: 'var(--color-text-muted)', flexShrink: 0 }} />
+        <span className="text-[13px]" style={{ color: 'var(--color-text-primary)' }}>Export</span>
       </button>
       <button
         type="button"
