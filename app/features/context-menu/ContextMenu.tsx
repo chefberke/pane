@@ -4,6 +4,7 @@ import type { ContextMenuRow } from './types';
 import { MENU_WIDTH, MENU_ROW_HEIGHT } from './constants';
 import { clampMenuPosition } from './utils';
 import ColorSwatchRow from './ColorSwatchRow';
+import GroupRow from './GroupRow';
 
 /** Props for the floating right-click menu. */
 interface Props {
@@ -54,6 +55,9 @@ export default function ContextMenu({ x, y, bounds, rows, onClose }: Props) {
         }
         if (row.kind === 'color') {
           return <ColorSwatchRow key={i} current={row.current} onSelect={c => { row.onSelect(c); onClose(); }} />;
+        }
+        if (row.kind === 'group') {
+          return <GroupRow key={i} label={row.label} color={row.color} onClick={() => { row.onClick(); onClose(); }} />;
         }
         const Icon = row.icon;
         return (

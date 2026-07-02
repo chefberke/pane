@@ -3,6 +3,11 @@ import { BLOCK_SIZES } from '@/app/features/canvas/constants';
 import type { FrameMembership, Rect } from './types';
 import { FRAME_PADDING } from './constants';
 
+// Tuning knobs for findEmptySpotInFrame's grid scan — single-consumer, kept local rather than in constants.ts.
+const EMPTY_SPOT_STEP = FRAME_PADDING;
+const EMPTY_SPOT_GAP = FRAME_PADDING;
+const EMPTY_SPOT_MAX_ROWS = 400;
+
 /** Generates a UUID v4 for a new frame. */
 export function frameUid(): string {
   return crypto.randomUUID();
@@ -78,6 +83,58 @@ export function frameMembers(frame: Frame, blocks: Block[], frames: Frame[]): Fr
     if (owner && owner.id === frame.id) childFrameIds.add(f.id);
   }
   return { blockIds, childFrameIds };
+}
+
+/** True when two rects overlap, treating anything closer than `gap` apart as touching. */
+function rectsOverlapWithGap(a: Rect, b: Rect, gap: number): boolean {
+  return !(
+    a.x + a.width + gap <= b.x ||
+    b.x + b.width + gap <= a.x ||
+    a.y + a.height + gap <= b.y ||
+    b.y + b.height + gap <= a.y
+  );
+}
+
+/**
+ * Finds a free spot of the given size inside `frame` that doesn't overlap its current member
+ * blocks/child frames, by grid-scanning from the frame's top-left. `excludeId` omits a block
+ * (typically the one being placed) from the occupancy check so its own stale position doesn't
+ * count as an obstacle. Falls back to stacking below the lowest member if the scan is exhausted.
+ */
+export function findEmptySpotInFrame(
+  frame: Frame,
+  size: { w: number; h: number },
+  blocks: Block[],
+  frames: Frame[],
+  excludeId?: string,
+): { x: number; y: number } {
+  const { blockIds, childFrameIds } = frameMembers(frame, blocks, frames);
+  const occupied: Rect[] = [];
+  for (const b of blocks) {
+    if (blockIds.has(b.id) && b.id !== excludeId) occupied.push(blockRect(b));
+  }
+  for (const f of frames) {
+    if (childFrameIds.has(f.id)) occupied.push(frameOuterRect(f));
+  }
+
+  const inner = frameInnerRect(frame);
+  const left = inner.x + FRAME_PADDING;
+  const right = Math.max(left + size.w, inner.x + inner.width - FRAME_PADDING);
+  const top = inner.y + FRAME_PADDING;
+
+  for (let row = 0; row < EMPTY_SPOT_MAX_ROWS; row++) {
+    const y = top + row * EMPTY_SPOT_STEP;
+    for (let x = left; x <= right - size.w || x === left; x += EMPTY_SPOT_STEP) {
+      const candidate: Rect = { x, y, width: size.w, height: size.h };
+      if (!occupied.some(o => rectsOverlapWithGap(candidate, o, EMPTY_SPOT_GAP))) {
+        return { x, y };
+      }
+      if (x >= right - size.w) break;
+    }
+  }
+
+  const maxBottom = occupied.reduce((m, o) => Math.max(m, o.y + o.height), top);
+  return { x: left, y: maxBottom + FRAME_PADDING };
 }
 
 /** Recursively collects all descendant block ids under `frame`. */

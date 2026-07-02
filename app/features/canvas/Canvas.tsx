@@ -6,14 +6,19 @@ import { BLOCK_SIZES, MIN_SCALE, MAX_SCALE, ZOOM_TO_FIT_PADDING, CONNECTOR_DRAG_
 import { uid } from './utils';
 import {
   blockRect,
+  buildBlockFrameMap,
+  findEmptySpotInFrame,
   findEnclosingFrame,
   frameAncestorCollapsed,
   frameDescendantBlocks,
   frameMembers,
+  frameOuterRect,
+  groupBoundsFromRects,
   isInsideCollapsedFrame,
   sortFramesByDepth,
 } from '../frames/utils';
-import type { FrameHandlers, FrameRenameRequest } from '../frames/types';
+import type { FrameHandlers, FrameRenameRequest, Rect } from '../frames/types';
+import { FRAME_MIN_H, FRAME_MIN_W } from '../frames/constants';
 import { useViewport } from './hooks/useViewport';
 import { useTheme } from './hooks/useTheme';
 import { useBlocks } from './hooks/useBlocks';
@@ -230,6 +235,73 @@ export default function Canvas({
     setSelectedFrameId(null);
   }, [selectedFrameId, deleteFrame, pushSnapshot]);
 
+  /** Moves the current selection into an existing frame, auto-placing each block in free space and growing/shrinking affected frames to fit. */
+  const addSelectedToFrame = useCallback((frameId: string) => {
+    if (selectedIdsRef.current.size === 0) return;
+    const frame = framesRef.current.find(f => f.id === frameId);
+    if (!frame) return;
+    pushSnapshot();
+
+    // Compute each selected block's new spot off a working copy, so blocks placed earlier
+    // in this batch are respected as obstacles for blocks placed later.
+    const workingBlocks = blocksRef.current.map(b => ({ ...b }));
+    const posMap = new Map<string, { x: number; y: number }>();
+    selectedIdsRef.current.forEach(id => {
+      const idx = workingBlocks.findIndex(b => b.id === id);
+      if (idx === -1) return;
+      const b = workingBlocks[idx];
+      const w = b.width ?? BLOCK_SIZES[b.type].w;
+      const h = b.height ?? BLOCK_SIZES[b.type].h;
+      const { x, y } = findEmptySpotInFrame(frame, { w, h }, workingBlocks, framesRef.current, id);
+      workingBlocks[idx] = { ...b, x, y };
+      posMap.set(id, { x, y });
+    });
+
+    // Frames affected: the destination, plus any frame(s) the moved blocks are leaving.
+    const blockFrameMapBefore = buildBlockFrameMap(blocksRef.current, framesRef.current);
+    const affected = new Set<string>([frameId]);
+    selectedIdsRef.current.forEach(id => {
+      const old = blockFrameMapBefore.get(id);
+      if (old) affected.add(old);
+    });
+    const newRects = new Map<string, Rect>();
+    affected.forEach(fid => {
+      const f = framesRef.current.find(x => x.id === fid);
+      if (!f) return;
+      // Membership can't be inferred purely by geometry here: a moved block may land right at
+      // (or just past) the destination frame's stale edge, so force it in for `frameId` and force
+      // it out of whichever frame(s) it's leaving, rather than trusting containment against old rects.
+      const { blockIds, childFrameIds } = frameMembers(f, workingBlocks, framesRef.current);
+      const memberIds = new Set(blockIds);
+      if (fid === frameId) {
+        selectedIdsRef.current.forEach(id => memberIds.add(id));
+      } else {
+        selectedIdsRef.current.forEach(id => memberIds.delete(id));
+      }
+      const rects = workingBlocks.filter(b => memberIds.has(b.id)).map(blockRect);
+      framesRef.current.forEach(cf => { if (childFrameIds.has(cf.id)) rects.push(frameOuterRect(cf)); });
+      const bound = groupBoundsFromRects(rects);
+      if (bound) {
+        newRects.set(fid, {
+          x: bound.x, y: bound.y,
+          width: Math.max(FRAME_MIN_W, bound.width),
+          height: Math.max(FRAME_MIN_H, bound.height),
+        });
+      }
+    });
+
+    setBlocks(prev => prev.map(b => { const p = posMap.get(b.id); return p ? { ...b, ...p } as Block : b; }));
+    setFrames(prev => prev.map(f => {
+      let next = f;
+      if (f.id === frameId && f.collapsed) next = { ...next, collapsed: false };
+      const nr = newRects.get(f.id);
+      if (nr) next = { ...next, ...nr };
+      return next;
+    }));
+    setSelectedIds(new Set());
+    setSelectedFrameId(frameId);
+  }, [selectedIdsRef, framesRef, blocksRef, pushSnapshot, setBlocks, setFrames, setSelectedIds]);
+
   /** Unified delete: removes the selected frame if one is selected, otherwise blocks (plus any frames whose all descendant blocks are being deleted). */
   const deleteSelectedAny = useCallback(() => {
     if (selectedConnectorIdRef.current) {
@@ -371,6 +443,7 @@ export default function Canvas({
     handleOpenComments: commentHandlers.handleOpenComments,
     duplicateSelected,
     groupSelected,
+    addSelectedToFrame,
     deleteSelectedAny,
     handleFrameColor,
     handleOpenFrameComments: commentHandlers.handleOpenFrameComments,
@@ -378,7 +451,7 @@ export default function Canvas({
     handleFrameDelete,
     setRenameFrameReq,
     deleteConnector: handleDeleteConnector,
-  }), [addTextNoteAt, selectAll, resetView, handleOpenBlock, commentHandlers, duplicateSelected, groupSelected, deleteSelectedAny, handleFrameColor, ungroupSelected, handleFrameDelete, handleDeleteConnector]);
+  }), [addTextNoteAt, selectAll, resetView, handleOpenBlock, commentHandlers, duplicateSelected, groupSelected, addSelectedToFrame, deleteSelectedAny, handleFrameColor, ungroupSelected, handleFrameDelete, handleDeleteConnector]);
 
   const { menu, openMenu, closeMenu, buildMenuRows } = useCanvasContextMenu(contextMenuActions, { blocksRef, framesRef, connectorsRef });
 

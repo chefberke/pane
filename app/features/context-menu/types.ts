@@ -35,10 +35,18 @@ export interface ContextMenuColorRow {
   onSelect: (color: FrameColor) => void;
 }
 
+/** A row representing one existing frame — used by a block's "Add to group" list. */
+export interface ContextMenuGroupRow {
+  kind: 'group';
+  label: string;
+  color: FrameColor;
+  onClick: () => void;
+}
+
 /** A thin divider between groups of rows. */
 export interface ContextMenuSeparatorRow {
   kind: 'separator';
 }
 
 /** Any row the menu can render. */
-export type ContextMenuRow = ContextMenuActionRow | ContextMenuColorRow | ContextMenuSeparatorRow;
+export type ContextMenuRow = ContextMenuActionRow | ContextMenuColorRow | ContextMenuGroupRow | ContextMenuSeparatorRow;

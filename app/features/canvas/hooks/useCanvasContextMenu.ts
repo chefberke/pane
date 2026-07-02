@@ -6,6 +6,7 @@ import { useContextMenu } from '../../context-menu/hooks/useContextMenu';
 import { blockShareUrl } from '../../context-menu/utils';
 import type { ContextMenuRow, ContextMenuTarget } from '../../context-menu/types';
 import type { FrameRenameRequest } from '../../frames/types';
+import { blockRect, findEnclosingFrame } from '../../frames/utils';
 
 interface ContextMenuActions {
   setAddPos: (pos: { x: number; y: number; connectSourceId?: string } | null) => void;
@@ -16,6 +17,7 @@ interface ContextMenuActions {
   handleOpenComments: (block: Block, anchor: { x: number; y: number }) => void;
   duplicateSelected: () => void;
   groupSelected: () => void;
+  addSelectedToFrame: (frameId: string) => void;
   deleteSelectedAny: () => void;
   handleFrameColor: (id: string, color: FrameColor) => void;
   handleOpenFrameComments: (frame: Frame, anchor: { x: number; y: number }) => void;
@@ -63,6 +65,16 @@ export function useCanvasContextMenu(actions: ContextMenuActions, refs: Refs) {
         { kind: 'separator' },
         { kind: 'action', label: 'Duplicate', icon: Copy, shortcut: ['⌘', 'D'], onClick: actions.duplicateSelected },
         { kind: 'action', label: 'Group selected', icon: FolderPlus, shortcut: ['⌘', 'G'], onClick: actions.groupSelected },
+      );
+      const currentFrame = findEnclosingFrame(blockRect(block), framesRef.current);
+      const otherFrames = framesRef.current.filter(f => f.id !== currentFrame?.id);
+      if (otherFrames.length > 0) {
+        rows.push({ kind: 'separator' });
+        otherFrames.forEach(f => {
+          rows.push({ kind: 'group', label: `Add to "${f.title}"`, color: f.color, onClick: () => actions.addSelectedToFrame(f.id) });
+        });
+      }
+      rows.push(
         { kind: 'separator' },
         { kind: 'action', label: 'Delete', icon: Trash2, shortcut: ['⌫'], onClick: actions.deleteSelectedAny, danger: true },
       );
