@@ -26,6 +26,7 @@ export default function ItemsSheet({ blocks, frames, onClose, onNavigate, onNavi
   const [collapsedFrames, setCollapsedFrames] = useState<Set<string>>(new Set());
   const [pinnedCollapsed, setPinnedCollapsed] = useState(false);
   const inputRef = useRef<HTMLInputElement>(null);
+  const overlayRef = useRef<HTMLDivElement>(null);
 
   const filtered = useMemo(() => searchBlocks(blocks, query), [blocks, query]);
   const blockFrameMap = useMemo(() => buildBlockFrameMap(blocks, frames), [blocks, frames]);
@@ -74,6 +75,17 @@ export default function ItemsSheet({ blocks, frames, onClose, onNavigate, onNavi
     return () => clearTimeout(t);
   }, []);
 
+  // The canvas viewport has a native wheel listener that preventDefaults to pan/zoom.
+  // Since the sheet renders inside the viewport, stop wheel events here so the sheet
+  // (and not the canvas behind it) scrolls under the mouse.
+  useEffect(() => {
+    const el = overlayRef.current;
+    if (!el) return;
+    const stop = (e: WheelEvent) => e.stopPropagation();
+    el.addEventListener('wheel', stop);
+    return () => el.removeEventListener('wheel', stop);
+  }, []);
+
   const toggleFrame = (id: string) => {
     setCollapsedFrames(prev => {
       const next = new Set(prev);
@@ -87,6 +99,7 @@ export default function ItemsSheet({ blocks, frames, onClose, onNavigate, onNavi
   return (
     <AnimatePresence>
       <motion.div
+        ref={overlayRef}
         className="fixed inset-0 z-[250] flex justify-end"
         style={{ background: 'var(--color-overlay-sheet)', backdropFilter: 'blur(2px)' }}
         initial={{ opacity: 0 }}
@@ -109,7 +122,6 @@ export default function ItemsSheet({ blocks, frames, onClose, onNavigate, onNavi
           exit={{ x: '100%' }}
           transition={{ type: 'tween', duration: 0.2, ease: [0.22, 1, 0.36, 1] }}
           onMouseDown={e => e.stopPropagation()}
-          onWheel={e => e.stopPropagation()}
         >
           {/* Header */}
           <div

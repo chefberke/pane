@@ -12,8 +12,20 @@ export default function CommentsSheet({ targetId, targetLabel, comments, onAdd, 
   const { text, setText, replyTo, startReply, cancelReply, submit, handleKeyDown, textareaRef } =
     useCommentComposer({ targetId, onAdd, onReply, onClose });
   const listRef = useRef<HTMLDivElement>(null);
+  const overlayRef = useRef<HTMLDivElement>(null);
 
   useEffect(() => { textareaRef.current?.focus(); }, [textareaRef]);
+
+  // The canvas viewport has a native wheel listener that preventDefaults to pan/zoom.
+  // Since the sheet renders inside the viewport, stop wheel events here so the sheet
+  // (and not the canvas behind it) scrolls under the mouse.
+  useEffect(() => {
+    const el = overlayRef.current;
+    if (!el) return;
+    const stop = (e: WheelEvent) => e.stopPropagation();
+    el.addEventListener('wheel', stop);
+    return () => el.removeEventListener('wheel', stop);
+  }, []);
 
   // Chat behaviour: keep the newest message in view whenever the thread changes.
   useEffect(() => {
@@ -24,6 +36,7 @@ export default function CommentsSheet({ targetId, targetLabel, comments, onAdd, 
   return (
     <AnimatePresence>
       <motion.div
+        ref={overlayRef}
         className="fixed inset-0 z-[250] flex justify-end"
         style={{ background: 'var(--color-overlay-sheet)', backdropFilter: 'blur(2px)' }}
         initial={{ opacity: 0 }}
@@ -49,7 +62,6 @@ export default function CommentsSheet({ targetId, targetLabel, comments, onAdd, 
           onMouseDown={e => e.stopPropagation()}
           onDoubleClick={e => e.stopPropagation()}
           onPointerDown={e => e.stopPropagation()}
-          onWheel={e => e.stopPropagation()}
         >
           {/* Header */}
           <div
