@@ -15,6 +15,7 @@ import PdfEmbed from './renderers/PdfEmbed';
 import GithubEmbed from './renderers/GithubEmbed';
 import { useBlockDrag } from './hooks/useBlockDrag';
 import { useBlockResize } from './hooks/useBlockResize';
+import { useBlockMeasure } from './hooks/useBlockMeasure';
 import CommentBubble from '../comments/CommentBubble';
 import ActionTip from './ActionTip';
 import BlockEdgeHandles from './BlockEdgeHandles';
@@ -36,11 +37,6 @@ interface Props {
 const DRAG_OVERLAY_STYLE: CSSProperties = { display: 'none' };
 /** Card corner radius (px) — matches `rounded-2xl` (--radius-2xl = 11px in the theme). */
 const CARD_RADIUS = 11;
-const DROP_TARGET_CARD_STYLE: CSSProperties = {
-  outline: '2px solid var(--color-ring-selection)',
-  outlineOffset: '2px',
-  boxShadow: '0 0 0 4px color-mix(in srgb, var(--color-ring-selection) 22%, transparent)',
-};
 const ACTION_PILL_STYLE: CSSProperties = { background: 'var(--color-surface-action)' };
 
 /** Draggable block container — renders the appropriate embed and delegates interaction via handlers. */
@@ -87,6 +83,7 @@ function BlockContainer({ block, scale, selected, isInMultiSelection, isDropTarg
     boxRef: cardRef,
     contentRef: noteContentRef,
   });
+  useBlockMeasure({ id: block.id, cardRef, onMeasure: handlers.onMeasure });
   const isNote = block.type === 'text';
   const showResizeHandles = isNote && canEdit && (selected || isHovered) && !isEditingText;
 
@@ -128,9 +125,7 @@ function BlockContainer({ block, scale, selected, isInMultiSelection, isDropTarg
         ref={cardRef}
         className="rounded-2xl overflow-hidden transition-shadow duration-150"
         style={{
-          ...(!selected && isDropTarget
-            ? DROP_TARGET_CARD_STYLE
-            : { boxShadow: selected || isHovered ? 'var(--shadow-card-hover)' : 'var(--shadow-card)' }),
+          boxShadow: selected || isHovered || isDropTarget ? 'var(--shadow-card-hover)' : 'var(--shadow-card)',
           // Notes are resizable: width is user-driven, height floors at content (see useBlockResize).
           ...(isNote
             ? {
@@ -160,8 +155,8 @@ function BlockContainer({ block, scale, selected, isInMultiSelection, isDropTarg
         )}
       </div>
 
-      {/* Local selection — animated marching-ants ring hugging the card. */}
-      {selected && <SelectionOutline radius={CARD_RADIUS} />}
+      {/* Local selection / connector drop target — animated marching-ants ring hugging the card. */}
+      {(selected || isDropTarget) && <SelectionOutline radius={CARD_RADIUS} />}
 
       {/* Remote peer selection outline(s) — painted on the real card so they always hug its
           rendered size (e.g. a tall image), unlike a separately-measured box. */}

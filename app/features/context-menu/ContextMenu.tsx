@@ -17,7 +17,7 @@ interface Props {
   onClose: () => void;
 }
 
-/** Floating right-click menu rendered inside the canvas viewport; mirrors the AddInput/CommentsPopover shell. */
+/** Floating right-click menu rendered inside the canvas viewport; mirrors the AddInput/CommentsSheet shell. */
 export default function ContextMenu({ x, y, bounds, rows, onClose }: Props) {
   useEffect(() => {
     const onKey = (e: KeyboardEvent) => { if (e.key === 'Escape') { e.preventDefault(); onClose(); } };

@@ -29,3 +29,13 @@ export interface PendingConnector {
   /** Block currently hovered as a drop target, or null when over empty canvas. */
   targetId: string | null;
 }
+
+/** Transient state while re-targeting one end of an existing connector by dragging its endpoint handle. */
+export interface EndpointDrag {
+  connectorId: string;
+  /** Which end is being moved; the other end stays anchored to its block. */
+  end: 'source' | 'target';
+  cursor: Point;
+  /** Block currently hovered as the new attachment, or null when over empty canvas. */
+  targetId: string | null;
+}

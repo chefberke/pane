@@ -1,6 +1,6 @@
 import type { Connector, ConnectorSide } from '@/app/features/types';
 import type { Anchor, Point, Rect } from './types';
-import { MIN_CURVE, MAX_CURVE, CURVE_RATIO, CONNECTOR_SWATCHES } from './constants';
+import { MIN_CURVE, MAX_CURVE, CURVE_RATIO, BEND_CONTROL_FACTOR, CONNECTOR_SWATCHES } from './constants';
 
 /** Generates a UUID for a new connector. */
 export function uid(): string {
@@ -60,29 +60,52 @@ export function pointAnchor(p: Point, from: Point): Anchor {
   return { x: p.x, y: p.y, dir: { x: -dx / len, y: -dy / len } };
 }
 
-/** The two cubic-bezier control points between anchors `a` and `b`, offset along each anchor's direction. */
-function controlPoints(a: Anchor, b: Anchor): { c1: Point; c2: Point } {
-  const dist = Math.hypot(b.x - a.x, b.y - a.y);
-  const k = Math.max(MIN_CURVE, Math.min(MAX_CURVE, dist * CURVE_RATIO));
-  return {
-    c1: { x: a.x + a.dir.x * k, y: a.y + a.dir.y * k },
-    c2: { x: b.x + b.dir.x * k, y: b.y + b.dir.y * k },
-  };
+/** Unit left-normal of the chord a→b (the axis a bend is measured along); falls back to a stable value for a zero-length chord. */
+export function chordNormal(a: Point, b: Point): Point {
+  const dx = b.x - a.x;
+  const dy = b.y - a.y;
+  const len = Math.hypot(dx, dy) || 1;
+  return { x: -dy / len, y: dx / len };
 }
 
-/** Builds an SVG cubic-bezier `d` string between two anchors, curving along each anchor's direction. */
-export function bezierPath(a: Anchor, b: Anchor): string {
-  const { c1, c2 } = controlPoints(a, b);
+/**
+ * The two cubic-bezier control points between anchors `a` and `b`, offset along each anchor's direction.
+ * A non-zero `bend` shifts both points perpendicular to the chord so the curve's belly moves by exactly `bend`.
+ */
+function controlPoints(a: Anchor, b: Anchor, bend = 0): { c1: Point; c2: Point } {
+  const dist = Math.hypot(b.x - a.x, b.y - a.y);
+  const k = Math.max(MIN_CURVE, Math.min(MAX_CURVE, dist * CURVE_RATIO));
+  const c1 = { x: a.x + a.dir.x * k, y: a.y + a.dir.y * k };
+  const c2 = { x: b.x + b.dir.x * k, y: b.y + b.dir.y * k };
+  if (bend) {
+    const n = chordNormal(a, b);
+    const off = bend * BEND_CONTROL_FACTOR;
+    c1.x += n.x * off; c1.y += n.y * off;
+    c2.x += n.x * off; c2.y += n.y * off;
+  }
+  return { c1, c2 };
+}
+
+/** Builds an SVG cubic-bezier `d` string between two anchors, curving along each anchor's direction and bent by `bend`. */
+export function bezierPath(a: Anchor, b: Anchor, bend = 0): string {
+  const { c1, c2 } = controlPoints(a, b, bend);
   return `M ${a.x} ${a.y} C ${c1.x} ${c1.y}, ${c2.x} ${c2.y}, ${b.x} ${b.y}`;
 }
 
-/** The world-space midpoint of the connector curve (the cubic evaluated at t=0.5) — used to anchor the toolbar. */
-export function connectorMidpoint(a: Anchor, b: Anchor): Point {
-  const { c1, c2 } = controlPoints(a, b);
+/** The world-space midpoint of the connector curve (the cubic evaluated at t=0.5) — used to anchor the toolbar and bend handle. */
+export function connectorMidpoint(a: Anchor, b: Anchor, bend = 0): Point {
+  const { c1, c2 } = controlPoints(a, b, bend);
   return {
     x: 0.125 * a.x + 0.375 * c1.x + 0.375 * c2.x + 0.125 * b.x,
     y: 0.125 * a.y + 0.375 * c1.y + 0.375 * c2.y + 0.125 * b.y,
   };
+}
+
+/** Signed perpendicular bend (world units) that moves the un-bent curve's belly onto point `p`. */
+export function bendFromPoint(a: Anchor, b: Anchor, p: Point): number {
+  const mid = connectorMidpoint(a, b, 0);
+  const n = chordNormal(a, b);
+  return (p.x - mid.x) * n.x + (p.y - mid.y) * n.y;
 }
 
 /** SVG marker id whose arrowhead colour matches a connector's colour (falls back to the default marker). */

@@ -2,7 +2,6 @@
 import { useState, useRef, useCallback, useMemo } from 'react';
 import type { Block, Frame, Connector } from '@/app/features/types';
 import type { CanvasProps } from './types';
-import type { Rect } from '../frames/types';
 import { BLOCK_SIZES, MIN_SCALE, MAX_SCALE, ZOOM_TO_FIT_PADDING, CONNECTOR_DRAG_SHIELD_Z } from './constants';
 import { uid } from './utils';
 import {
@@ -25,10 +24,13 @@ import { usePasteUrl } from './hooks/usePasteUrl';
 import { useHistory } from './hooks/useHistory';
 import { usePinchZoom } from './hooks/usePinchZoom';
 import { useLatestRef } from './hooks/useLatestRef';
+import { useBlockBounds } from './hooks/useBlockBounds';
 import { useFollowViewport } from './hooks/useFollowViewport';
 import { useFrames } from '../frames/hooks/useFrames';
 import { useConnectors } from '../connectors/hooks/useConnectors';
 import { useConnectorDrag } from '../connectors/hooks/useConnectorDrag';
+import { useConnectorReshape } from '../connectors/hooks/useConnectorReshape';
+import { useConnectorEndpoint } from '../connectors/hooks/useConnectorEndpoint';
 import ConnectorToolbar from '../connectors/ConnectorToolbar';
 import { resolveAnchors, connectorMidpoint } from '../connectors/utils';
 import { usePersistence } from './hooks/usePersistence';
@@ -94,12 +96,8 @@ export default function Canvas({
   usePresenceSync({ selectedIds, selectedFrameId, onSelectionChange, offset, scale, isFollowing, onViewportChange, viewportRef });
   useFollowViewport({ isFollowing, followTarget, viewportRef, offset, scale, setOffset, setScale });
 
-  // Live block id → world rect map, used to render connector endpoints and hit-test drop targets.
-  const blockRectById = useMemo(() => {
-    const m = new Map<string, Rect>();
-    for (const b of blocks) m.set(b.id, blockRect(b));
-    return m;
-  }, [blocks]);
+  // Live block id → world rect map (true rendered sizes), used to render connector endpoints and hit-test drop targets.
+  const { rectById: blockRectById, reportSize } = useBlockBounds(blocks);
   const blockRectByIdRef = useLatestRef(blockRectById);
   const { pending, startConnector } = useConnectorDrag({
     viewportRef, screenToCanvas, rectByIdRef: blockRectByIdRef, addConnector, pushSnapshot,
@@ -201,6 +199,17 @@ export default function Canvas({
     pushSnapshot();
     updateConnector(id, patch);
   }, [updateConnector, pushSnapshot]);
+
+  // Bend a connector by dragging its line/belly (menu-safe: a click selects, a drag never opens the toolbar).
+  const { startReshape, reshapingId } = useConnectorReshape({
+    viewportRef, screenToCanvas, rectByIdRef: blockRectByIdRef, connectorsRef,
+    updateConnector, pushSnapshot, onSelect: handleSelectConnector, canEdit,
+  });
+  // Re-point a connector's endpoint onto a different block.
+  const { endpointDrag, startEndpoint } = useConnectorEndpoint({
+    viewportRef, screenToCanvas, rectByIdRef: blockRectByIdRef, connectorsRef,
+    updateConnector, pushSnapshot,
+  });
 
   /** Group currently selected blocks into a new frame. */
   const groupSelected = useCallback(() => {
@@ -444,8 +453,9 @@ export default function Canvas({
       openMenu(buildMenuRows({ kind: 'block', id }, clientX - rect.left, clientY - rect.top), clientX, clientY, rect);
     },
     onConnectorStart: canEdit ? startConnector : undefined,
+    onMeasure: reportSize,
     canEdit,
-  }), [handleBlockSelectWithFrameClear, handleBlockClickEnd, handleOpenBlock, updateBlock, handleDeleteBlock, commentHandlers, handleMultiDragMove, handleMultiDragEndLive, pushSnapshot, handleBlockDragLive, openMenu, selectedIdsRef, buildMenuRows, setCommentTarget, canEdit, startConnector]);
+  }), [handleBlockSelectWithFrameClear, handleBlockClickEnd, handleOpenBlock, updateBlock, handleDeleteBlock, commentHandlers, handleMultiDragMove, handleMultiDragEndLive, pushSnapshot, handleBlockDragLive, openMenu, selectedIdsRef, buildMenuRows, setCommentTarget, canEdit, startConnector, reportSize]);
 
   const toolbarActions = useMemo(() => ({
     addText: addTextNote,
@@ -526,10 +536,13 @@ export default function Canvas({
     rectById: blockRectById,
     drag: liveDrag,
     pending,
+    endpointDrag,
     selectedId: selectedConnectorId,
-    onSelect: handleSelectConnector,
+    canEdit,
+    onReshapeStart: startReshape,
+    onEndpointStart: startEndpoint,
     onContextMenu: handleConnectorContextMenu,
-  }), [connectors, blockRectById, liveDrag, pending, selectedConnectorId, handleSelectConnector, handleConnectorContextMenu]);
+  }), [connectors, blockRectById, liveDrag, pending, endpointDrag, selectedConnectorId, canEdit, startReshape, startEndpoint, handleConnectorContextMenu]);
 
   // Screen-space anchor (viewport px) for the selected connector's floating toolbar, or null when none/missing.
   const connectorToolbar = useMemo(() => {
@@ -540,7 +553,7 @@ export default function Canvas({
     const t = blockRectById.get(c.targetId);
     if (!s || !t) return null;
     const { a, b } = resolveAnchors(s, t);
-    const mid = connectorMidpoint(a, b);
+    const mid = connectorMidpoint(a, b, c.curvature ?? 0);
     return { connector: c, x: mid.x * scale + offset.x, y: mid.y * scale + offset.y };
   }, [selectedConnectorId, connectors, blockRectById, scale, offset]);
 
@@ -594,7 +607,7 @@ export default function Canvas({
         blockLayer={{
           visibleBlocks,
           selectedIds,
-          dropTargetId: pending?.targetId ?? null,
+          dropTargetId: pending?.targetId ?? endpointDrag?.targetId ?? null,
           peerColorsById,
           handlers: blockHandlers,
         }}
@@ -609,7 +622,7 @@ export default function Canvas({
 
       <PeerCursors peers={peers} scale={scale} offset={offset} />
 
-      {canEdit && !isFollowing && connectorToolbar && (
+      {canEdit && !isFollowing && connectorToolbar && !reshapingId && !endpointDrag && (
         <ConnectorToolbar
           x={connectorToolbar.x}
           y={connectorToolbar.y}

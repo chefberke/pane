@@ -7,7 +7,7 @@ import FrameView from '../frames/Frame';
 import Connectors from '../connectors/Connectors';
 import type { BlockHandlers } from '../blocks/types';
 import type { FrameHandlers, FrameRenameRequest, Rect } from '../frames/types';
-import type { PendingConnector } from '../connectors/types';
+import type { EndpointDrag, PendingConnector } from '../connectors/types';
 import { PeerSelections } from './PeerLayer';
 
 interface DragHover {
@@ -39,8 +39,11 @@ interface ConnectorLayer {
   rectById: Map<string, Rect>;
   drag: { ids: Set<string>; dx: number; dy: number } | null;
   pending: PendingConnector | null;
+  endpointDrag: EndpointDrag | null;
   selectedId: string | null;
-  onSelect: (id: string) => void;
+  canEdit: boolean;
+  onReshapeStart: (id: string, e: React.PointerEvent) => void;
+  onEndpointStart: (id: string, end: 'source' | 'target', e: React.PointerEvent) => void;
   onContextMenu: (id: string, clientX: number, clientY: number) => void;
 }
 
@@ -101,8 +104,11 @@ function CanvasWorld({ offset, scale, frameLayer, blockLayer, connectorLayer, pe
         rectById={connectorLayer.rectById}
         drag={connectorLayer.drag}
         pending={connectorLayer.pending}
+        endpointDrag={connectorLayer.endpointDrag}
         selectedId={connectorLayer.selectedId}
-        onSelect={connectorLayer.onSelect}
+        canEdit={connectorLayer.canEdit}
+        onReshapeStart={connectorLayer.onReshapeStart}
+        onEndpointStart={connectorLayer.onEndpointStart}
         onContextMenu={connectorLayer.onContextMenu}
       />
 

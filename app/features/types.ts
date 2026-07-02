@@ -103,6 +103,8 @@ export interface Connector {
   color?: string;
   /** Line style; defaults to 'solid' when unset. */
   style?: ConnectorStyle;
+  /** Signed perpendicular offset (world units) of the curve's belly from its un-bent midpoint; 0/unset is a plain auto-routed curve. */
+  curvature?: number;
 }
 
 export interface RemotePresencePeer {

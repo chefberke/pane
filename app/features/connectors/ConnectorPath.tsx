@@ -17,7 +17,8 @@ interface Props {
   color?: string;
   style: ConnectorStyle;
   markerId: string;
-  onSelect: (id: string) => void;
+  /** Begins a press on the line: a click selects (opens the toolbar), a drag bends the curve. */
+  onReshapeStart: (id: string, e: React.PointerEvent) => void;
   onContextMenu: (id: string, clientX: number, clientY: number) => void;
 }
 
@@ -30,7 +31,7 @@ const SELECTION_MARCH_STYLE = {
 } as CSSProperties;
 
 /** A single connector: a wide invisible hit path for clicks, a selection halo, and the visible bezier line with an arrowhead. */
-function ConnectorPath({ id, d, selected, color, style, markerId, onSelect, onContextMenu }: Props) {
+function ConnectorPath({ id, d, selected, color, style, markerId, onReshapeStart, onContextMenu }: Props) {
   const stroke = color ?? STROKE_COLOR;
   return (
     <g>
@@ -40,8 +41,7 @@ function ConnectorPath({ id, d, selected, color, style, markerId, onSelect, onCo
         stroke="transparent"
         strokeWidth={HIT_STROKE_WIDTH}
         style={HIT_STYLE}
-        onPointerDown={e => e.stopPropagation()}
-        onClick={e => { e.stopPropagation(); onSelect(id); }}
+        onPointerDown={e => onReshapeStart(id, e)}
         onContextMenu={e => { e.preventDefault(); e.stopPropagation(); onContextMenu(id, e.clientX, e.clientY); }}
       />
       {selected && (

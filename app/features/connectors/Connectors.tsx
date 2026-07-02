@@ -2,10 +2,11 @@
 import { memo } from 'react';
 import type { CSSProperties } from 'react';
 import type { Connector } from '@/app/features/types';
-import type { PendingConnector, Rect } from './types';
+import type { EndpointDrag, PendingConnector, Rect } from './types';
 import ConnectorPath from './ConnectorPath';
-import { resolveAnchors, bezierPath, anchorToPoint, pointAnchor, shiftRect, markerIdForColor } from './utils';
-import { STROKE_COLOR, STROKE_WIDTH, ARROW_SIZE, CONNECTOR_SWATCHES } from './constants';
+import { resolveAnchors, bezierPath, anchorToPoint, pointAnchor, shiftRect, markerIdForColor, connectorMidpoint } from './utils';
+import { STROKE_COLOR, STROKE_WIDTH, ARROW_SIZE, EDIT_HANDLE_RADIUS, CONNECTOR_SWATCHES } from './constants';
+import { SELECTION_COLOR } from '../ui/constants';
 
 interface Props {
   connectors: Connector[];
@@ -13,8 +14,14 @@ interface Props {
   /** Live block-drag offset so connectors follow blocks mid-drag (before positions commit to state). */
   drag: { ids: Set<string>; dx: number; dy: number } | null;
   pending: PendingConnector | null;
+  /** Set while an endpoint of an existing connector is being re-pointed; drives its live preview. */
+  endpointDrag: EndpointDrag | null;
   selectedId: string | null;
-  onSelect: (id: string) => void;
+  canEdit: boolean;
+  /** Press on the line/belly: click selects (opens toolbar), drag bends the curve. */
+  onReshapeStart: (id: string, e: React.PointerEvent) => void;
+  /** Press on an endpoint handle: drag re-points that end to another block. */
+  onEndpointStart: (id: string, end: 'source' | 'target', e: React.PointerEvent) => void;
   onContextMenu: (id: string, clientX: number, clientY: number) => void;
 }
 
@@ -22,10 +29,11 @@ interface Props {
 // covering the empty canvas (so marquee/pan still work). Coordinates are raw world units.
 const SVG_STYLE: CSSProperties = { position: 'absolute', top: 0, left: 0, width: 1, height: 1, overflow: 'visible' };
 const GHOST_STYLE: CSSProperties = { pointerEvents: 'none' };
+const HANDLE_STYLE: CSSProperties = { pointerEvents: 'auto', cursor: 'grab' };
 const ARROW_PATH = `M0,0 L${ARROW_SIZE},${ARROW_SIZE / 2} L0,${ARROW_SIZE} Z`;
 
-/** World-space SVG layer rendering every connector plus the in-progress drag ghost. */
-function Connectors({ connectors, rectById, drag, pending, selectedId, onSelect, onContextMenu }: Props) {
+/** World-space SVG layer rendering every connector, its edit handles, and the in-progress drag ghost. */
+function Connectors({ connectors, rectById, drag, pending, endpointDrag, selectedId, canEdit, onReshapeStart, onEndpointStart, onContextMenu }: Props) {
   const rectOf = (id: string): Rect | undefined => {
     const r = rectById.get(id);
     if (!r) return undefined;
@@ -68,19 +76,52 @@ function Connectors({ connectors, rectById, drag, pending, selectedId, onSelect,
         const s = rectOf(c.sourceId);
         const t = rectOf(c.targetId);
         if (!s || !t) return null;
+        const bend = c.curvature ?? 0;
         const { a, b } = resolveAnchors(s, t);
+        const isEndpointDragging = endpointDrag?.connectorId === c.id;
+
+        // While an endpoint is being re-pointed, preview the moving end following the cursor
+        // (snapping to a hovered block), reusing the same anchors the create-ghost uses.
+        let d = bezierPath(a, b, bend);
+        if (isEndpointDragging && endpointDrag) {
+          const fixedRect = rectOf(endpointDrag.end === 'source' ? c.targetId : c.sourceId);
+          if (!fixedRect) return null;
+          const snapRect = endpointDrag.targetId ? rectOf(endpointDrag.targetId) : undefined;
+          if (snapRect) {
+            const { a: pa, b: pb } = endpointDrag.end === 'source'
+              ? resolveAnchors(snapRect, fixedRect)   // new source → fixed target
+              : resolveAnchors(fixedRect, snapRect);  // fixed source → new target
+            d = bezierPath(pa, pb, bend);
+          } else {
+            const fixedAnchor = anchorToPoint(fixedRect, endpointDrag.cursor);
+            const freeAnchor = pointAnchor(endpointDrag.cursor, fixedAnchor);
+            const [pa, pb] = endpointDrag.end === 'source' ? [freeAnchor, fixedAnchor] : [fixedAnchor, freeAnchor];
+            d = bezierPath(pa, pb);   // free-floating: no bend
+          }
+        }
+
+        const showHandles = canEdit && selectedId === c.id && !isEndpointDragging;
+        const belly = showHandles ? connectorMidpoint(a, b, bend) : null;
         return (
-          <ConnectorPath
-            key={c.id}
-            id={c.id}
-            d={bezierPath(a, b)}
-            selected={selectedId === c.id}
-            color={c.color}
-            style={c.style ?? 'solid'}
-            markerId={markerIdForColor(c.color)}
-            onSelect={onSelect}
-            onContextMenu={onContextMenu}
-          />
+          <g key={c.id}>
+            <ConnectorPath
+              id={c.id}
+              d={d}
+              selected={selectedId === c.id}
+              color={c.color}
+              style={c.style ?? 'solid'}
+              markerId={markerIdForColor(c.color)}
+              onReshapeStart={onReshapeStart}
+              onContextMenu={onContextMenu}
+            />
+            {showHandles && belly && (
+              <>
+                <circle cx={a.x} cy={a.y} r={EDIT_HANDLE_RADIUS} fill="#fff" stroke={SELECTION_COLOR} strokeWidth={2} style={HANDLE_STYLE} onPointerDown={e => onEndpointStart(c.id, 'source', e)} />
+                <circle cx={b.x} cy={b.y} r={EDIT_HANDLE_RADIUS} fill="#fff" stroke={SELECTION_COLOR} strokeWidth={2} style={HANDLE_STYLE} onPointerDown={e => onEndpointStart(c.id, 'target', e)} />
+                <circle cx={belly.x} cy={belly.y} r={EDIT_HANDLE_RADIUS} fill={SELECTION_COLOR} stroke="#fff" strokeWidth={2} style={HANDLE_STYLE} onPointerDown={e => onReshapeStart(c.id, e)} />
+              </>
+            )}
+          </g>
         );
       })}
 

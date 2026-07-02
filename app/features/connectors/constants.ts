@@ -18,6 +18,14 @@ export const MIN_CURVE = 24;
 export const MAX_CURVE = 160;
 /** Fraction of endpoint distance used for the bezier control-point offset. */
 export const CURVE_RATIO = 0.4;
+/** Multiplier on the belly offset applied to both cubic control points so the curve's belly lands exactly on the drag point (cubic weights c1+c2 by 0.75 at t=0.5, so 1/0.75 = 4/3). */
+export const BEND_CONTROL_FACTOR = 4 / 3;
+/** Maximum |curvature| (world units) a connector can be bent to. */
+export const MAX_BEND = 400;
+/** Screen-px pointer travel before a press on a connector becomes a bend-drag; below it, the press is a plain click that opens the toolbar. */
+export const RESHAPE_DRAG_THRESHOLD = 4;
+/** Radius (world units) of the bend + endpoint handle dots shown on a selected connector. */
+export const EDIT_HANDLE_RADIUS = 5;
 /** Minimum drag distance (world units) before releasing on empty canvas opens the add-content popover; below this a stray click on a handle is ignored. */
 export const EMPTY_DROP_DRAG_MIN = 6;
 /** Default connector stroke colour — a mid slate that reads on both light and dark canvases. */
