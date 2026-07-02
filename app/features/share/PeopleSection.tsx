@@ -16,9 +16,9 @@ interface Props {
 /** Lists members with access and any anonymous guests currently present. */
 function PeopleSection({ workspaceId, isOwner, peers, userId }: Props) {
   const { members, isLoading, updateRole, removeMember } = useMembers(workspaceId, isOwner);
-  const onlinePeerIds = useMemo(() => new Set(peers.map(p => p.id)), [peers]);
+  const onlinePeerIds = useMemo(() => new Set(peers.map(p => p.userId)), [peers]);
   const memberIds = useMemo(() => new Set(members.map(m => m.userId)), [members]);
-  const guestPeers = useMemo(() => peers.filter(p => !memberIds.has(p.id)), [peers, memberIds]);
+  const guestPeers = useMemo(() => peers.filter(p => !memberIds.has(p.userId)), [peers, memberIds]);
 
   if (isLoading) return null;
   if (members.length === 0 && guestPeers.length === 0) return null;

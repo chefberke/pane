@@ -14,10 +14,11 @@ export function usePresence(workspaceId: string, identity: ShareIdentity) {
   const room = db.room('workspace', workspaceId);
 
   const { peers: rawPeers, publishPresence } = db.rooms.usePresence(room as any, {
-    keys: ['name', 'color', 'cursor', 'selection', 'typing', 'viewport'],
+    keys: ['userId', 'name', 'color', 'cursor', 'selection', 'typing', 'viewport'],
   } as any);
 
   db.rooms.useSyncPresence(room as any, {
+    userId: identity.id,
     name: identity.name,
     color: identity.color,
     cursor: null,
@@ -95,15 +96,25 @@ export function usePresence(workspaceId: string, identity: ShareIdentity) {
     pendingViewport.current = null;
   }, [publishPresence]);
 
-  const peers: RemotePresencePeer[] = Object.entries(rawPeers ?? {}).map(([id, p]: [string, any]) => ({
-    id,
-    name:      p.name      ?? 'Guest',
-    color:     p.color     ?? '#888888',
-    cursor:    p.cursor    ?? null,
-    selection: p.selection ?? { blockIds: [], frameId: null },
-    typing:    p.typing    ?? false,
-    viewport:  p.viewport  ?? null,
-  }));
+  // One entry per distinct person: drop my own other tabs/devices, collapse a peer's duplicate tabs.
+  const seen = new Set<string>();
+  const peers: RemotePresencePeer[] = Object.entries(rawPeers ?? {})
+    .map(([id, p]: [string, any]) => ({
+      id,
+      userId:    p.userId    ?? id, // fall back to connection id for legacy/guest peers
+      name:      p.name      ?? 'Guest',
+      color:     p.color     ?? '#888888',
+      cursor:    p.cursor    ?? null,
+      selection: p.selection ?? { blockIds: [], frameId: null },
+      typing:    p.typing    ?? false,
+      viewport:  p.viewport  ?? null,
+    }))
+    .filter(peer => {
+      if (peer.userId === identity.id) return false; // my own other tabs/computers
+      if (seen.has(peer.userId)) return false;        // another user's extra tab → keep one
+      seen.add(peer.userId);
+      return true;
+    });
 
   return { peers, publishCursor, publishSelection, publishTyping, publishViewport };
 }

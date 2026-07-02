@@ -57,6 +57,7 @@ const _schema = i.schema({
   rooms: {
     workspace: {
       presence: i.entity({
+        userId:    i.string(),
         name:      i.string(),
         color:     i.string(),
         cursor:    i.json(),

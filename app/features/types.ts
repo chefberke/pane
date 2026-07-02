@@ -109,6 +109,8 @@ export interface Connector {
 
 export interface RemotePresencePeer {
   id: string;
+  /** Stable user id (or per-session guest id) — used to dedupe multiple tabs/devices of one person. */
+  userId: string;
   name: string;
   color: string;
   cursor: { x: number; y: number } | null;
