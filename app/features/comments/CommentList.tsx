@@ -8,17 +8,12 @@ interface Props {
   onStartReply: (comment: Comment) => void;
 }
 
-/** Renders comments newest-first. */
+/** Renders comments oldest-first (chat order); the parent owns scrolling. */
 export default function CommentList({ comments, onDelete, onStartReply }: Props) {
   if (!comments.length) return null;
-  // Newest first.
-  const sorted = [...comments].reverse();
   return (
-    <div
-      className="max-h-72 overflow-y-auto"
-      style={{ borderBottom: '1px solid var(--color-border-default)' }}
-    >
-      {sorted.map(c => (
+    <div>
+      {comments.map(c => (
         <CommentItem
           key={c.id}
           comment={c}

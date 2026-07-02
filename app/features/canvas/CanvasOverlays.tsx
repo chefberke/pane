@@ -6,9 +6,9 @@ import type { ContextMenuState } from '../context-menu/types';
 import type { ToolbarStatus, ToolbarActions } from '../toolbar/types';
 import type { ThemeChoice } from './hooks/useTheme';
 import type { CommentHandlers, CommentTarget, Marquee } from './types';
+import { getBlockLabel } from '../blocks/utils';
 import AddInput from '../add-input/AddInput';
 import Toolbar from '../toolbar/Toolbar';
-import CommentsPopover from '../comments/CommentsPopover';
 import ContextMenu from '../context-menu/ContextMenu';
 import ZoomControls from './ZoomControls';
 import ItemsButton from '../items-panel/ItemsButton';
@@ -26,6 +26,7 @@ const PdfLightbox = dynamic(() => import('../blocks/PdfLightbox'), { ssr: false 
 const SearchModal = dynamic(() => import('../search/SearchModal'), { ssr: false });
 const ShortcutsHelp = dynamic(() => import('./ShortcutsHelp'), { ssr: false });
 const ItemsSheet = dynamic(() => import('../items-panel/ItemsSheet'), { ssr: false });
+const CommentsSheet = dynamic(() => import('../comments/CommentsSheet'), { ssr: false });
 
 interface Transient {
   marquee: Marquee | null;
@@ -95,6 +96,15 @@ export default function CanvasOverlays({ canEdit, isFollowing, transient, modals
   const { isSearchOpen, isHelpOpen, isItemsOpen, lightbox, pdfLightbox } = modals;
   const { blocks, frames, blockById, frameById, scale, canUndo, canRedo, themeChoice, topRightSlot, toolbarStatus, toolbarActions } = data;
 
+  // Label of the block/frame whose comment thread is open — shown in the sheet header.
+  let commentTargetLabel: string | undefined;
+  if (commentTarget?.kind === 'block') {
+    const block = blockById.get(commentTarget.id);
+    commentTargetLabel = block ? getBlockLabel(block) : undefined;
+  } else if (commentTarget?.kind === 'frame') {
+    commentTargetLabel = frameById.get(commentTarget.id)?.title;
+  }
+
   return (
     <>
       {/* Marquee selection box */}
@@ -150,15 +160,14 @@ export default function CanvasOverlays({ canEdit, isFollowing, transient, modals
       </AnimatePresence>
 
       {!isFollowing && commentTarget && (
-        <CommentsPopover
+        <CommentsSheet
           targetId={commentTarget.id}
+          targetLabel={commentTargetLabel}
           comments={
             commentTarget.kind === 'block'
               ? blockById.get(commentTarget.id)?.comments ?? []
               : frameById.get(commentTarget.id)?.comments ?? []
           }
-          x={commentTarget.x}
-          y={commentTarget.y}
           onAdd={commentTarget.kind === 'block' ? commentHandlers.handleAddComment : commentHandlers.handleAddFrameComment}
           onDelete={commentTarget.kind === 'block' ? commentHandlers.handleDeleteComment : commentHandlers.handleDeleteFrameComment}
           onReply={commentTarget.kind === 'block' ? commentHandlers.handleReplyComment : commentHandlers.handleReplyFrameComment}
