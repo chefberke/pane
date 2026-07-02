@@ -1,5 +1,13 @@
 import type { Block } from '@/app/features/types';
-import { MENU_EDGE_PADDING } from './constants';
+import type { ContextMenuRow } from './types';
+import { MENU_EDGE_PADDING, MENU_ROW_HEIGHT } from './constants';
+
+/** Rendered height of a menu row, used to estimate total menu height and to top-align submenu flyouts. */
+export function rowHeight(row: ContextMenuRow): number {
+  if (row.kind === 'separator') return 9;
+  if (row.kind === 'color') return 28;
+  return MENU_ROW_HEIGHT;
+}
 
 /** Returns the external URL a block opens to, or null when it has none (text/image/pdf). */
 export function blockShareUrl(block: Block): string | null {

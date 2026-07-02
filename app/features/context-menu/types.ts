@@ -35,12 +35,20 @@ export interface ContextMenuColorRow {
   onSelect: (color: FrameColor) => void;
 }
 
-/** A row representing one existing frame — used by a block's "Add to group" list. */
+/** A row representing one existing frame — rendered inside a submenu's flyout panel. */
 export interface ContextMenuGroupRow {
   kind: 'group';
   label: string;
   color: FrameColor;
   onClick: () => void;
+}
+
+/** A row that expands into a flyout panel of `group` rows on hover (e.g. "Add to group"). */
+export interface ContextMenuSubmenuRow {
+  kind: 'submenu';
+  label: string;
+  icon: LucideIcon;
+  items: { label: string; color: FrameColor; onClick: () => void }[];
 }
 
 /** A thin divider between groups of rows. */
@@ -49,4 +57,16 @@ export interface ContextMenuSeparatorRow {
 }
 
 /** Any row the menu can render. */
-export type ContextMenuRow = ContextMenuActionRow | ContextMenuColorRow | ContextMenuGroupRow | ContextMenuSeparatorRow;
+export type ContextMenuRow =
+  | ContextMenuActionRow
+  | ContextMenuColorRow
+  | ContextMenuGroupRow
+  | ContextMenuSubmenuRow
+  | ContextMenuSeparatorRow;
+
+/** Computed position and items for a submenu row's open flyout panel. */
+export interface ContextMenuSubmenuPanel {
+  left: number;
+  top: number;
+  items: ContextMenuSubmenuRow['items'];
+}

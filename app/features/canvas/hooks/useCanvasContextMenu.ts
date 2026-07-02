@@ -1,6 +1,6 @@
 'use client';
 import { useCallback } from 'react';
-import { Plus, Type, BoxSelect, Maximize2, ExternalLink, Link2, MessageCircle, Copy, FolderPlus, FolderMinus, Trash2, Pencil } from 'lucide-react';
+import { Plus, Type, BoxSelect, Maximize2, ExternalLink, Link2, MessageCircle, Copy, FolderPlus, FolderInput, FolderMinus, Trash2, Pencil } from 'lucide-react';
 import type { Block, Frame, Connector, FrameColor } from '@/app/features/types';
 import { useContextMenu } from '../../context-menu/hooks/useContextMenu';
 import { blockShareUrl } from '../../context-menu/utils';
@@ -70,8 +70,11 @@ export function useCanvasContextMenu(actions: ContextMenuActions, refs: Refs) {
       const otherFrames = framesRef.current.filter(f => f.id !== currentFrame?.id);
       if (otherFrames.length > 0) {
         rows.push({ kind: 'separator' });
-        otherFrames.forEach(f => {
-          rows.push({ kind: 'group', label: `Add to "${f.title}"`, color: f.color, onClick: () => actions.addSelectedToFrame(f.id) });
+        rows.push({
+          kind: 'submenu',
+          label: 'Add to group',
+          icon: FolderInput,
+          items: otherFrames.map(f => ({ label: f.title, color: f.color, onClick: () => actions.addSelectedToFrame(f.id) })),
         });
       }
       rows.push(
