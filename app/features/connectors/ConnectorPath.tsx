@@ -14,6 +14,8 @@ interface Props {
   id: string;
   d: string;
   selected: boolean;
+  /** True while this connector is being bend-dragged (crossed the drag threshold) — shown even if not selected. */
+  isReshaping: boolean;
   color?: string;
   style: ConnectorStyle;
   markerId: string;
@@ -31,8 +33,9 @@ const SELECTION_MARCH_STYLE = {
 } as CSSProperties;
 
 /** A single connector: a wide invisible hit path for clicks, a selection halo, and the visible bezier line with an arrowhead. */
-function ConnectorPath({ id, d, selected, color, style, markerId, onReshapeStart, onContextMenu }: Props) {
+function ConnectorPath({ id, d, selected, isReshaping, color, style, markerId, onReshapeStart, onContextMenu }: Props) {
   const stroke = color ?? STROKE_COLOR;
+  const emphasized = selected || isReshaping;
   return (
     <g>
       <path
@@ -44,7 +47,7 @@ function ConnectorPath({ id, d, selected, color, style, markerId, onReshapeStart
         onPointerDown={e => onReshapeStart(id, e)}
         onContextMenu={e => { e.preventDefault(); e.stopPropagation(); onContextMenu(id, e.clientX, e.clientY); }}
       />
-      {selected && (
+      {emphasized && (
         <path
           d={d}
           fill="none"
@@ -60,7 +63,7 @@ function ConnectorPath({ id, d, selected, color, style, markerId, onReshapeStart
         d={d}
         fill="none"
         stroke={stroke}
-        strokeWidth={selected ? STROKE_WIDTH_SELECTED : STROKE_WIDTH}
+        strokeWidth={emphasized ? STROKE_WIDTH_SELECTED : STROKE_WIDTH}
         strokeLinecap="round"
         strokeDasharray={LINE_DASH[style]}
         markerEnd={`url(#${markerId})`}

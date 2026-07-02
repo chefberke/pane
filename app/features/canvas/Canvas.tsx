@@ -1,7 +1,7 @@
 'use client';
 import { useState, useRef, useCallback, useMemo } from 'react';
 import type { Block, Frame, Connector } from '@/app/features/types';
-import type { CanvasProps } from './types';
+import type { CanvasProps, LiveDrag } from './types';
 import { BLOCK_SIZES, MIN_SCALE, MAX_SCALE, ZOOM_TO_FIT_PADDING, CONNECTOR_DRAG_SHIELD_Z } from './constants';
 import { uid } from './utils';
 import {
@@ -81,7 +81,7 @@ export default function Canvas({
   const [selectedFrameId, setSelectedFrameId] = useState<string | null>(null);
   const [selectedConnectorId, setSelectedConnectorId] = useState<string | null>(null);
   const selectedConnectorIdRef = useLatestRef(selectedConnectorId);
-  const [liveDrag, setLiveDrag] = useState<{ ids: Set<string>; dx: number; dy: number } | null>(null);
+  const [liveDrag, setLiveDrag] = useState<LiveDrag | null>(null);
   const [renameFrameReq, setRenameFrameReq] = useState<FrameRenameRequest | null>(null);
   const [addPos, setAddPos] = useState<{ x: number; y: number; connectSourceId?: string } | null>(null);
   const [isSearchOpen, setIsSearchOpen] = useState(false);
@@ -97,7 +97,7 @@ export default function Canvas({
   useFollowViewport({ isFollowing, followTarget, viewportRef, offset, scale, setOffset, setScale });
 
   // Live block id → world rect map (true rendered sizes), used to render connector endpoints and hit-test drop targets.
-  const { rectById: blockRectById, reportSize } = useBlockBounds(blocks);
+  const { rectById: blockRectById, reportSize } = useBlockBounds(blocks, frames);
   const blockRectByIdRef = useLatestRef(blockRectById);
   const { pending, startConnector } = useConnectorDrag({
     viewportRef, screenToCanvas, rectByIdRef: blockRectByIdRef, addConnector, pushSnapshot,
@@ -292,7 +292,7 @@ export default function Canvas({
     handleFrameDragMove, handleFrameDragEnd, handleFrameResize,
     handleFrameRename, handleFrameColor, handleFrameToggleCollapse, handleFrameDelete,
   } = useFrameInteractions({
-    blocksRef, framesRef, setBlocks, setFrames,
+    blocksRef, framesRef, setBlocks, setFrames, setLiveDrag,
     updateFrame, renameFrame, setFrameColor, toggleCollapse, deleteFrame,
     pushSnapshot, selectedFrameId, setSelectedFrameId, setCommentTarget,
   });
@@ -538,11 +538,12 @@ export default function Canvas({
     pending,
     endpointDrag,
     selectedId: selectedConnectorId,
+    reshapingId,
     canEdit,
     onReshapeStart: startReshape,
     onEndpointStart: startEndpoint,
     onContextMenu: handleConnectorContextMenu,
-  }), [connectors, blockRectById, liveDrag, pending, endpointDrag, selectedConnectorId, canEdit, startReshape, startEndpoint, handleConnectorContextMenu]);
+  }), [connectors, blockRectById, liveDrag, pending, endpointDrag, selectedConnectorId, reshapingId, canEdit, startReshape, startEndpoint, handleConnectorContextMenu]);
 
   // Screen-space anchor (viewport px) for the selected connector's floating toolbar, or null when none/missing.
   const connectorToolbar = useMemo(() => {

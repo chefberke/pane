@@ -41,6 +41,8 @@ interface ConnectorLayer {
   pending: PendingConnector | null;
   endpointDrag: EndpointDrag | null;
   selectedId: string | null;
+  /** Id of the connector currently being bend-dragged (crossed the drag threshold), or null. */
+  reshapingId: string | null;
   canEdit: boolean;
   onReshapeStart: (id: string, e: React.PointerEvent) => void;
   onEndpointStart: (id: string, end: 'source' | 'target', e: React.PointerEvent) => void;
@@ -106,7 +108,9 @@ function CanvasWorld({ offset, scale, frameLayer, blockLayer, connectorLayer, pe
         pending={connectorLayer.pending}
         endpointDrag={connectorLayer.endpointDrag}
         selectedId={connectorLayer.selectedId}
+        reshapingId={connectorLayer.reshapingId}
         canEdit={connectorLayer.canEdit}
+        scale={scale}
         onReshapeStart={connectorLayer.onReshapeStart}
         onEndpointStart={connectorLayer.onEndpointStart}
         onContextMenu={connectorLayer.onContextMenu}

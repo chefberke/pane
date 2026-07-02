@@ -9,13 +9,15 @@ import {
   frameMembers,
 } from '../../frames/utils';
 import { FRAME_PADDING } from '../../frames/constants';
-import type { CommentTarget } from '../types';
+import type { CommentTarget, LiveDrag } from '../types';
 
 interface Params {
   blocksRef: React.RefObject<Block[]>;
   framesRef: React.RefObject<Frame[]>;
   setBlocks: Dispatch<SetStateAction<Block[]>>;
   setFrames: Dispatch<SetStateAction<Frame[]>>;
+  /** Drives the connector layer's live-follow preview while a frame (and its member blocks) is being dragged. */
+  setLiveDrag: Dispatch<SetStateAction<LiveDrag | null>>;
   updateFrame: (id: string, updates: Partial<Frame>) => void;
   renameFrame: (id: string, title: string) => void;
   setFrameColor: (id: string, color: FrameColor) => void;
@@ -29,7 +31,7 @@ interface Params {
 
 /** Frame interaction handlers: drag (imperative transform + flushSync commit), resize, and metadata edits. */
 export function useFrameInteractions({
-  blocksRef, framesRef, setBlocks, setFrames,
+  blocksRef, framesRef, setBlocks, setFrames, setLiveDrag,
   updateFrame, renameFrame, setFrameColor, toggleCollapse, deleteFrame,
   pushSnapshot, selectedFrameId, setSelectedFrameId, setCommentTarget,
 }: Params) {
@@ -48,7 +50,9 @@ export function useFrameInteractions({
       const el = document.querySelector(`[data-block-id="${bid}"]`) as HTMLElement | null;
       if (el) el.style.transform = `translate(${dx}px, ${dy}px)`;
     });
-  }, [blocksRef, framesRef]);
+    // So connectors attached to a block being dragged along with its frame follow live too, not just direct block drags.
+    setLiveDrag(descBlocks.size > 0 ? { ids: descBlocks, dx, dy } : null);
+  }, [blocksRef, framesRef, setLiveDrag]);
 
   const handleFrameDragEnd = useCallback((id: string, dx: number, dy: number) => {
     const frame = framesRef.current.find(f => f.id === id);
@@ -67,25 +71,28 @@ export function useFrameInteractions({
 
     if (dx === 0 && dy === 0) {
       collectEls().forEach(el => { el.style.transform = ''; });
+      setLiveDrag(null);
       return;
     }
 
     const els = collectEls();
     // Suppress CSS left/top transitions so they don't fight the transform during commit.
     els.forEach(el => { el.style.transition = 'none'; });
-    // Synchronously commit new positions so the DOM is updated before we clear transforms.
+    // Synchronously commit new positions (and clear the live-drag preview) in the same flush,
+    // so the DOM is updated before we clear transforms and connectors never see a stale frame.
     flushSync(() => {
       setBlocks(prev => prev.map(b => descBlocks.has(b.id) ? { ...b, x: b.x + dx, y: b.y + dy } as Block : b));
       setFrames(prev => prev.map(f =>
         f.id === id ? { ...f, x: f.x + dx, y: f.y + dy } :
         descFrames.has(f.id) ? { ...f, x: f.x + dx, y: f.y + dy } : f
       ));
+      setLiveDrag(null);
     });
     // Clear transforms — left/top is already at final position, so no snap.
     els.forEach(el => { el.style.transform = ''; });
     // Re-enable transitions after the browser has painted the committed frame.
     requestAnimationFrame(() => { els.forEach(el => { el.style.transition = ''; }); });
-  }, [blocksRef, framesRef, setBlocks, setFrames]);
+  }, [blocksRef, framesRef, setBlocks, setFrames, setLiveDrag]);
 
   const handleFrameResize = useCallback((id: string, next: { x: number; y: number; width: number; height: number }) => {
     const frame = framesRef.current.find(f => f.id === id);

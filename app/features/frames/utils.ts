@@ -123,6 +123,17 @@ export function isInsideCollapsedFrame(rect: Rect, frames: Frame[]): boolean {
   return false;
 }
 
+/** The outermost collapsed ancestor frame enclosing `rect` — i.e. the one whose collapsed pill is actually visible on the canvas — or null if no ancestor is collapsed. */
+export function findCollapsedAncestorFrame(rect: Rect, frames: Frame[]): Frame | null {
+  let owner = findEnclosingFrame(rect, frames);
+  let collapsed: Frame | null = null;
+  while (owner) {
+    if (owner.collapsed) collapsed = owner;
+    owner = findEnclosingFrame(frameOuterRect(owner), frames, owner.id);
+  }
+  return collapsed;
+}
+
 /** True when a frame's nearest ancestor frame chain contains a collapsed frame. */
 export function frameAncestorCollapsed(frame: Frame, frames: Frame[]): boolean {
   let owner = findEnclosingFrame(frameOuterRect(frame), frames, frame.id);

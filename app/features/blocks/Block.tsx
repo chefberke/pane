@@ -21,7 +21,10 @@ import ActionTip from './ActionTip';
 import BlockEdgeHandles from './BlockEdgeHandles';
 import BlockResizeHandles from './BlockResizeHandles';
 import SelectionOutline from '../ui/SelectionOutline';
-import { NOTE_DEFAULT_H, NOTE_DEFAULT_W } from './constants';
+import {
+  NOTE_DEFAULT_H, NOTE_DEFAULT_W, BLOCK_DROP_TARGET_SCALE, BLOCK_DROP_TARGET_RING_COLOR,
+  BLOCK_DROP_TARGET_RING_WIDTH, BLOCK_CARD_TRANSITION,
+} from './constants';
 
 interface Props {
   block: Block;
@@ -123,9 +126,13 @@ function BlockContainer({ block, scale, selected, isInMultiSelection, isDropTarg
       {/* Card */}
       <div
         ref={cardRef}
-        className="rounded-2xl overflow-hidden transition-shadow duration-150"
+        className="rounded-2xl overflow-hidden"
         style={{
-          boxShadow: selected || isHovered || isDropTarget ? 'var(--shadow-card-hover)' : 'var(--shadow-card)',
+          boxShadow: isDropTarget
+            ? `var(--shadow-card-hover), 0 0 0 ${BLOCK_DROP_TARGET_RING_WIDTH}px ${BLOCK_DROP_TARGET_RING_COLOR}`
+            : (selected || isHovered ? 'var(--shadow-card-hover)' : 'var(--shadow-card)'),
+          transform: isDropTarget ? `scale(${BLOCK_DROP_TARGET_SCALE})` : undefined,
+          transition: BLOCK_CARD_TRANSITION,
           // Notes are resizable: width is user-driven, height floors at content (see useBlockResize).
           ...(isNote
             ? {
@@ -155,8 +162,8 @@ function BlockContainer({ block, scale, selected, isInMultiSelection, isDropTarg
         )}
       </div>
 
-      {/* Local selection / connector drop target — animated marching-ants ring hugging the card. */}
-      {(selected || isDropTarget) && <SelectionOutline radius={CARD_RADIUS} />}
+      {/* Local selection — animated marching-ants ring hugging the card. Drop-target gets its own glow+scale treatment above, not this ring. */}
+      {selected && <SelectionOutline radius={CARD_RADIUS} />}
 
       {/* Remote peer selection outline(s) — painted on the real card so they always hug its
           rendered size (e.g. a tall image), unlike a separately-measured box. */}

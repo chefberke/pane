@@ -2,6 +2,9 @@ import type { Block, Frame, Connector, RemotePresencePeer } from '@/app/features
 
 export type Marquee = { x1: number; y1: number; x2: number; y2: number };
 
+/** In-progress drag offset for a set of blocks, so connectors can follow live before the drag commits to state. */
+export type LiveDrag = { ids: Set<string>; dx: number; dy: number };
+
 /** The block or frame whose comments popover is currently open, with its anchor point. */
 export type CommentTarget = { kind: 'block' | 'frame'; id: string; x: number; y: number } | null;
 

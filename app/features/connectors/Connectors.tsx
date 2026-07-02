@@ -4,8 +4,9 @@ import type { CSSProperties } from 'react';
 import type { Connector } from '@/app/features/types';
 import type { EndpointDrag, PendingConnector, Rect } from './types';
 import ConnectorPath from './ConnectorPath';
+import EditHandle from './EditHandle';
 import { resolveAnchors, bezierPath, anchorToPoint, pointAnchor, shiftRect, markerIdForColor, connectorMidpoint } from './utils';
-import { STROKE_COLOR, STROKE_WIDTH, ARROW_SIZE, EDIT_HANDLE_RADIUS, CONNECTOR_SWATCHES } from './constants';
+import { STROKE_COLOR, STROKE_WIDTH, ARROW_SIZE, CONNECTOR_SWATCHES } from './constants';
 import { SELECTION_COLOR } from '../ui/constants';
 
 interface Props {
@@ -17,7 +18,11 @@ interface Props {
   /** Set while an endpoint of an existing connector is being re-pointed; drives its live preview. */
   endpointDrag: EndpointDrag | null;
   selectedId: string | null;
+  /** Id of the connector currently being bend-dragged (crossed the drag threshold), or null. */
+  reshapingId: string | null;
   canEdit: boolean;
+  /** Live canvas zoom, so edit-handle dots can stay a constant on-screen size. */
+  scale: number;
   /** Press on the line/belly: click selects (opens toolbar), drag bends the curve. */
   onReshapeStart: (id: string, e: React.PointerEvent) => void;
   /** Press on an endpoint handle: drag re-points that end to another block. */
@@ -29,11 +34,10 @@ interface Props {
 // covering the empty canvas (so marquee/pan still work). Coordinates are raw world units.
 const SVG_STYLE: CSSProperties = { position: 'absolute', top: 0, left: 0, width: 1, height: 1, overflow: 'visible' };
 const GHOST_STYLE: CSSProperties = { pointerEvents: 'none' };
-const HANDLE_STYLE: CSSProperties = { pointerEvents: 'auto', cursor: 'grab' };
 const ARROW_PATH = `M0,0 L${ARROW_SIZE},${ARROW_SIZE / 2} L0,${ARROW_SIZE} Z`;
 
 /** World-space SVG layer rendering every connector, its edit handles, and the in-progress drag ghost. */
-function Connectors({ connectors, rectById, drag, pending, endpointDrag, selectedId, canEdit, onReshapeStart, onEndpointStart, onContextMenu }: Props) {
+function Connectors({ connectors, rectById, drag, pending, endpointDrag, selectedId, reshapingId, canEdit, scale, onReshapeStart, onEndpointStart, onContextMenu }: Props) {
   const rectOf = (id: string): Rect | undefined => {
     const r = rectById.get(id);
     if (!r) return undefined;
@@ -102,12 +106,14 @@ function Connectors({ connectors, rectById, drag, pending, endpointDrag, selecte
 
         const showHandles = canEdit && selectedId === c.id && !isEndpointDragging;
         const belly = showHandles ? connectorMidpoint(a, b, bend) : null;
+        const isReshaping = reshapingId === c.id;
         return (
           <g key={c.id}>
             <ConnectorPath
               id={c.id}
               d={d}
               selected={selectedId === c.id}
+              isReshaping={isReshaping}
               color={c.color}
               style={c.style ?? 'solid'}
               markerId={markerIdForColor(c.color)}
@@ -116,9 +122,9 @@ function Connectors({ connectors, rectById, drag, pending, endpointDrag, selecte
             />
             {showHandles && belly && (
               <>
-                <circle cx={a.x} cy={a.y} r={EDIT_HANDLE_RADIUS} fill="#fff" stroke={SELECTION_COLOR} strokeWidth={2} style={HANDLE_STYLE} onPointerDown={e => onEndpointStart(c.id, 'source', e)} />
-                <circle cx={b.x} cy={b.y} r={EDIT_HANDLE_RADIUS} fill="#fff" stroke={SELECTION_COLOR} strokeWidth={2} style={HANDLE_STYLE} onPointerDown={e => onEndpointStart(c.id, 'target', e)} />
-                <circle cx={belly.x} cy={belly.y} r={EDIT_HANDLE_RADIUS} fill={SELECTION_COLOR} stroke="#fff" strokeWidth={2} style={HANDLE_STYLE} onPointerDown={e => onReshapeStart(c.id, e)} />
+                <EditHandle cx={a.x} cy={a.y} scale={scale} fill="#fff" stroke={SELECTION_COLOR} cursor="crosshair" onPointerDown={e => onEndpointStart(c.id, 'source', e)} />
+                <EditHandle cx={b.x} cy={b.y} scale={scale} fill="#fff" stroke={SELECTION_COLOR} cursor="crosshair" onPointerDown={e => onEndpointStart(c.id, 'target', e)} />
+                <EditHandle cx={belly.x} cy={belly.y} scale={scale} fill={SELECTION_COLOR} stroke="#fff" cursor={isReshaping ? 'grabbing' : 'grab'} onPointerDown={e => onReshapeStart(c.id, e)} />
               </>
             )}
           </g>

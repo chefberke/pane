@@ -1,6 +1,8 @@
 import type { Connector, ConnectorSide } from '@/app/features/types';
 import type { Anchor, Point, Rect } from './types';
-import { MIN_CURVE, MAX_CURVE, CURVE_RATIO, BEND_CONTROL_FACTOR, CONNECTOR_SWATCHES } from './constants';
+import {
+  MIN_CURVE, MAX_CURVE, CURVE_RATIO, BEND_CONTROL_FACTOR, BEND_SHARPEN_FACTOR, BEND_SHARPEN_RAMP, CONNECTOR_SWATCHES,
+} from './constants';
 
 /** Generates a UUID for a new connector. */
 export function uid(): string {
@@ -74,7 +76,9 @@ export function chordNormal(a: Point, b: Point): Point {
  */
 function controlPoints(a: Anchor, b: Anchor, bend = 0): { c1: Point; c2: Point } {
   const dist = Math.hypot(b.x - a.x, b.y - a.y);
-  const k = Math.max(MIN_CURVE, Math.min(MAX_CURVE, dist * CURVE_RATIO));
+  const baseK = Math.max(MIN_CURVE, Math.min(MAX_CURVE, dist * CURVE_RATIO));
+  const sharpen = Math.min(1, Math.abs(bend) / BEND_SHARPEN_RAMP) * BEND_SHARPEN_FACTOR;
+  const k = baseK * (1 - sharpen);
   const c1 = { x: a.x + a.dir.x * k, y: a.y + a.dir.y * k };
   const c2 = { x: b.x + b.dir.x * k, y: b.y + b.dir.y * k };
   if (bend) {
