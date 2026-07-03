@@ -9,8 +9,8 @@ export const DOT_GRID_SIZE = 24;
 export const FOLLOW_LERP = 0.18;
 /** How long a transient on-canvas hint label stays visible, in ms. */
 export const HINT_FLASH_MS = 2500;
-/** Debounce before persisting canvas state after a change, in ms. */
-export const SAVE_DEBOUNCE_MS = 150;
+/** Debounce before persisting canvas state after a content edit, in ms. */
+export const SAVE_DEBOUNCE_MS = 500;
 /** Screen-edge padding (px) reserved when zooming to fit all blocks. */
 export const ZOOM_TO_FIT_PADDING = 64;
 /** Stacking order for screen-space remote peer cursors. */

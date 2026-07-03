@@ -19,7 +19,7 @@ interface Props {
 export default function WorkspacePage({ params }: Props) {
   const { workspaceId } = use(params);
   const { user } = db.useAuth();
-  const { initialState, isLoading, notFound, handleSave, workspaceName, isOwner } = useWorkspaceCanvas(workspaceId);
+  const { syncedState, syncedAt, isLoading, notFound, handleSave, workspaceName, isOwner } = useWorkspaceCanvas(workspaceId);
 
   const identity = {
     id:    user?.id    ?? 'anon',
@@ -74,7 +74,8 @@ export default function WorkspacePage({ params }: Props) {
   return (
     <>
       <Canvas
-        initialState={initialState}
+        initialState={syncedState}
+        syncedAt={syncedAt}
         onSave={handleSave}
         canEdit
         peers={peers}

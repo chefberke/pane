@@ -29,9 +29,11 @@ export interface CanvasState {
 }
 
 export interface CanvasProps {
-  /** Canvas state to hydrate on first mount. Read once — not reactive after mount. */
+  /** Canvas state to hydrate from. Applied on mount, then re-applied on remote saves when `syncedAt` bumps. */
   initialState?: CanvasState | null;
-  /** Called after every debounced state change (150ms). Page decides where to persist. */
+  /** Server updatedAt for `initialState`. Bumping it re-hydrates the canvas (multi-device sync). Omit for local-only canvases. */
+  syncedAt?: number;
+  /** Called after every debounced content edit. Page decides where to persist. */
   onSave?: (state: CanvasState) => void;
   /** If false, all mutating UI (toolbar, drag, keyboard shortcuts) is disabled. Default true. */
   canEdit?: boolean;

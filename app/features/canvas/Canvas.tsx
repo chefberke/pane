@@ -55,7 +55,7 @@ import { PeerCursors } from './PeerLayer';
 
 /** Infinite pan/zoom canvas — orchestrates viewport, blocks, frames, selection, and keyboard shortcuts. */
 export default function Canvas({
-  initialState, onSave,
+  initialState, syncedAt, onSave,
   canEdit = true,
   peers = [],
   onCursorMove,
@@ -99,7 +99,7 @@ export default function Canvas({
   const selectedIdsRef = useLatestRef(selectedIds);
 
   usePinchZoom({ viewportRef, setOffset, setScale, offsetRef, scaleRef, disabled: isFollowing });
-  usePersistence({ initialState, onSave, canEdit, blocks, frames, connectors, offset, scale, setBlocks, setFrames, setConnectors, setScale, setOffset });
+  usePersistence({ initialState, syncedAt, onSave, canEdit, blocks, frames, connectors, offset, scale, setBlocks, setFrames, setConnectors, setScale, setOffset });
   usePresenceSync({ selectedIds, selectedFrameId, onSelectionChange, offset, scale, isFollowing, onViewportChange, viewportRef });
   useFollowViewport({ isFollowing, followTarget, viewportRef, offset, scale, setOffset, setScale });
 
