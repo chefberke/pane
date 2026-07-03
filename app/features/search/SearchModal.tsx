@@ -5,7 +5,7 @@ import { getBlockLabel, TYPE_LABELS } from '@/app/features/blocks/utils';
 import FilterChips from './FilterChips';
 import { useSearchFilters } from './hooks/useSearchFilters';
 import { useSearchKeyboard } from './hooks/useSearchKeyboard';
-import { EMPTY_HEIGHT, FOOTER_HEIGHT, INPUT_HEIGHT, LIST_MAX_HEIGHT, ROW_HEIGHT } from './constants';
+import { EMPTY_HEIGHT, FOOTER_HEIGHT, INPUT_HEIGHT, LIST_MAX_HEIGHT, MODAL_WIDTH, ROW_HEIGHT } from './constants';
 import type { GroupFilter, SearchModalProps, TypeFilter } from './types';
 
 /** The ⌘K search modal: text search plus group and type filters over all blocks. */
@@ -60,7 +60,7 @@ export default function SearchModal({ blocks, frames, onClose, onNavigate }: Sea
       <div
         className="max-w-[calc(100vw-32px)] overflow-hidden rounded-2xl"
         style={{
-          width: 'var(--panel-width-modal)',
+          width: MODAL_WIDTH,
           background: 'var(--color-surface)',
           border: '1px solid var(--color-border-default)',
           boxShadow: 'var(--shadow-modal)',
@@ -69,23 +69,23 @@ export default function SearchModal({ blocks, frames, onClose, onNavigate }: Sea
       >
         {/* Input */}
         <div
-          className="flex items-center gap-2.5 px-4"
+          className="flex items-center gap-3 px-5"
           style={{ height: INPUT_HEIGHT, borderBottom: '1px solid var(--color-border-subtle)' }}
         >
-          <Search size={14} style={{ color: 'var(--color-text-muted)', flexShrink: 0 }} />
+          <Search size={18} style={{ color: 'var(--color-text-muted)', flexShrink: 0 }} />
           <input
             ref={inputRef}
             type="text"
             value={query}
             onChange={e => changeQuery(e.target.value)}
             placeholder="Search..."
-            className="flex-1 bg-transparent outline-none text-[13px]"
+            className="flex-1 bg-transparent outline-none text-[15px]"
             style={{ color: 'var(--color-text-primary)' }}
           />
           {query && (
             <button
               onClick={() => changeQuery('')}
-              style={{ color: 'var(--color-text-muted)', fontSize: 11 }}
+              style={{ color: 'var(--color-text-muted)', fontSize: 13 }}
             >
               Clear
             </button>
@@ -99,7 +99,7 @@ export default function SearchModal({ blocks, frames, onClose, onNavigate }: Sea
         <div ref={listRef} className="ui-scrollbar" style={{ overflowY: 'auto', maxHeight: LIST_MAX_HEIGHT }}>
           {results.length === 0 ? (
             <div
-              className="flex items-center justify-center text-[12px]"
+              className="flex items-center justify-center text-[14px]"
               style={{ height: EMPTY_HEIGHT, color: 'var(--color-text-muted)' }}
             >
               No results
@@ -108,7 +108,7 @@ export default function SearchModal({ blocks, frames, onClose, onNavigate }: Sea
             results.map((block, i) => (
               <button
                 key={block.id}
-                className="w-full flex items-center gap-3 px-4 text-left"
+                className="w-full flex items-center gap-3 px-5 text-left"
                 style={{
                   height: ROW_HEIGHT,
                   background: i === activeIdx ? 'var(--color-bg-hover)' : 'transparent',
@@ -117,12 +117,12 @@ export default function SearchModal({ blocks, frames, onClose, onNavigate }: Sea
                 onClick={() => onNavigate(block)}
               >
                 <span
-                  className="flex-1 truncate text-[13px]"
+                  className="flex-1 truncate text-[15px]"
                   style={{ color: 'var(--color-text-primary)', fontWeight: i === activeIdx ? 500 : 400 }}
                 >
                   {getBlockLabel(block)}
                 </span>
-                <span className="text-[10px] flex-shrink-0" style={{ color: 'var(--color-text-muted)' }}>
+                <span className="text-[12px] flex-shrink-0" style={{ color: 'var(--color-text-muted)' }}>
                   {TYPE_LABELS[block.type]}
                 </span>
               </button>
@@ -133,7 +133,7 @@ export default function SearchModal({ blocks, frames, onClose, onNavigate }: Sea
         {/* Footer */}
         {results.length > 0 && (
           <div
-            className="flex items-center px-4 text-[10px]"
+            className="flex items-center px-5 text-[12px]"
             style={{
               height: FOOTER_HEIGHT,
               borderTop: '1px solid var(--color-border-subtle)',

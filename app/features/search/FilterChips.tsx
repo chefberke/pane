@@ -11,7 +11,7 @@ function Chip({ active, onClick, children }: { active: boolean; onClick: () => v
   return (
     <button
       onClick={onClick}
-      className="flex items-center gap-1.5 rounded-full px-2.5 text-[11px] whitespace-nowrap"
+      className="flex items-center gap-1.5 rounded-full px-3 text-[13px] whitespace-nowrap"
       style={{
         height: CHIP_HEIGHT,
         background: active ? 'var(--color-bg-hover)' : 'transparent',
@@ -33,7 +33,7 @@ function FilterChips({ groups, types, selected, onSelect }: FilterChipsProps) {
 
   return (
     <div
-      className="flex flex-col gap-1.5 px-4 py-2.5"
+      className="flex flex-col gap-2 px-5 py-3"
       style={{ borderBottom: '1px solid var(--color-border-subtle)' }}
     >
       {showGroupRow && (
@@ -52,7 +52,7 @@ function FilterChips({ groups, types, selected, onSelect }: FilterChipsProps) {
                   flexShrink: 0,
                 }}
               />
-              <span className="max-w-[120px] truncate">{g.title}</span>
+              <span className="max-w-[160px] truncate">{g.title}</span>
             </Chip>
           ))}
           {groups.showUngrouped && (
