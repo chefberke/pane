@@ -34,9 +34,13 @@ export function useWorkspaceCanvas(workspaceId: string): UseWorkspaceCanvasResul
 
   // Live canvas state — recomputed only when the stored JSON actually changes, so its
   // identity is stable across unrelated re-renders but advances on every remote save.
+  // Hoisted into a local so the memo closes over `stateJson` directly: `ws` is `any`, so
+  // reading `ws?.stateJson` inside the memo makes the compiler infer the whole `ws` object
+  // as the dep, which wouldn't match the narrower manual dep.
+  const stateJson = ws?.stateJson;
   const syncedState = useMemo(
-    () => (ws?.stateJson ? deserializeState(ws.stateJson) : null),
-    [ws?.stateJson],
+    () => (stateJson ? deserializeState(stateJson) : null),
+    [stateJson],
   );
   const syncedAt: number = typeof ws?.updatedAt === 'number' ? ws.updatedAt : 0;
 

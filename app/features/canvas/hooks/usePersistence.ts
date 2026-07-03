@@ -48,9 +48,13 @@ export function usePersistence({
   const hasHydratedRef = useRef(false);
 
   // Mirror the latest values so the unmount/beforeunload flush can read them without
-  // re-subscribing its effect on every render.
+  // re-subscribing its effect on every render. Written in an effect (not during render, which
+  // React forbids for refs) and declared before the hydrate effect below so it runs first on
+  // each commit — the hydrate effect always sees fresh values in `latest.current`.
   const latest = useRef({ blocks, frames, connectors, offset, scale, onSave, canEdit });
-  latest.current = { blocks, frames, connectors, offset, scale, onSave, canEdit };
+  useEffect(() => {
+    latest.current = { blocks, frames, connectors, offset, scale, onSave, canEdit };
+  });
 
   const saveTimer = useRef<ReturnType<typeof setTimeout> | null>(null);
 
@@ -141,6 +145,5 @@ export function usePersistence({
       window.removeEventListener('beforeunload', flush);
       flush();
     };
-  // eslint-disable-next-line react-hooks/exhaustive-deps
   }, []);
 }
