@@ -226,8 +226,9 @@ export function groupBoundsFromBlocks(blocks: Block[], selectedIds: Set<string>)
 }
 
 /**
- * Lays out fixed-size items into an evenly-spaced, roughly-square grid, preserving each
- * item's own size. Returns each item's new top-left position, anchored at `origin`.
+ * Masonry-packs items into evenly-spaced columns (shortest-column first), preserving each
+ * item's own size. Cards stack tightly with no vertical gaps — a tall card never forces empty
+ * space under its shorter row-mates. Returns each item's new top-left position, anchored at `origin`.
  */
 export function arrangeItemsInGrid(
   items: { id: string; rect: Rect }[],
@@ -239,8 +240,8 @@ export function arrangeItemsInGrid(
   if (n === 0) return positions;
   if (n === 1) { positions.set(items[0].id, origin); return positions; }
 
-  // Preserve reading order (top-to-bottom, then left-to-right) so tidying reads as a
-  // reflow of the existing layout, not a reshuffle.
+  // Preserve reading order (top-to-bottom, then left-to-right) so the first row still fills
+  // left-to-right and tidying reads as a reflow of the existing layout, not a reshuffle.
   const sorted = [...items].sort((a, b) => a.rect.y - b.rect.y || a.rect.x - b.rect.x);
 
   const avgW = Math.max(1, sorted.reduce((s, it) => s + it.rect.width, 0) / n);
@@ -248,16 +249,19 @@ export function arrangeItemsInGrid(
   // cols·avgW ≈ (n/cols)·avgH  ⇒  cols ≈ √(n·avgH/avgW) — makes total width ≈ total height.
   const cols = Math.min(n, Math.max(1, Math.round(Math.sqrt(n * (avgH / avgW)))));
 
-  let cursorY = origin.y;
-  for (let i = 0; i < n; i += cols) {
-    const row = sorted.slice(i, i + cols);
-    const rowHeight = Math.max(...row.map(it => it.rect.height));
-    let cursorX = origin.x;
-    for (const it of row) {
-      positions.set(it.id, { x: cursorX, y: cursorY });
-      cursorX += it.rect.width + gap;
+  // Uniform column width keeps column edges aligned; narrower items left-align in their column.
+  const colWidth = Math.max(...sorted.map(it => it.rect.width));
+  // Running bottom edge of each column; drop each item into whichever column is currently
+  // shortest (ties → leftmost), so columns stay balanced and, for equal heights, this degrades
+  // to a clean row-major grid.
+  const colY = new Array<number>(cols).fill(origin.y);
+  for (const it of sorted) {
+    let col = 0;
+    for (let c = 1; c < cols; c++) {
+      if (colY[c] < colY[col]) col = c;
     }
-    cursorY += rowHeight + gap;
+    positions.set(it.id, { x: origin.x + col * (colWidth + gap), y: colY[col] });
+    colY[col] += it.rect.height + gap;
   }
   return positions;
 }

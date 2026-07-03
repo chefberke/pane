@@ -20,7 +20,7 @@ import {
   sortFramesByDepth,
 } from '../frames/utils';
 import type { FrameHandlers, FrameRenameRequest, Rect } from '../frames/types';
-import { FRAME_MIN_H, FRAME_MIN_W, FRAME_PADDING } from '../frames/constants';
+import { FRAME_MIN_H, FRAME_MIN_W, FRAME_PADDING, TIDY_GAP } from '../frames/constants';
 import { useViewport } from './hooks/useViewport';
 import { useTheme } from './hooks/useTheme';
 import { useBlocks } from './hooks/useBlocks';
@@ -328,7 +328,7 @@ export default function Canvas({
     pushSnapshot();
 
     const origin = { x: frame.x + FRAME_PADDING, y: frame.y + FRAME_PADDING };
-    const newPositions = arrangeItemsInGrid(items.map(({ id, rect }) => ({ id, rect })), origin);
+    const newPositions = arrangeItemsInGrid(items.map(({ id, rect }) => ({ id, rect })), origin, TIDY_GAP);
 
     // Direct member blocks: write new x/y straight from the grid result.
     const blockPosMap = new Map<string, { x: number; y: number }>();

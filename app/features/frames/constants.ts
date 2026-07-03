@@ -3,6 +3,8 @@ import type { FrameColor } from '@/app/features/types';
 export const FRAME_HEADER_HEIGHT = 22;
 export const FRAME_HEADER_OFFSET = 8;
 export const FRAME_PADDING = 24;
+/** Gap between blocks when "Tidy up" masonry-packs a frame's contents. Larger than FRAME_PADDING for breathing room. */
+export const TIDY_GAP = 44;
 export const FRAME_MIN_W = 200;
 export const FRAME_MIN_H = 120;
 export const FRAME_COLLAPSED_W = 260;
