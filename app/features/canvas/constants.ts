@@ -11,6 +11,8 @@ export const FOLLOW_LERP = 0.18;
 export const HINT_FLASH_MS = 2500;
 /** Debounce before persisting canvas state after a content edit, in ms. */
 export const SAVE_DEBOUNCE_MS = 500;
+/** Debounce before persisting the per-device viewport (pan/zoom) to localStorage, in ms. */
+export const VIEWPORT_SAVE_DEBOUNCE_MS = 300;
 /** Screen-edge padding (px) reserved when zooming to fit all blocks. */
 export const ZOOM_TO_FIT_PADDING = 64;
 /** Stacking order for screen-space remote peer cursors. */

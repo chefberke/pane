@@ -28,6 +28,12 @@ export interface CanvasState {
   scale: number;
 }
 
+/** Per-device viewport (pan offset + zoom) persisted to localStorage, keyed per workspace. */
+export interface Viewport {
+  offset: { x: number; y: number };
+  scale: number;
+}
+
 export interface CanvasProps {
   /** Canvas state to hydrate from. Applied on mount, then re-applied on remote saves when `syncedAt` bumps. */
   initialState?: CanvasState | null;
@@ -53,4 +59,6 @@ export interface CanvasProps {
   onViewportChange?: (offset: { x: number; y: number }, scale: number, size: { w: number; h: number }) => void;
   /** Current user identity — attached to comments/replies as author. */
   identity?: { id: string; name: string; color: string };
+  /** Stable per-workspace key for persisting this device's pan/zoom to localStorage. Omit to disable viewport persistence. */
+  viewportKey?: string;
 }

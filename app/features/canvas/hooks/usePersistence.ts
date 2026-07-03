@@ -1,5 +1,5 @@
 'use client';
-import { useEffect, useRef } from 'react';
+import { useEffect, useRef, type RefObject } from 'react';
 import type { Block, Frame, Connector } from '@/app/features/types';
 import type { CanvasState } from '../types';
 import { SAVE_DEBOUNCE_MS } from '../constants';
@@ -21,6 +21,8 @@ interface Params {
   setConnectors: (connectors: Connector[]) => void;
   setScale: (scale: number) => void;
   setOffset: (offset: { x: number; y: number }) => void;
+  /** Set true by useViewport when it restored a per-device viewport; when set, skip applying the server viewport on first hydrate. */
+  viewportRestoredRef?: RefObject<boolean>;
 }
 
 /** Serialises the persisted *content* (blocks/frames/connectors) — used to detect real edits, ignoring per-device viewport changes. */
@@ -37,6 +39,7 @@ export function usePersistence({
   initialState, syncedAt, onSave, canEdit,
   blocks, frames, connectors, offset, scale,
   setBlocks, setFrames, setConnectors, setScale, setOffset,
+  viewportRestoredRef,
 }: Params) {
   // Serialised content that matches what's on the server (from a load or our last save).
   // Stays null until the first hydrate settles, which also gates saving so we never
@@ -88,8 +91,9 @@ export function usePersistence({
     // syncedContentRef already points at the new snapshot — and save that emptiness over the real
     // data. This happens in dev StrictMode's mount→unmount→remount, and can race in prod too.
     latest.current = { ...latest.current, blocks: nextBlocks, frames: nextFrames, connectors: nextConnectors };
-    if (firstHydrate) {
-      // Apply the stored viewport once. Later remote syncs keep the local viewport so a
+    if (firstHydrate && !viewportRestoredRef?.current) {
+      // Apply the stored viewport once — but only when this device has no locally-restored viewport
+      // (that per-device pan/zoom wins). Later remote syncs keep the local viewport so a
       // collaborator's pan/zoom doesn't yank this screen around.
       if (initialState.scale !== 1) setScale(initialState.scale);
       if (initialState.offset.x !== 0 || initialState.offset.y !== 0) setOffset(initialState.offset);

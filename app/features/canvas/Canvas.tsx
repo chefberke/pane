@@ -65,12 +65,13 @@ export default function Canvas({
   followTarget,
   onViewportChange,
   identity,
+  viewportKey,
 }: CanvasProps) {
   const viewportRef = useRef<HTMLDivElement>(null);
 
   // ─── Domain hooks ────────────────────────────────────────────────────────
   const { themeChoice, toggleTheme, setTheme } = useTheme();
-  const { offset, scale, offsetRef, scaleRef, setOffset, setScale, screenToCanvas, zoomBy, resetView } = useViewport(viewportRef, isFollowing);
+  const { offset, scale, offsetRef, scaleRef, setOffset, setScale, screenToCanvas, zoomBy, resetView, viewportRestoredRef } = useViewport(viewportRef, isFollowing, viewportKey);
   const { blocks, setBlocks, isRefreshing, addBlockFromUrl, refreshEmbeds, updateBlock, deleteBlock } = useBlocks({ screenToCanvas });
   const {
     frames, setFrames, createFromSelection, updateFrame, deleteFrame,
@@ -99,7 +100,7 @@ export default function Canvas({
   const selectedIdsRef = useLatestRef(selectedIds);
 
   usePinchZoom({ viewportRef, setOffset, setScale, offsetRef, scaleRef, disabled: isFollowing });
-  usePersistence({ initialState, syncedAt, onSave, canEdit, blocks, frames, connectors, offset, scale, setBlocks, setFrames, setConnectors, setScale, setOffset });
+  usePersistence({ initialState, syncedAt, onSave, canEdit, blocks, frames, connectors, offset, scale, setBlocks, setFrames, setConnectors, setScale, setOffset, viewportRestoredRef });
   usePresenceSync({ selectedIds, selectedFrameId, onSelectionChange, offset, scale, isFollowing, onViewportChange, viewportRef });
   useFollowViewport({ isFollowing, followTarget, viewportRef, offset, scale, setOffset, setScale });
 

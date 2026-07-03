@@ -77,6 +77,7 @@ export default function WorkspacePage({ params }: Props) {
         initialState={syncedState}
         syncedAt={syncedAt}
         onSave={handleSave}
+        viewportKey={`w:${workspaceId}`}
         canEdit
         peers={peers}
         onCursorMove={publishCursor}
