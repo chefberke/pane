@@ -5,8 +5,6 @@ import type { Block } from '@/app/features/types';
 
 interface Props {
   blocks: Block[];
-  /** Called when any thumbnail or the "+N more" tile is clicked — typically expands the group. */
-  onExpand?: () => void;
 }
 
 /** Visual identity (tile bg + icon color) per block type — keeps fallback tiles readable. */
@@ -27,20 +25,16 @@ function parseDomain(url: string): string {
 }
 
 /** 2x2 mini-preview grid for a collapsed frame. Fills the container; never overflows. */
-export default function ThumbnailGrid({ blocks, onExpand }: Props) {
+export default function ThumbnailGrid({ blocks }: Props) {
   if (blocks.length === 0) {
     return (
-      <button
-        type="button"
-        onPointerDown={e => e.stopPropagation()}
-        onClick={e => { e.stopPropagation(); onExpand?.(); }}
-        className="w-full h-full rounded-md flex flex-col items-center justify-center gap-1 transition-colors hover:bg-black/5 dark:hover:bg-white/5"
-        style={{ background: 'var(--color-bg-hint)', color: 'var(--color-text-tertiary)', cursor: 'default' }}
-        aria-label="Expand group"
+      <div
+        className="w-full h-full rounded-md flex flex-col items-center justify-center gap-1"
+        style={{ background: 'var(--color-bg-hint)', color: 'var(--color-text-tertiary)' }}
       >
         <FolderOpen size={18} />
         <span className="text-[10px] font-medium">Empty group</span>
-      </button>
+      </div>
     );
   }
 
@@ -54,39 +48,30 @@ export default function ThumbnailGrid({ blocks, onExpand }: Props) {
       style={{ minHeight: 0 }}
     >
       {visible.map(b => (
-        <ExpandableTile key={b.id} onExpand={onExpand}>
+        <Tile key={b.id}>
           <Thumbnail block={b} />
-        </ExpandableTile>
+        </Tile>
       ))}
       {overflow > 0 && (
-        <ExpandableTile onExpand={onExpand}>
+        <Tile>
           <OverflowTile count={overflow} />
-        </ExpandableTile>
+        </Tile>
       )}
       {Array.from({ length: empty }).map((_, i) => (
-        <ExpandableTile key={`empty-${i}`} onExpand={onExpand}>
+        <Tile key={`empty-${i}`}>
           <div
             className="rounded-md w-full h-full"
             style={{ background: 'var(--color-bg-hint)' }}
           />
-        </ExpandableTile>
+        </Tile>
       ))}
     </div>
   );
 }
 
-/** Wrapper that makes a tile clickable to trigger the expand callback. */
-function ExpandableTile({ children, onExpand }: { children: React.ReactNode; onExpand?: () => void }) {
-  return (
-    <div
-      className="min-h-0 min-w-0 transition-transform hover:scale-[1.03]"
-      style={{ cursor: onExpand ? 'pointer' : 'default' }}
-      onPointerDown={e => { if (onExpand) e.stopPropagation(); }}
-      onClick={e => { e.stopPropagation(); onExpand?.(); }}
-    >
-      {children}
-    </div>
-  );
+/** Non-interactive grid cell — the collapsed card body handles pointer/drag. */
+function Tile({ children }: { children: React.ReactNode }) {
+  return <div className="min-h-0 min-w-0">{children}</div>;
 }
 
 function OverflowTile({ count }: { count: number }) {

@@ -65,10 +65,11 @@ export default function CollapsedFrame({ frame, descendantBlocks, selected, hand
         transformOrigin: 'center center',
         transition: 'transform 180ms ease-out, box-shadow 180ms ease-out, background 150ms ease-out, border-color 150ms ease-out',
         zIndex: 50,
+        cursor: canEdit ? 'grab' : 'default',
       }}
       onMouseEnter={() => setIsHovered(true)}
       onMouseLeave={() => setIsHovered(false)}
-      onPointerDown={e => { e.stopPropagation(); handlers.onSelect(frame.id); }}
+      onPointerDown={onDragPointerDown}
       onContextMenu={e => { e.preventDefault(); e.stopPropagation(); handlers.onContextMenu(frame.id, e.clientX, e.clientY); }}
     >
       {/* Local selection — animated marching-ants ring just outside the card. */}
@@ -111,11 +112,9 @@ export default function CollapsedFrame({ frame, descendantBlocks, selected, hand
         />
       )}
 
-      <div className="w-full h-full p-2">
-        <ThumbnailGrid
-          blocks={descendantBlocks}
-          onExpand={() => handlers.onToggleCollapse(frame.id)}
-        />
+      {/* Preview only — pointer-events off so drags fall through to the draggable card body. */}
+      <div className="w-full h-full p-2" style={{ pointerEvents: 'none' }}>
+        <ThumbnailGrid blocks={descendantBlocks} />
       </div>
 
       {dropActive && (
