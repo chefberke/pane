@@ -85,6 +85,19 @@ export function assertHttpsUrl(raw: string): string | null {
   }
 }
 
+/**
+ * Merges `next` into `prev` by id, reusing each prev item's object reference when its serialised
+ * content is unchanged. Lets a remote re-hydrate replace the whole array while only the blocks that
+ * actually changed get new references — so memoized children of unchanged blocks skip re-rendering.
+ */
+export function reconcileById<T extends { id: string }>(prev: T[], next: T[]): T[] {
+  const prevById = new Map(prev.map(item => [item.id, item]));
+  return next.map(item => {
+    const existing = prevById.get(item.id);
+    return existing && JSON.stringify(existing) === JSON.stringify(item) ? existing : item;
+  });
+}
+
 const ARRANGE_GAP = 24;
 
 /** Returns a new block list with selected blocks arranged in a row or column with equal spacing. */

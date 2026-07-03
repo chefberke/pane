@@ -16,6 +16,7 @@ import GithubEmbed from './renderers/GithubEmbed';
 import { useBlockDrag } from './hooks/useBlockDrag';
 import { useBlockResize } from './hooks/useBlockResize';
 import { useBlockMeasure } from './hooks/useBlockMeasure';
+import { useInViewport } from './hooks/useInViewport';
 import CommentBubble from '../comments/CommentBubble';
 import ActionTip from './ActionTip';
 import BlockEdgeHandles from './BlockEdgeHandles';
@@ -23,12 +24,11 @@ import BlockResizeHandles from './BlockResizeHandles';
 import SelectionOutline from '../ui/SelectionOutline';
 import {
   NOTE_DEFAULT_H, NOTE_DEFAULT_W, BLOCK_DROP_TARGET_SCALE, BLOCK_DROP_TARGET_RING_COLOR,
-  BLOCK_DROP_TARGET_RING_WIDTH, BLOCK_CARD_TRANSITION,
+  BLOCK_DROP_TARGET_RING_WIDTH, BLOCK_CARD_TRANSITION, EMBED_MOUNT_MARGIN,
 } from './constants';
 
 interface Props {
   block: Block;
-  scale: number;
   selected: boolean;
   isInMultiSelection: boolean;
   isDropTarget: boolean;
@@ -43,7 +43,7 @@ const CARD_RADIUS = 11;
 const ACTION_PILL_STYLE: CSSProperties = { background: 'var(--color-surface-action)' };
 
 /** Draggable block container — renders the appropriate embed and delegates interaction via handlers. */
-function BlockContainer({ block, scale, selected, isInMultiSelection, isDropTarget, peerColors, handlers }: Props) {
+function BlockContainer({ block, selected, isInMultiSelection, isDropTarget, peerColors, handlers }: Props) {
   const [isEditingText, setIsEditingText] = useState(false);
   const [isHovered, setIsHovered] = useState(false);
   const comments = block.comments ?? [];
@@ -63,7 +63,7 @@ function BlockContainer({ block, scale, selected, isInMultiSelection, isDropTarg
 
   const { containerRef, overlayRef, onPointerDown } = useBlockDrag({
     block,
-    scale,
+    scaleRef: handlers.scaleRef,
     isInMultiSelection,
     canEdit,
     onSelect: handlers.onSelect,
@@ -80,13 +80,22 @@ function BlockContainer({ block, scale, selected, isInMultiSelection, isDropTarg
   const noteContentRef = useRef<HTMLDivElement>(null);
   const { onHandlePointerDown } = useBlockResize({
     block,
-    scale,
+    scaleRef: handlers.scaleRef,
     onUpdate,
     onBeforeMutate: handlers.onBeforeDragCommit,
+    containerRef,
     boxRef: cardRef,
     contentRef: noteContentRef,
   });
   useBlockMeasure({ id: block.id, cardRef, onMeasure: handlers.onMeasure });
+
+  // Heavy embeds (iframes / the native PDF viewer) mount only when near the viewport; far offscreen
+  // they show a lightweight placeholder so a big canvas never holds hundreds of live iframes at once.
+  const isHeavyEmbed =
+    block.type === 'youtube' || block.type === 'twitter' || block.type === 'spotify' ||
+    block.type === 'map' || block.type === 'pdf';
+  const embedActive = useInViewport(containerRef, EMBED_MOUNT_MARGIN, isHeavyEmbed);
+
   const isNote = block.type === 'text';
   const showResizeHandles = isNote && canEdit && (selected || isHovered) && !isEditingText;
 
@@ -102,7 +111,6 @@ function BlockContainer({ block, scale, selected, isInMultiSelection, isDropTarg
         top: block.y,
         zIndex: selected ? 100 : 1,
         cursor: canEdit ? 'grab' : 'default',
-        willChange: 'transform',
       }}
       onPointerDown={isEditingText ? undefined : onPointerDown}
       onContextMenu={e => { e.preventDefault(); e.stopPropagation(); handlers.onContextMenu(block.id, e.clientX, e.clientY); }}
@@ -144,12 +152,12 @@ function BlockContainer({ block, scale, selected, isInMultiSelection, isDropTarg
         }}
       >
         {block.type === 'link' && <LinkPreview block={block} />}
-        {block.type === 'youtube' && <YoutubeEmbed block={block} />}
-        {block.type === 'twitter' && <TwitterEmbed block={block} />}
+        {block.type === 'youtube' && <YoutubeEmbed block={block} active={embedActive} />}
+        {block.type === 'twitter' && <TwitterEmbed block={block} active={embedActive} />}
         {block.type === 'image' && <ImageEmbed block={block} />}
-        {block.type === 'spotify' && <SpotifyEmbed block={block} />}
-        {block.type === 'map' && <MapEmbed block={block} />}
-        {block.type === 'pdf' && <PdfEmbed block={block} />}
+        {block.type === 'spotify' && <SpotifyEmbed block={block} active={embedActive} />}
+        {block.type === 'map' && <MapEmbed block={block} active={embedActive} />}
+        {block.type === 'pdf' && <PdfEmbed block={block} active={embedActive} />}
         {block.type === 'github' && <GithubEmbed block={block} />}
         {block.type === 'text' && (
           <TextNote

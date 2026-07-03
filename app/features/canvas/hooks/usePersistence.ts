@@ -3,6 +3,7 @@ import { useEffect, useRef } from 'react';
 import type { Block, Frame, Connector } from '@/app/features/types';
 import type { CanvasState } from '../types';
 import { SAVE_DEBOUNCE_MS } from '../constants';
+import { reconcileById } from '../utils';
 
 interface Params {
   initialState?: CanvasState | null;
@@ -73,9 +74,20 @@ export function usePersistence({
       if (localDirty) return; // active editor here wins; their save will sync out
     }
 
-    setBlocks(initialState.blocks);
-    setFrames(initialState.frames ?? []);
-    setConnectors(initialState.connectors ?? []);
+    // Reconcile by id so unchanged blocks keep their object reference — a remote save then only
+    // re-renders the blocks that actually changed, not every block on the canvas.
+    const nextBlocks = reconcileById(latest.current.blocks, initialState.blocks);
+    const nextFrames = reconcileById(latest.current.frames, initialState.frames ?? []);
+    const nextConnectors = reconcileById(latest.current.connectors, initialState.connectors ?? []);
+    setBlocks(nextBlocks);
+    setFrames(nextFrames);
+    setConnectors(nextConnectors);
+    // Mirror the just-hydrated content into `latest.current` synchronously. React hasn't committed
+    // the setState above yet, so an unmount/beforeunload flush (or a debounced save) firing before
+    // the next render would otherwise read the STALE pre-hydrate state (e.g. an empty canvas) while
+    // syncedContentRef already points at the new snapshot — and save that emptiness over the real
+    // data. This happens in dev StrictMode's mount→unmount→remount, and can race in prod too.
+    latest.current = { ...latest.current, blocks: nextBlocks, frames: nextFrames, connectors: nextConnectors };
     if (firstHydrate) {
       // Apply the stored viewport once. Later remote syncs keep the local viewport so a
       // collaborator's pan/zoom doesn't yank this screen around.
@@ -90,13 +102,19 @@ export function usePersistence({
   // Debounced save — fires only on real content edits (not pure pan/zoom, not hydration).
   useEffect(() => {
     if (!onSave || !canEdit || !hasHydratedRef.current) return;
-    const key = contentKey(blocks, frames, connectors);
-    if (syncedContentRef.current !== null && key === syncedContentRef.current) return;
     if (saveTimer.current) clearTimeout(saveTimer.current);
     saveTimer.current = setTimeout(() => {
-      onSave({ blocks, frames, connectors, offset, scale });
-      syncedContentRef.current = key;
       saveTimer.current = null;
+      // Read the *current* state at fire time (not this effect's stale closure): a save scheduled
+      // while the canvas was momentarily empty (e.g. before the real state hydrated in) must not
+      // fire an empty-blocks save against an already-advanced snapshot and clobber the real data.
+      // Serialising here (once per debounce window, not per keystroke/pan frame) also keeps content
+      // diffing off the hot render path.
+      const cur = latest.current;
+      const key = contentKey(cur.blocks, cur.frames, cur.connectors);
+      if (syncedContentRef.current !== null && key === syncedContentRef.current) return;
+      cur.onSave?.({ blocks: cur.blocks, frames: cur.frames, connectors: cur.connectors, offset: cur.offset, scale: cur.scale });
+      syncedContentRef.current = key;
     }, SAVE_DEBOUNCE_MS);
     return () => { if (saveTimer.current) clearTimeout(saveTimer.current); };
   }, [blocks, frames, connectors, offset, scale, onSave, canEdit]);

@@ -457,8 +457,12 @@ export default function Canvas({
     if (!delta) { setLiveDrag(null); return; }
     const sel = selectedIdsRef.current;
     const ids = sel.size > 1 && sel.has(blockId) ? sel : new Set([blockId]);
+    // Connectors are the only thing that has to follow a block mid-drag. When no dragged block is
+    // wired to a connector, skip the per-move setLiveDrag (and its full-canvas re-render) entirely —
+    // the block itself moves via a direct DOM transform in useBlockDrag, so no React state changes.
+    if (!connectorsRef.current.some(c => ids.has(c.sourceId) || ids.has(c.targetId))) return;
     setLiveDrag({ ids, dx: delta.dx, dy: delta.dy });
-  }, [handleBlockDragRect, selectedIdsRef]);
+  }, [handleBlockDragRect, selectedIdsRef, connectorsRef]);
 
   /** Clears the live offset in the same synchronous flush that commits the group move, avoiding a one-frame jump. */
   const handleMultiDragEndLive = useCallback((dx: number, dy: number) => {
@@ -584,8 +588,9 @@ export default function Canvas({
       handleFrameSelect(id);
       openMenu(buildMenuRows({ kind: 'frame', id }, clientX - rect.left, clientY - rect.top), clientX, clientY, rect);
     },
+    scaleRef,
     canEdit,
-  }), [handleFrameSelect, handleFrameRename, handleFrameColor, handleFrameToggleCollapse, handleFrameDelete, handleFrameDragMove, handleFrameDragEnd, handleFrameResize, commentHandlers, pushSnapshot, openMenu, buildMenuRows, setCommentTarget, canEdit]);
+  }), [handleFrameSelect, handleFrameRename, handleFrameColor, handleFrameToggleCollapse, handleFrameDelete, handleFrameDragMove, handleFrameDragEnd, handleFrameResize, commentHandlers, pushSnapshot, openMenu, buildMenuRows, setCommentTarget, scaleRef, canEdit]);
 
   const blockHandlers = useMemo(() => ({
     onSelect: (id: string, shiftKey: boolean) => { setCommentTarget(null); handleBlockSelectWithFrameClear(id, shiftKey); },
@@ -608,8 +613,9 @@ export default function Canvas({
     },
     onConnectorStart: canEdit ? startConnector : undefined,
     onMeasure: reportSize,
+    scaleRef,
     canEdit,
-  }), [handleBlockSelectWithFrameClear, handleBlockClickEnd, handleOpenBlock, updateBlock, handleDeleteBlock, commentHandlers, handleMultiDragMove, handleMultiDragEndLive, pushSnapshot, handleBlockDragLive, openMenu, selectedIdsRef, buildMenuRows, setCommentTarget, canEdit, startConnector, reportSize]);
+  }), [handleBlockSelectWithFrameClear, handleBlockClickEnd, handleOpenBlock, updateBlock, handleDeleteBlock, commentHandlers, handleMultiDragMove, handleMultiDragEndLive, pushSnapshot, handleBlockDragLive, openMenu, selectedIdsRef, buildMenuRows, setCommentTarget, scaleRef, canEdit, startConnector, reportSize]);
 
   const toolbarActions = useMemo(() => ({
     addText: addTextNote,
@@ -672,10 +678,23 @@ export default function Canvas({
   const blockById = useMemo(() => new Map(blocks.map(b => [b.id, b])), [blocks]);
   const frameById = useMemo(() => new Map(frames.map(f => [f.id, f])), [frames]);
 
+  // Selection-only view of peers, kept referentially stable across pure cursor moves (the `peers`
+  // array churns at ~30 Hz per collaborator). A cursor tick changes no selection, so the world layers
+  // below stay identity-stable and memo(CanvasWorld) skips — only PeerCursors (screen-space) re-renders.
+  const peerSelectionSig = peers
+    .map(p => `${p.id}:${p.color}:${p.selection.frameId ?? ''}:${p.selection.blockIds.join(',')}`)
+    .join('|');
+  const peerSelections = useMemo(
+    () => peers.map(p => ({ id: p.id, color: p.color, selection: p.selection })),
+    // Rebuild only when a selection/color/roster actually changes, not on every cursor move.
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+    [peerSelectionSig],
+  );
+
   // block id → colors of peers currently selecting it; feeds on-card peer outlines (see Block.tsx).
   const peerColorsById = useMemo(() => {
     const m = new Map<string, string[]>();
-    for (const peer of peers) {
+    for (const peer of peerSelections) {
       for (const bid of peer.selection.blockIds) {
         const list = m.get(bid);
         if (list) list.push(peer.color);
@@ -683,7 +702,7 @@ export default function Canvas({
       }
     }
     return m;
-  }, [peers]);
+  }, [peerSelections]);
 
   const connectorLayer = useMemo(() => ({
     connectors,
@@ -711,6 +730,29 @@ export default function Canvas({
     const mid = connectorMidpoint(a, b, c.curvature ?? 0);
     return { connector: c, x: mid.x * scale + offset.x, y: mid.y * scale + offset.y };
   }, [selectedConnectorId, connectors, blockRectById, scale, offset]);
+
+  // Referentially-stable layer bags so memo(CanvasWorld) can skip when only unrelated Canvas state
+  // changed (hover, popovers, context menu, remote cursors). Each rebuilds only when its own inputs do.
+  const frameLayer = useMemo(() => ({
+    visibleFrames,
+    framePresent,
+    dragHover,
+    selectedFrameId,
+    handlers: frameHandlers,
+    renameRequest: renameFrameReq,
+  }), [visibleFrames, framePresent, dragHover, selectedFrameId, frameHandlers, renameFrameReq]);
+
+  const blockLayer = useMemo(() => ({
+    visibleBlocks,
+    selectedIds,
+    dropTargetId: pending?.targetId ?? endpointDrag?.targetId ?? null,
+    peerColorsById,
+    // blockHandlers carries a stable scaleRef read only inside pointer handlers, never during render.
+    // eslint-disable-next-line react-hooks/refs
+    handlers: blockHandlers,
+  }), [visibleBlocks, selectedIds, pending?.targetId, endpointDrag?.targetId, peerColorsById, blockHandlers]);
+
+  const peerLayer = useMemo(() => ({ peers: peerSelections, frameById }), [peerSelections, frameById]);
 
   return (
     <div
@@ -751,23 +793,10 @@ export default function Canvas({
       <CanvasWorld
         offset={offset}
         scale={scale}
-        frameLayer={{
-          visibleFrames,
-          framePresent,
-          dragHover,
-          selectedFrameId,
-          handlers: frameHandlers,
-          renameRequest: renameFrameReq,
-        }}
-        blockLayer={{
-          visibleBlocks,
-          selectedIds,
-          dropTargetId: pending?.targetId ?? endpointDrag?.targetId ?? null,
-          peerColorsById,
-          handlers: blockHandlers,
-        }}
+        frameLayer={frameLayer}
+        blockLayer={blockLayer}
         connectorLayer={connectorLayer}
-        peerLayer={{ peers, frameById }}
+        peerLayer={peerLayer}
       />
 
       {/* Transparent shield during a connector drag so pointer events keep flowing over iframes. */}

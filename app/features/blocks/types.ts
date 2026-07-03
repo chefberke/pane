@@ -17,6 +17,8 @@ export interface BlockHandlers {
   onConnectorStart?: (blockId: string, side: ConnectorSide, e: React.PointerEvent) => void;
   /** Reports a block's true rendered size (or null on unmount) so connector routing/hit-testing use real bounds. */
   onMeasure?: (id: string, size: { width: number; height: number } | null) => void;
+  /** Live viewport scale as a ref — read by drag/resize math so zoom never re-renders blocks. */
+  scaleRef: { current: number };
   /** When false, the block is read-only (viewer): no drag, edit, delete, or comment affordances. */
   canEdit: boolean;
 }

@@ -3,7 +3,7 @@ import { DRAG_THRESHOLD } from '@/app/features/canvas/constants';
 
 interface UseFrameDragArgs {
   frameId: string;
-  scale: number;
+  scaleRef: { current: number };
   canEdit: boolean;
   onSelect: (id: string) => void;
   onMove: (id: string, dx: number, dy: number) => void;
@@ -12,14 +12,11 @@ interface UseFrameDragArgs {
 }
 
 /** Handles drag gesture for a frame's title bar — moves frame + all descendants together. */
-export function useFrameDrag({ frameId, scale, canEdit, onSelect, onMove, onEnd, onBeforeMutate }: UseFrameDragArgs) {
+export function useFrameDrag({ frameId, scaleRef, canEdit, onSelect, onMove, onEnd, onBeforeMutate }: UseFrameDragArgs) {
   const dragging = useRef(false);
   const hasDragged = useRef(false);
   const start = useRef({ mx: 0, my: 0 });
   const delta = useRef({ dx: 0, dy: 0 });
-
-  const scaleRef = useRef(scale);
-  useEffect(() => { scaleRef.current = scale; }, [scale]);
 
   const onTitleDragPointerDown = useCallback((e: React.PointerEvent) => {
     if (e.button !== 0 && e.pointerType === 'mouse') return;
@@ -60,7 +57,7 @@ export function useFrameDrag({ frameId, scale, canEdit, onSelect, onMove, onEnd,
       window.removeEventListener('pointermove', onPointerMove);
       window.removeEventListener('pointerup', onPointerUp);
     };
-  }, [frameId, onMove, onEnd, onBeforeMutate]);
+  }, [frameId, scaleRef, onMove, onEnd, onBeforeMutate]);
 
   return { onTitleDragPointerDown };
 }

@@ -1,5 +1,5 @@
 'use client';
-import { memo, type RefObject } from 'react';
+import { memo, useState, type RefObject } from 'react';
 import type { TextBlock } from '@/app/features/types';
 import { useAutoGrowTextarea } from '../hooks/useAutoGrowTextarea';
 
@@ -14,7 +14,24 @@ interface Props {
 }
 
 function TextNote({ block, onUpdate, isEditing, onStopEdit, rootRef }: Props) {
-  const ref = useAutoGrowTextarea(isEditing, block.content);
+  // While editing, hold the text locally so each keystroke doesn't rebuild the whole blocks array
+  // (and re-serialise the canvas for the save diff). The edit commits to the block once, on blur.
+  const [draft, setDraft] = useState(block.content);
+
+  // Seed the draft from the block when an edit session starts — render-phase "previous value" pattern
+  // (mirrors Frame's rename handling), so a remote content update can't clobber in-progress typing.
+  const [wasEditing, setWasEditing] = useState(isEditing);
+  if (isEditing !== wasEditing) {
+    setWasEditing(isEditing);
+    if (isEditing) setDraft(block.content);
+  }
+
+  const ref = useAutoGrowTextarea(isEditing, draft);
+
+  const commit = () => {
+    if (draft !== block.content) onUpdate(draft);
+    onStopEdit();
+  };
 
   return (
     <div
@@ -30,10 +47,10 @@ function TextNote({ block, onUpdate, isEditing, onStopEdit, rootRef }: Props) {
           style={{
             color: 'var(--color-text-primary)',
           }}
-          value={block.content}
+          value={draft}
           placeholder="Write something..."
-          onChange={e => onUpdate(e.target.value)}
-          onBlur={onStopEdit}
+          onChange={e => setDraft(e.target.value)}
+          onBlur={commit}
           onPointerDown={e => e.stopPropagation()}
           onClick={e => e.stopPropagation()}
         />

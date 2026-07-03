@@ -4,7 +4,7 @@ import { DRAG_THRESHOLD } from '../../canvas/constants';
 
 interface UseBlockDragArgs {
   block: Block;
-  scale: number;
+  scaleRef: { current: number };
   isInMultiSelection: boolean;
   canEdit: boolean;
   onSelect: (id: string, shiftKey: boolean) => void;
@@ -18,7 +18,7 @@ interface UseBlockDragArgs {
 
 /** Handles the drag gesture for a single block, supporting both solo and group drag via Pointer Events. */
 export function useBlockDrag({
-  block, scale, isInMultiSelection, canEdit,
+  block, scaleRef, isInMultiSelection, canEdit,
   onSelect, onClickEnd, onUpdate, onMultiDragMove, onMultiDragEnd, onBeforeDragCommit, onDragRect,
 }: UseBlockDragArgs) {
   const containerRef = useRef<HTMLDivElement>(null);
@@ -31,8 +31,10 @@ export function useBlockDrag({
   const dragDelta = useRef({ dx: 0, dy: 0 });
   const capturedPointerId = useRef<number | null>(null);
 
-  const scaleRef = useRef(scale);
-  useEffect(() => { scaleRef.current = scale; }, [scale]);
+  // Coalesce the drop-target / live-connector signal to one call per animation frame.
+  const dragRectRaf = useRef<number | null>(null);
+  const pendingRect = useRef<{ dx: number; dy: number } | null>(null);
+
   const isInMultiRef = useRef(isInMultiSelection);
   useEffect(() => { isInMultiRef.current = isInMultiSelection; }, [isInMultiSelection]);
 
@@ -50,7 +52,12 @@ export function useBlockDrag({
     dragStart.current = { mx: e.clientX, my: e.clientY, bx: block.x, by: block.y };
     capturedPointerId.current = e.pointerId;
 
-    if (containerRef.current) containerRef.current.style.cursor = 'grabbing';
+    if (containerRef.current) {
+      containerRef.current.style.cursor = 'grabbing';
+      // Promote to its own compositor layer only for the duration of the drag — a permanent
+      // willChange on every block would create N GPU layers and thrash memory on a big canvas.
+      containerRef.current.style.willChange = 'transform';
+    }
     if (overlayRef.current) overlayRef.current.style.display = 'block';
   }, [block.id, block.x, block.y, onSelect, canEdit]);
 
@@ -74,17 +81,30 @@ export function useBlockDrag({
         const el = containerRef.current;
         if (el) el.style.transform = `translate(${dx}px, ${dy}px)`;
       }
-      if (hasDragged.current) onDragRect(block.id, { dx, dy });
+      // The block's own movement was applied synchronously above (el.style.transform); this only paces
+      // the React-state side effects (drop-target preview + live connector routing) to once per frame.
+      if (hasDragged.current) {
+        pendingRect.current = { dx, dy };
+        if (dragRectRaf.current === null) {
+          dragRectRaf.current = requestAnimationFrame(() => {
+            dragRectRaf.current = null;
+            if (pendingRect.current) onDragRect(block.id, pendingRect.current);
+          });
+        }
+      }
     };
 
     const onUp = () => {
       if (!dragging.current) return;
       dragging.current = false;
       capturedPointerId.current = null;
+      // Drop any coalesced frame so the terminal onDragRect(null) below isn't overtaken by a stale delta.
+      if (dragRectRaf.current !== null) { cancelAnimationFrame(dragRectRaf.current); dragRectRaf.current = null; }
+      pendingRect.current = null;
 
       if (overlayRef.current) overlayRef.current.style.display = 'none';
       const el = containerRef.current;
-      if (el) el.style.cursor = 'grab';
+      if (el) { el.style.cursor = 'grab'; el.style.willChange = ''; }
 
       const wasDragged = hasDragged.current;
       onClickEnd(block.id, wasDragged);
@@ -114,8 +134,9 @@ export function useBlockDrag({
     return () => {
       window.removeEventListener('pointermove', onMove);
       window.removeEventListener('pointerup', onUp);
+      if (dragRectRaf.current !== null) { cancelAnimationFrame(dragRectRaf.current); dragRectRaf.current = null; }
     };
-  }, [block.id, onUpdate, onClickEnd, onMultiDragMove, onMultiDragEnd, onBeforeDragCommit, onDragRect]);
+  }, [block.id, scaleRef, onUpdate, onClickEnd, onMultiDragMove, onMultiDragEnd, onBeforeDragCommit, onDragRect]);
 
   return { containerRef, overlayRef, onPointerDown };
 }

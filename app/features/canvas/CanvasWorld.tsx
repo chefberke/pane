@@ -50,7 +50,8 @@ interface ConnectorLayer {
 }
 
 interface PeerLayerProps {
-  peers: RemotePresencePeer[];
+  /** Selection-only slice of peers — excludes cursor/viewport so 30 Hz cursor ticks don't re-render the world. */
+  peers: Pick<RemotePresencePeer, 'id' | 'color' | 'selection'>[];
   frameById: Map<string, Frame>;
 }
 
@@ -89,7 +90,6 @@ function CanvasWorld({ offset, scale, frameLayer, blockLayer, connectorLayer, pe
           <FrameView
             key={frame.id}
             frame={frame}
-            scale={scale}
             selected={selectedFrameId === frame.id}
             memberCount={present?.count ?? 0}
             descendantBlocks={present?.descBlocks ?? []}
@@ -121,7 +121,6 @@ function CanvasWorld({ offset, scale, frameLayer, blockLayer, connectorLayer, pe
         <BlockContainer
           key={block.id}
           block={block}
-          scale={scale}
           selected={selectedIds.has(block.id)}
           isInMultiSelection={selectedIds.size > 1 && selectedIds.has(block.id)}
           isDropTarget={block.id === dropTargetId}

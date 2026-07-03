@@ -4,9 +4,11 @@ import { ExternalLink, FileText } from 'lucide-react';
 import type { PdfBlock } from '@/app/features/types';
 import { assertHttpsUrl } from '@/app/features/canvas/utils';
 import PdfUnavailable from '../PdfUnavailable';
+import EmbedPlaceholder from './EmbedPlaceholder';
 
-/** Renders a PDF via the browser's native viewer, with a styled fallback for blocked embeds. */
-function PdfEmbed({ block }: { block: PdfBlock }) {
+/** Renders a PDF via the browser's native viewer, with a styled fallback for blocked embeds and a
+ *  lightweight placeholder when far offscreen. */
+function PdfEmbed({ block, active }: { block: PdfBlock; active: boolean }) {
   const filename = block.title || block.url.split('/').pop()?.split('?')[0] || 'document.pdf';
   // Only allow https: URLs in the embed to prevent protocol-level attacks.
   const safeSrc = useMemo(() => assertHttpsUrl(block.url), [block.url]);
@@ -43,6 +45,11 @@ function PdfEmbed({ block }: { block: PdfBlock }) {
       {/* PDF content */}
       {!safeSrc ? (
         <PdfUnavailable filename={filename} />
+      ) : !active ? (
+        // The native PDF viewer is heavy; show a placeholder until the block nears the viewport.
+        <div className="relative flex-1">
+          <EmbedPlaceholder icon={<FileText size={22} />} label="PDF preview" />
+        </div>
       ) : (
         <div className="relative flex-1">
           {/* <object> uses the browser's native PDF viewer; a sandboxed <iframe>

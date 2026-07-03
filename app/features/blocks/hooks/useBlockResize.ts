@@ -6,23 +6,23 @@ export type ResizeDir = 'n' | 's' | 'e' | 'w' | 'nw' | 'ne' | 'sw' | 'se';
 
 interface UseBlockResizeArgs {
   block: Block;
-  scale: number;
+  scaleRef: { current: number };
   onUpdate: (id: string, updates: Partial<Block>) => void;
   onBeforeMutate: () => void;
-  /** The rendered card box — measured at gesture start for a seamless drag. */
+  /** The block's outer container — its `left`/`top` are moved imperatively during n/w edge resizes. */
+  containerRef: RefObject<HTMLElement | null>;
+  /** The rendered card box — measured at gesture start and sized imperatively during the drag. */
   boxRef: RefObject<HTMLElement | null>;
   /** The content element — its `offsetHeight` is the height floor (box can't shrink below the text). */
   contentRef: RefObject<HTMLElement | null>;
 }
 
 /** Edge/corner resize gestures for a note block; width is free, height floors at content ("content is the floor"). */
-export function useBlockResize({ block, scale, onUpdate, onBeforeMutate, boxRef, contentRef }: UseBlockResizeArgs) {
+export function useBlockResize({ block, scaleRef, onUpdate, onBeforeMutate, containerRef, boxRef, contentRef }: UseBlockResizeArgs) {
   const activeDir = useRef<ResizeDir | null>(null);
   const start = useRef({ mx: 0, my: 0, x: 0, y: 0, w: 0, h: 0 });
   const committed = useRef(false);
-
-  const scaleRef = useRef(scale);
-  useEffect(() => { scaleRef.current = scale; }, [scale]);
+  const pendingUpdates = useRef<Partial<Block> | null>(null);
 
   const blockRef = useRef(block);
   useEffect(() => { blockRef.current = block; }, [block]);
@@ -88,16 +88,35 @@ export function useBlockResize({ block, scale, onUpdate, onBeforeMutate, boxRef,
       if (changesH) updates.height = nh;
       if (changesX) updates.x = nx;
       if (changesY) updates.y = ny;
-      onUpdate(blockRef.current.id, updates);
+
+      // Apply the resize imperatively during the gesture — no per-move setBlocks, so no O(N) array
+      // rebuild + whole-canvas persistence stringify on every pointermove. Commit lands once on up.
+      const box = boxRef.current;
+      if (box) {
+        if (updates.width !== undefined) box.style.width = `${updates.width}px`;
+        if (updates.height !== undefined) box.style.minHeight = `${updates.height}px`;
+      }
+      const cont = containerRef.current;
+      if (cont) {
+        if (updates.x !== undefined) cont.style.left = `${updates.x}px`;
+        if (updates.y !== undefined) cont.style.top = `${updates.y}px`;
+      }
+      pendingUpdates.current = updates;
     };
-    const onUp = () => { activeDir.current = null; };
+    const onUp = () => {
+      if (!activeDir.current) return;
+      activeDir.current = null;
+      const updates = pendingUpdates.current;
+      pendingUpdates.current = null;
+      if (committed.current && updates) onUpdate(blockRef.current.id, updates);
+    };
     window.addEventListener('pointermove', onMove);
     window.addEventListener('pointerup', onUp);
     return () => {
       window.removeEventListener('pointermove', onMove);
       window.removeEventListener('pointerup', onUp);
     };
-  }, [onUpdate, onBeforeMutate, contentRef]);
+  }, [onUpdate, onBeforeMutate, scaleRef, containerRef, boxRef, contentRef]);
 
   return { onHandlePointerDown };
 }

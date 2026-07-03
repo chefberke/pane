@@ -13,6 +13,8 @@ export interface FrameHandlers {
   onOpenComments: (frame: Frame, anchor: { x: number; y: number }) => void;
   onBeforeMutate: () => void;
   onContextMenu: (id: string, clientX: number, clientY: number) => void;
+  /** Live viewport scale as a ref — read by drag/resize math so zoom never re-renders frames. */
+  scaleRef: { current: number };
   /** When false, the frame is read-only (viewer): no drag, resize, rename, recolor, or delete. */
   canEdit: boolean;
 }

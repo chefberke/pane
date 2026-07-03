@@ -5,7 +5,8 @@ import { AVATAR_TEXT_ON_COLOR } from '../ui/constants';
 import { PEER_CURSOR_Z } from './constants';
 
 interface SelectionsProps {
-  peers: RemotePresencePeer[];
+  /** Selection-only slice of peers (id/color/selection) — keeps this layer stable across cursor-only ticks. */
+  peers: Pick<RemotePresencePeer, 'id' | 'color' | 'selection'>[];
   frameById: Map<string, Frame>;
 }
 

@@ -6,19 +6,16 @@ export type ResizeDir = 'n' | 's' | 'e' | 'w' | 'nw' | 'ne' | 'sw' | 'se';
 
 interface UseFrameResizeArgs {
   frame: Frame;
-  scale: number;
+  scaleRef: { current: number };
   onResize: (id: string, next: { x: number; y: number; width: number; height: number }) => void;
   onBeforeMutate: () => void;
 }
 
 /** Handles resize gestures from any edge or corner of a frame, clamped to min size. */
-export function useFrameResize({ frame, scale, onResize, onBeforeMutate }: UseFrameResizeArgs) {
+export function useFrameResize({ frame, scaleRef, onResize, onBeforeMutate }: UseFrameResizeArgs) {
   const activeDir = useRef<ResizeDir | null>(null);
   const start = useRef({ mx: 0, my: 0, x: 0, y: 0, w: 0, h: 0 });
   const committed = useRef(false);
-
-  const scaleRef = useRef(scale);
-  useEffect(() => { scaleRef.current = scale; }, [scale]);
 
   const frameRef = useRef(frame);
   useEffect(() => { frameRef.current = frame; }, [frame]);
@@ -74,7 +71,7 @@ export function useFrameResize({ frame, scale, onResize, onBeforeMutate }: UseFr
       window.removeEventListener('pointermove', onMove);
       window.removeEventListener('pointerup', onUp);
     };
-  }, [onResize, onBeforeMutate]);
+  }, [onResize, onBeforeMutate, scaleRef]);
 
   return { onHandlePointerDown };
 }

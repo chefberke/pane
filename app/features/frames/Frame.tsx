@@ -21,7 +21,6 @@ import type { FrameDropPreview, FrameHandlers, FrameRenameRequest } from './type
 
 interface Props {
   frame: FrameType;
-  scale: number;
   selected: boolean;
   memberCount: number;
   descendantBlocks: Block[];
@@ -32,7 +31,7 @@ interface Props {
 }
 
 /** Frame container — dashed-bordered rectangle with external header above and floating action pill. */
-function Frame({ frame, scale, selected, memberCount, descendantBlocks, handlers, dropPreview, renameRequest }: Props) {
+function Frame({ frame, selected, memberCount, descendantBlocks, handlers, dropPreview, renameRequest }: Props) {
   const [isEditing, setIsEditing] = useState(false);
   const [isHovered, setIsHovered] = useState(false);
   const canEdit = handlers.canEdit;
@@ -47,7 +46,7 @@ function Frame({ frame, scale, selected, memberCount, descendantBlocks, handlers
 
   const { onTitleDragPointerDown } = useFrameDrag({
     frameId: frame.id,
-    scale,
+    scaleRef: handlers.scaleRef,
     canEdit,
     onMove: handlers.onDragMove,
     onEnd: handlers.onDragEnd,
@@ -57,7 +56,7 @@ function Frame({ frame, scale, selected, memberCount, descendantBlocks, handlers
 
   const { onHandlePointerDown } = useFrameResize({
     frame,
-    scale,
+    scaleRef: handlers.scaleRef,
     onResize: handlers.onResize,
     onBeforeMutate: handlers.onBeforeMutate,
   });

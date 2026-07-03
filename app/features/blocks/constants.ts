@@ -23,6 +23,10 @@ export const BLOCK_DROP_TARGET_RING_WIDTH = 4;
 /** Transition applied to a block card's shadow/transform when entering or leaving drop-target state. */
 export const BLOCK_CARD_TRANSITION = 'box-shadow 180ms ease-out, transform 180ms ease-out';
 
+/** IntersectionObserver rootMargin (screen px) within which heavy embeds (iframes/PDF) stay mounted;
+ *  beyond it they render a lightweight placeholder instead. ~one screen of buffer in each direction. */
+export const EMBED_MOUNT_MARGIN = '800px';
+
 /** Smallest zoom factor allowed in the image lightbox. */
 export const LIGHTBOX_MIN_ZOOM = 0.25;
 /** Largest zoom factor allowed in the image lightbox. */
