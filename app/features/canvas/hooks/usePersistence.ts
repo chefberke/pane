@@ -48,13 +48,19 @@ export function usePersistence({
   const hasHydratedRef = useRef(false);
 
   // Mirror the latest values so the unmount/beforeunload flush can read them without
-  // re-subscribing its effect on every render. Written in an effect (not during render, which
-  // React forbids for refs) and declared before the hydrate effect below so it runs first on
-  // each commit — the hydrate effect always sees fresh values in `latest.current`.
+  // re-subscribing its effect on every render. This MUST be written synchronously during
+  // render — NOT in a useEffect. The beforeunload/unmount `flush()` (and, during the gap
+  // between commit and passive-effect flush, any other reader) can fire before a post-commit
+  // effect has run; an effect-written mirror would then be one render stale — e.g. holding the
+  // empty pre-hydrate canvas while the user's just-added block sits in committed state — and
+  // flush would either skip the save or write that emptiness over the real DB data. Assigning
+  // during render keeps `latest.current` at least as fresh as the most recent render, which is
+  // what the flush relies on. (`react-hooks/refs` flags ref-writes-during-render; that rule
+  // targets refs used for rendering — this is an intentional latest-value mirror read only by
+  // effects/handlers, the canonical exception, so it's disabled here on purpose.)
   const latest = useRef({ blocks, frames, connectors, offset, scale, onSave, canEdit });
-  useEffect(() => {
-    latest.current = { blocks, frames, connectors, offset, scale, onSave, canEdit };
-  });
+  // eslint-disable-next-line react-hooks/refs
+  latest.current = { blocks, frames, connectors, offset, scale, onSave, canEdit };
 
   const saveTimer = useRef<ReturnType<typeof setTimeout> | null>(null);
 
