@@ -311,7 +311,17 @@ export default function Canvas({
 
     const { blockIds, childFrameIds } = frameMembers(frame, blocksRef.current, framesRef.current);
     const items: { id: string; rect: Rect; isFrame: boolean }[] = [];
-    blocksRef.current.forEach(b => { if (blockIds.has(b.id)) items.push({ id: b.id, rect: blockRect(b), isFrame: false }); });
+    // Use each block's true measured rect (content-driven heights for links/embeds diverge wildly
+    // from the static BLOCK_SIZES defaults, which would collide rows). Measured rects only exist
+    // while members are mounted — i.e. the frame is expanded; a collapsed frame's members are
+    // unmounted and rectById would report the collapsed pill rect, so fall back to the static size
+    // there (unchanged pre-fix behaviour; the frame un-collapses below anyway).
+    const useMeasured = !frame.collapsed;
+    blocksRef.current.forEach(b => {
+      if (!blockIds.has(b.id)) return;
+      const rect = useMeasured ? (blockRectByIdRef.current.get(b.id) ?? blockRect(b)) : blockRect(b);
+      items.push({ id: b.id, rect, isFrame: false });
+    });
     framesRef.current.forEach(f => { if (childFrameIds.has(f.id)) items.push({ id: f.id, rect: frameOuterRect(f), isFrame: true }); });
     if (items.length < 2) return;
 
@@ -370,7 +380,7 @@ export default function Canvas({
       const dd = descFrameDeltas.get(f.id);
       return dd ? { ...f, x: f.x + dd.dx, y: f.y + dd.dy } : f;
     }));
-  }, [framesRef, blocksRef, pushSnapshot, setBlocks, setFrames]);
+  }, [framesRef, blocksRef, blockRectByIdRef, pushSnapshot, setBlocks, setFrames]);
 
   /** Unified delete: removes the selected frame if one is selected, otherwise blocks (plus any frames whose all descendant blocks are being deleted). */
   const deleteSelectedAny = useCallback(() => {
