@@ -43,15 +43,17 @@ export function useFrameInteractions({
     if (!frame) return;
     const descBlocks = frameDescendantBlocks(frame, blocksRef.current, framesRef.current);
     const descFrames = frameDescendantFrames(frame, framesRef.current, blocksRef.current);
+    // Suppress transitions on the moving elements so the imperative transform tracks the pointer
+    // 1:1 — the collapsed frame's `transform` transition would otherwise ease each move (slide/lag).
     const fEl = document.querySelector(`[data-frame-id="${id}"]`) as HTMLElement | null;
-    if (fEl) fEl.style.transform = `translate(${dx}px, ${dy}px)`;
+    if (fEl) { fEl.style.transition = 'none'; fEl.style.transform = `translate(${dx}px, ${dy}px)`; }
     descFrames.forEach(fid => {
       const el = document.querySelector(`[data-frame-id="${fid}"]`) as HTMLElement | null;
-      if (el) el.style.transform = `translate(${dx}px, ${dy}px)`;
+      if (el) { el.style.transition = 'none'; el.style.transform = `translate(${dx}px, ${dy}px)`; }
     });
     descBlocks.forEach(bid => {
       const el = document.querySelector(`[data-block-id="${bid}"]`) as HTMLElement | null;
-      if (el) el.style.transform = `translate(${dx}px, ${dy}px)`;
+      if (el) { el.style.transition = 'none'; el.style.transform = `translate(${dx}px, ${dy}px)`; }
     });
     // So connectors attached to a block being dragged along with its frame follow live too, not just direct block drags.
     setLiveDrag(descBlocks.size > 0 ? { ids: descBlocks, dx, dy } : null);
@@ -73,7 +75,8 @@ export function useFrameInteractions({
     };
 
     if (dx === 0 && dy === 0) {
-      collectEls().forEach(el => { el.style.transform = ''; });
+      // Restore the transition suppressed during the (net-zero) move so the drop-target bounce works again.
+      collectEls().forEach(el => { el.style.transform = ''; el.style.transition = ''; });
       setLiveDrag(null);
       return;
     }
