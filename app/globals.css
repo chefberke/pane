@@ -146,8 +146,8 @@
   --shadow-brand-logo: 0 4px 14px rgba(255, 61, 104, 0.18);
 
   /* Marquee selection */
-  --color-marquee-border: rgba(0, 0, 0, 0.25);
-  --color-marquee-bg:     rgba(0, 0, 0, 0.04);
+  --color-marquee-border: rgba(96, 165, 250, 0.8);
+  --color-marquee-bg:     rgba(96, 165, 250, 0.12);
 
   /* Float button hover surface */
   --color-surface-raised-hover: rgba(245, 245, 245, 0.98);
@@ -208,8 +208,8 @@
   --shadow-brand-logo:  0 4px 14px rgba(255, 61, 104, 0.25);
 
   /* Marquee selection */
-  --color-marquee-border: rgba(255, 255, 255, 0.3);
-  --color-marquee-bg:     rgba(255, 255, 255, 0.04);
+  --color-marquee-border: rgba(96, 165, 250, 0.8);
+  --color-marquee-bg:     rgba(96, 165, 250, 0.12);
 
   /* Float button hover surface */
   --color-surface-raised-hover: rgba(50, 50, 50, 0.98);
