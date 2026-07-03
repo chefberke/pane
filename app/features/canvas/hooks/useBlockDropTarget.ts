@@ -15,6 +15,8 @@ interface Params {
   framesRef: React.RefObject<Frame[]>;
   selectedIdsRef: React.RefObject<Set<string>>;
   setFrames: Dispatch<SetStateAction<Frame[]>>;
+  /** Live id → true rendered rect map, so frame re-fits use measured (not static) member sizes. */
+  blockRectByIdRef: React.RefObject<Map<string, Rect>>;
 }
 
 interface DragHover {
@@ -23,7 +25,7 @@ interface DragHover {
 }
 
 /** Tracks the live block-drag drop-target, drives frame preview rects, and commits frame bounds on drop. */
-export function useBlockDropTarget({ blocksRef, framesRef, selectedIdsRef, setFrames }: Params) {
+export function useBlockDropTarget({ blocksRef, framesRef, selectedIdsRef, setFrames, blockRectByIdRef }: Params) {
   const dragCtxRef = useRef<{
     draggedIds: Set<string>;
     originals: Map<string, Rect>;
@@ -64,7 +66,7 @@ export function useBlockDropTarget({ blocksRef, framesRef, selectedIdsRef, setFr
         const f = currentFrames.find(x => x.id === fid);
         if (!f) return;
         const isIncoming = fid === hoverFrameId;
-        const r = computeFramePreviewRect(f, currentBlocks, currentFrames, ctx.draggedIds, projectedRects, isIncoming);
+        const r = computeFramePreviewRect(f, currentBlocks, currentFrames, ctx.draggedIds, projectedRects, isIncoming, blockRectByIdRef.current);
         newRects.set(fid, {
           x: r.x,
           y: r.y,
@@ -91,7 +93,8 @@ export function useBlockDropTarget({ blocksRef, framesRef, selectedIdsRef, setFr
       const draggedIds = sel.has(blockId) && sel.size > 1 ? new Set(sel) : new Set([blockId]);
       const originals = new Map<string, Rect>();
       blocksRef.current.forEach(b => {
-        if (draggedIds.has(b.id)) originals.set(b.id, blockRect(b));
+        // Measured rect (true rendered footprint) so a block dragged into a frame reserves its real size.
+        if (draggedIds.has(b.id)) originals.set(b.id, blockRectByIdRef.current.get(b.id) ?? blockRect(b));
       });
       dragCtxRef.current = { draggedIds, originals, lastDelta: null, hoverFrameId: null };
     }
@@ -134,7 +137,7 @@ export function useBlockDropTarget({ blocksRef, framesRef, selectedIdsRef, setFr
       // Collapsed hover target: keep its visual size; highlight only.
       if (fid === hoverFrameId && f.collapsed) return;
       const isIncoming = fid === hoverFrameId;
-      const r = computeFramePreviewRect(f, currentBlocks, currentFrames, ctx.draggedIds, projectedRects, isIncoming);
+      const r = computeFramePreviewRect(f, currentBlocks, currentFrames, ctx.draggedIds, projectedRects, isIncoming, blockRectByIdRef.current);
       previewByFrame.set(fid, {
         x: r.x,
         y: r.y,
@@ -154,7 +157,7 @@ export function useBlockDropTarget({ blocksRef, framesRef, selectedIdsRef, setFr
       }
       return { hoverFrameId, previewByFrame };
     });
-  }, [blocksRef, framesRef, selectedIdsRef, setFrames]);
+  }, [blocksRef, framesRef, selectedIdsRef, setFrames, blockRectByIdRef]);
 
   return { dragHover, handleBlockDragRect };
 }

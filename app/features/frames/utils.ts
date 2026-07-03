@@ -332,6 +332,8 @@ export function pickDropTargetFrame(rect: Rect, frames: Frame[]): Frame | null {
  * Computes a frame's preview rect during a block drag.
  *
  * - For each current member block of `frame`: use its projected rect (if it's being dragged) or its original rect.
+ *   When `measured` is supplied, a retained member's true rendered rect is preferred over its static
+ *   `blockRect` (falling back to it) so the frame never shrinks to cut through a taller-rendered card.
  * - If `includeIncoming` is true, also include any dragged blocks whose projected rect is being added.
  * - Returns the tight bound (with `FRAME_PADDING`) — never smaller than the frame's existing position
  *   collapsing point. If empty, returns the frame's current rect.
@@ -343,6 +345,7 @@ export function computeFramePreviewRect(
   draggedIds: Set<string>,
   projectedRects: Map<string, Rect>,
   includeIncoming: boolean,
+  measured?: Map<string, Rect>,
 ): Rect {
   const memberIds = frameMembers(frame, blocks, frames).blockIds;
   const rects: Rect[] = [];
@@ -353,7 +356,8 @@ export function computeFramePreviewRect(
         // If caller says includeIncoming covers it, skip; otherwise this block is leaving → don't include.
         continue;
       }
-      rects.push(blockRect(b));
+      // Retained members are stationary, so the measured rect's x/y already matches the block's.
+      rects.push(measured?.get(b.id) ?? blockRect(b));
     }
   }
   if (includeIncoming) {

@@ -10,10 +10,13 @@ import {
 } from '../../frames/utils';
 import { FRAME_PADDING } from '../../frames/constants';
 import type { CommentTarget, LiveDrag } from '../types';
+import type { Rect } from '../../frames/types';
 
 interface Params {
   blocksRef: React.RefObject<Block[]>;
   framesRef: React.RefObject<Frame[]>;
+  /** Live id → true rendered rect map, so the resize clamp guards against a member's real (not static) edge. */
+  blockRectByIdRef: React.RefObject<Map<string, Rect>>;
   setBlocks: Dispatch<SetStateAction<Block[]>>;
   setFrames: Dispatch<SetStateAction<Frame[]>>;
   /** Drives the connector layer's live-follow preview while a frame (and its member blocks) is being dragged. */
@@ -31,7 +34,7 @@ interface Params {
 
 /** Frame interaction handlers: drag (imperative transform + flushSync commit), resize, and metadata edits. */
 export function useFrameInteractions({
-  blocksRef, framesRef, setBlocks, setFrames, setLiveDrag,
+  blocksRef, framesRef, blockRectByIdRef, setBlocks, setFrames, setLiveDrag,
   updateFrame, renameFrame, setFrameColor, toggleCollapse, deleteFrame,
   pushSnapshot, selectedFrameId, setSelectedFrameId, setCommentTarget,
 }: Params) {
@@ -111,7 +114,8 @@ export function useFrameInteractions({
     let contentRight = -Infinity, contentBottom = -Infinity;
     for (const b of blocksRef.current) {
       if (!blockIds.has(b.id)) continue;
-      const r = blockRect(b);
+      // Prefer the true rendered rect so the clamp can't shrink past a taller-rendered card's edge.
+      const r = blockRectByIdRef.current.get(b.id) ?? blockRect(b);
       contentLeft   = Math.min(contentLeft,   r.x);
       contentTop    = Math.min(contentTop,     r.y);
       contentRight  = Math.max(contentRight,  r.x + r.width);
@@ -140,7 +144,7 @@ export function useFrameInteractions({
     if (ny + nh < contentBottom + FRAME_PADDING) nh = contentBottom + FRAME_PADDING - ny;
 
     updateFrame(id, { x: nx, y: ny, width: nw, height: nh });
-  }, [blocksRef, framesRef, updateFrame]);
+  }, [blocksRef, framesRef, blockRectByIdRef, updateFrame]);
 
   const handleFrameRename = useCallback((id: string, title: string) => {
     pushSnapshot();

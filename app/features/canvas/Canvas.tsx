@@ -252,8 +252,10 @@ export default function Canvas({
       const idx = workingBlocks.findIndex(b => b.id === id);
       if (idx === -1) return;
       const b = workingBlocks[idx];
-      const w = b.width ?? BLOCK_SIZES[b.type].w;
-      const h = b.height ?? BLOCK_SIZES[b.type].h;
+      // Reserve the block's true rendered footprint (content-driven cards render taller than the static default).
+      const measured = blockRectByIdRef.current.get(b.id);
+      const w = measured?.width ?? b.width ?? BLOCK_SIZES[b.type].w;
+      const h = measured?.height ?? b.height ?? BLOCK_SIZES[b.type].h;
       const { x, y } = findEmptySpotInFrame(frame, { w, h }, workingBlocks, framesRef.current, id);
       workingBlocks[idx] = { ...b, x, y };
       posMap.set(id, { x, y });
@@ -280,7 +282,16 @@ export default function Canvas({
       } else {
         selectedIdsRef.current.forEach(id => memberIds.delete(id));
       }
-      const rects = workingBlocks.filter(b => memberIds.has(b.id)).map(blockRect);
+      // Measured size paired with the block's working position (just-placed blocks moved to a new spot),
+      // so the frame wraps their real rendered footprint instead of the static default.
+      const rects = workingBlocks.filter(b => memberIds.has(b.id)).map(b => {
+        const m = blockRectByIdRef.current.get(b.id);
+        return {
+          x: b.x, y: b.y,
+          width: m?.width ?? b.width ?? BLOCK_SIZES[b.type].w,
+          height: m?.height ?? b.height ?? BLOCK_SIZES[b.type].h,
+        };
+      });
       framesRef.current.forEach(cf => { if (childFrameIds.has(cf.id)) rects.push(frameOuterRect(cf)); });
       const bound = groupBoundsFromRects(rects);
       if (bound) {
@@ -302,7 +313,7 @@ export default function Canvas({
     }));
     setSelectedIds(new Set());
     setSelectedFrameId(frameId);
-  }, [selectedIdsRef, framesRef, blocksRef, pushSnapshot, setBlocks, setFrames, setSelectedIds]);
+  }, [selectedIdsRef, framesRef, blocksRef, blockRectByIdRef, pushSnapshot, setBlocks, setFrames, setSelectedIds]);
 
   /** Auto-arranges a frame's direct member blocks and child frames into an evenly-spaced grid, preserving each item's natural size. */
   const arrangeFrame = useCallback((frameId: string) => {
@@ -444,12 +455,12 @@ export default function Canvas({
     handleFrameDragMove, handleFrameDragEnd, handleFrameResize,
     handleFrameRename, handleFrameColor, handleFrameToggleCollapse, handleFrameDelete,
   } = useFrameInteractions({
-    blocksRef, framesRef, setBlocks, setFrames, setLiveDrag,
+    blocksRef, framesRef, blockRectByIdRef, setBlocks, setFrames, setLiveDrag,
     updateFrame, renameFrame, setFrameColor, toggleCollapse, deleteFrame,
     pushSnapshot, selectedFrameId, setSelectedFrameId, setCommentTarget,
   });
 
-  const { dragHover, handleBlockDragRect } = useBlockDropTarget({ blocksRef, framesRef, selectedIdsRef, setFrames });
+  const { dragHover, handleBlockDragRect } = useBlockDropTarget({ blocksRef, framesRef, selectedIdsRef, setFrames, blockRectByIdRef });
 
   /** Wraps the drop-target signal so connectors follow blocks live (and smoothly) during a drag, before state commits on drop. */
   const handleBlockDragLive = useCallback((blockId: string, delta: { dx: number; dy: number } | null) => {
