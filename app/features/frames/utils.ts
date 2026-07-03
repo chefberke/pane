@@ -225,6 +225,43 @@ export function groupBoundsFromBlocks(blocks: Block[], selectedIds: Set<string>)
   return groupBoundsFromRects(rects);
 }
 
+/**
+ * Lays out fixed-size items into an evenly-spaced, roughly-square grid, preserving each
+ * item's own size. Returns each item's new top-left position, anchored at `origin`.
+ */
+export function arrangeItemsInGrid(
+  items: { id: string; rect: Rect }[],
+  origin: { x: number; y: number },
+  gap: number = FRAME_PADDING,
+): Map<string, { x: number; y: number }> {
+  const positions = new Map<string, { x: number; y: number }>();
+  const n = items.length;
+  if (n === 0) return positions;
+  if (n === 1) { positions.set(items[0].id, origin); return positions; }
+
+  // Preserve reading order (top-to-bottom, then left-to-right) so tidying reads as a
+  // reflow of the existing layout, not a reshuffle.
+  const sorted = [...items].sort((a, b) => a.rect.y - b.rect.y || a.rect.x - b.rect.x);
+
+  const avgW = Math.max(1, sorted.reduce((s, it) => s + it.rect.width, 0) / n);
+  const avgH = Math.max(1, sorted.reduce((s, it) => s + it.rect.height, 0) / n);
+  // cols·avgW ≈ (n/cols)·avgH  ⇒  cols ≈ √(n·avgH/avgW) — makes total width ≈ total height.
+  const cols = Math.min(n, Math.max(1, Math.round(Math.sqrt(n * (avgH / avgW)))));
+
+  let cursorY = origin.y;
+  for (let i = 0; i < n; i += cols) {
+    const row = sorted.slice(i, i + cols);
+    const rowHeight = Math.max(...row.map(it => it.rect.height));
+    let cursorX = origin.x;
+    for (const it of row) {
+      positions.set(it.id, { x: cursorX, y: cursorY });
+      cursorX += it.rect.width + gap;
+    }
+    cursorY += rowHeight + gap;
+  }
+  return positions;
+}
+
 /** Depth of a frame in the frame tree (0 = root). Lower depth renders first. */
 export function frameDepth(frame: Frame, frames: Frame[]): number {
   let depth = 0;

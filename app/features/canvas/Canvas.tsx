@@ -5,12 +5,14 @@ import type { CanvasProps, LiveDrag } from './types';
 import { BLOCK_SIZES, MIN_SCALE, MAX_SCALE, ZOOM_TO_FIT_PADDING, CONNECTOR_DRAG_SHIELD_Z } from './constants';
 import { uid } from './utils';
 import {
+  arrangeItemsInGrid,
   blockRect,
   buildBlockFrameMap,
   findEmptySpotInFrame,
   findEnclosingFrame,
   frameAncestorCollapsed,
   frameDescendantBlocks,
+  frameDescendantFrames,
   frameMembers,
   frameOuterRect,
   groupBoundsFromRects,
@@ -18,7 +20,7 @@ import {
   sortFramesByDepth,
 } from '../frames/utils';
 import type { FrameHandlers, FrameRenameRequest, Rect } from '../frames/types';
-import { FRAME_MIN_H, FRAME_MIN_W } from '../frames/constants';
+import { FRAME_MIN_H, FRAME_MIN_W, FRAME_PADDING } from '../frames/constants';
 import { useViewport } from './hooks/useViewport';
 import { useTheme } from './hooks/useTheme';
 import { useBlocks } from './hooks/useBlocks';
@@ -302,6 +304,74 @@ export default function Canvas({
     setSelectedFrameId(frameId);
   }, [selectedIdsRef, framesRef, blocksRef, pushSnapshot, setBlocks, setFrames, setSelectedIds]);
 
+  /** Auto-arranges a frame's direct member blocks and child frames into an evenly-spaced grid, preserving each item's natural size. */
+  const arrangeFrame = useCallback((frameId: string) => {
+    const frame = framesRef.current.find(f => f.id === frameId);
+    if (!frame) return;
+
+    const { blockIds, childFrameIds } = frameMembers(frame, blocksRef.current, framesRef.current);
+    const items: { id: string; rect: Rect; isFrame: boolean }[] = [];
+    blocksRef.current.forEach(b => { if (blockIds.has(b.id)) items.push({ id: b.id, rect: blockRect(b), isFrame: false }); });
+    framesRef.current.forEach(f => { if (childFrameIds.has(f.id)) items.push({ id: f.id, rect: frameOuterRect(f), isFrame: true }); });
+    if (items.length < 2) return;
+
+    pushSnapshot();
+
+    const origin = { x: frame.x + FRAME_PADDING, y: frame.y + FRAME_PADDING };
+    const newPositions = arrangeItemsInGrid(items.map(({ id, rect }) => ({ id, rect })), origin);
+
+    // Direct member blocks: write new x/y straight from the grid result.
+    const blockPosMap = new Map<string, { x: number; y: number }>();
+    items.forEach(it => { if (!it.isFrame) { const p = newPositions.get(it.id); if (p) blockPosMap.set(it.id, p); } });
+
+    // Child frames move as rigid units: translate the child frame + its full descendant subtree
+    // by one delta each, reusing the same pattern as handleFrameDragEnd. Only ever walk descendants
+    // of a moved child frame here — never of `frame` itself — so a direct member block is never
+    // moved twice (once individually, once again via a parent's delta).
+    const descBlockDeltas = new Map<string, { dx: number; dy: number }>();
+    const frameDeltas = new Map<string, { dx: number; dy: number }>();
+    const descFrameDeltas = new Map<string, { dx: number; dy: number }>();
+
+    items.forEach(it => {
+      if (!it.isFrame) return;
+      const p = newPositions.get(it.id);
+      const childFrame = framesRef.current.find(f => f.id === it.id);
+      if (!p || !childFrame) return;
+      const dx = p.x - childFrame.x, dy = p.y - childFrame.y;
+      frameDeltas.set(it.id, { dx, dy });
+      frameDescendantBlocks(childFrame, blocksRef.current, framesRef.current).forEach(id => descBlockDeltas.set(id, { dx, dy }));
+      frameDescendantFrames(childFrame, framesRef.current, blocksRef.current).forEach(id => descFrameDeltas.set(id, { dx, dy }));
+    });
+
+    // Recompute the target frame's own bounds from the new item rects — child frames contribute
+    // their new outer rect (same treatment as addSelectedToFrame's frameOuterRect(cf) push), not
+    // their members' rects, so they're sized as one opaque box.
+    const newItemRects: Rect[] = items.map(it => {
+      const p = newPositions.get(it.id)!;
+      return { x: p.x, y: p.y, width: it.rect.width, height: it.rect.height };
+    });
+    const bound = groupBoundsFromRects(newItemRects);
+
+    setBlocks(prev => prev.map(b => {
+      const direct = blockPosMap.get(b.id);
+      if (direct) return { ...b, ...direct } as Block;
+      const delta = descBlockDeltas.get(b.id);
+      return delta ? { ...b, x: b.x + delta.dx, y: b.y + delta.dy } as Block : b;
+    }));
+
+    setFrames(prev => prev.map(f => {
+      if (f.id === frameId) {
+        let next = f.collapsed ? { ...f, collapsed: false } : f;
+        if (bound) next = { ...next, x: bound.x, y: bound.y, width: Math.max(FRAME_MIN_W, bound.width), height: Math.max(FRAME_MIN_H, bound.height) };
+        return next;
+      }
+      const cd = frameDeltas.get(f.id);
+      if (cd) return { ...f, x: f.x + cd.dx, y: f.y + cd.dy };
+      const dd = descFrameDeltas.get(f.id);
+      return dd ? { ...f, x: f.x + dd.dx, y: f.y + dd.dy } : f;
+    }));
+  }, [framesRef, blocksRef, pushSnapshot, setBlocks, setFrames]);
+
   /** Unified delete: removes the selected frame if one is selected, otherwise blocks (plus any frames whose all descendant blocks are being deleted). */
   const deleteSelectedAny = useCallback(() => {
     if (selectedConnectorIdRef.current) {
@@ -444,6 +514,7 @@ export default function Canvas({
     duplicateSelected,
     groupSelected,
     addSelectedToFrame,
+    arrangeFrame,
     deleteSelectedAny,
     handleFrameColor,
     handleOpenFrameComments: commentHandlers.handleOpenFrameComments,
@@ -451,7 +522,7 @@ export default function Canvas({
     handleFrameDelete,
     setRenameFrameReq,
     deleteConnector: handleDeleteConnector,
-  }), [addTextNoteAt, selectAll, resetView, handleOpenBlock, commentHandlers, duplicateSelected, groupSelected, addSelectedToFrame, deleteSelectedAny, handleFrameColor, ungroupSelected, handleFrameDelete, handleDeleteConnector]);
+  }), [addTextNoteAt, selectAll, resetView, handleOpenBlock, commentHandlers, duplicateSelected, groupSelected, addSelectedToFrame, arrangeFrame, deleteSelectedAny, handleFrameColor, ungroupSelected, handleFrameDelete, handleDeleteConnector]);
 
   const { menu, openMenu, closeMenu, buildMenuRows } = useCanvasContextMenu(contextMenuActions, { blocksRef, framesRef, connectorsRef });
 

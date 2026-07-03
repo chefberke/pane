@@ -1,12 +1,12 @@
 'use client';
 import { useCallback } from 'react';
-import { Plus, Type, BoxSelect, Maximize2, ExternalLink, Link2, MessageCircle, Copy, FolderPlus, FolderInput, FolderMinus, Trash2, Pencil } from 'lucide-react';
+import { Plus, Type, BoxSelect, Maximize2, ExternalLink, Link2, MessageCircle, Copy, FolderPlus, FolderInput, FolderMinus, LayoutGrid, Trash2, Pencil } from 'lucide-react';
 import type { Block, Frame, Connector, FrameColor } from '@/app/features/types';
 import { useContextMenu } from '../../context-menu/hooks/useContextMenu';
 import { blockShareUrl } from '../../context-menu/utils';
 import type { ContextMenuRow, ContextMenuTarget } from '../../context-menu/types';
 import type { FrameRenameRequest } from '../../frames/types';
-import { blockRect, findEnclosingFrame } from '../../frames/utils';
+import { blockRect, findEnclosingFrame, frameMembers } from '../../frames/utils';
 
 interface ContextMenuActions {
   setAddPos: (pos: { x: number; y: number; connectSourceId?: string } | null) => void;
@@ -18,6 +18,7 @@ interface ContextMenuActions {
   duplicateSelected: () => void;
   groupSelected: () => void;
   addSelectedToFrame: (frameId: string) => void;
+  arrangeFrame: (frameId: string) => void;
   deleteSelectedAny: () => void;
   handleFrameColor: (id: string, color: FrameColor) => void;
   handleOpenFrameComments: (frame: Frame, anchor: { x: number; y: number }) => void;
@@ -92,9 +93,11 @@ export function useCanvasContextMenu(actions: ContextMenuActions, refs: Refs) {
     }
     const frame = framesRef.current.find(f => f.id === target.id);
     if (!frame) return [];
+    const { blockIds: fmBlockIds, childFrameIds: fmChildFrameIds } = frameMembers(frame, blocksRef.current, framesRef.current);
     return [
       { kind: 'action', label: 'Rename', icon: Pencil, onClick: () => actions.setRenameFrameReq({ id: frame.id, n: Date.now() }) },
       { kind: 'color', current: frame.color, onSelect: c => actions.handleFrameColor(frame.id, c) },
+      { kind: 'action', label: 'Tidy up', icon: LayoutGrid, onClick: () => actions.arrangeFrame(frame.id), disabled: fmBlockIds.size + fmChildFrameIds.size < 2 },
       { kind: 'action', label: 'Comments', icon: MessageCircle, onClick: () => actions.handleOpenFrameComments(frame, { x: sx, y: sy }) },
       { kind: 'separator' },
       { kind: 'action', label: 'Ungroup', icon: FolderMinus, shortcut: ['⌘', '⇧', 'G'], onClick: actions.ungroupSelected },
