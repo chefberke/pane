@@ -178,6 +178,7 @@ export default function CanvasOverlays({ canEdit, isFollowing, transient, modals
       {!isFollowing && isSearchOpen && (
         <SearchModal
           blocks={blocks}
+          frames={frames}
           onClose={() => actions.setIsSearchOpen(false)}
           onNavigate={actions.navigateToBlock}
         />

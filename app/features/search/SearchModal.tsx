@@ -1,28 +1,27 @@
 'use client';
-import { useEffect, useMemo, useRef, useState, useCallback } from 'react';
+import { useCallback, useEffect, useMemo, useRef } from 'react';
 import { Search } from 'lucide-react';
-import type { Block } from '@/app/features/types';
 import { getBlockLabel, TYPE_LABELS } from '@/app/features/blocks/utils';
+import FilterChips from './FilterChips';
+import { useSearchFilters } from './hooks/useSearchFilters';
+import { useSearchKeyboard } from './hooks/useSearchKeyboard';
+import { EMPTY_HEIGHT, FOOTER_HEIGHT, INPUT_HEIGHT, LIST_MAX_HEIGHT, ROW_HEIGHT } from './constants';
+import type { GroupFilter, SearchModalProps, TypeFilter } from './types';
 
-/** Props for the ⌘K search modal. */
-interface Props {
-  blocks: Block[];
-  onClose: () => void;
-  onNavigate: (block: Block) => void;
-}
-
-export default function SearchModal({ blocks, onClose, onNavigate }: Props) {
-  const [query, setQuery] = useState('');
-  const [activeIdx, setActiveIdx] = useState(0);
+/** The ⌘K search modal: text search plus group and type filters over all blocks. */
+export default function SearchModal({ blocks, frames, onClose, onNavigate }: SearchModalProps) {
   const inputRef = useRef<HTMLInputElement>(null);
   const listRef = useRef<HTMLDivElement>(null);
   const overlayRef = useRef<HTMLDivElement>(null);
 
-  const results = useMemo(() =>
-    query.trim()
-      ? blocks.filter(b => getBlockLabel(b).toLowerCase().includes(query.toLowerCase()))
-      : blocks,
-  [blocks, query]);
+  const {
+    query, setQuery,
+    groupFilter, setGroupFilter,
+    typeFilter, setTypeFilter,
+    results, groupOptions, showUngrouped, typeOptions,
+  } = useSearchFilters(blocks, frames);
+
+  const { activeIdx, setActiveIdx } = useSearchKeyboard(results, listRef, onClose, onNavigate);
 
   useEffect(() => { inputRef.current?.focus(); }, []);
 
@@ -37,30 +36,15 @@ export default function SearchModal({ blocks, onClose, onNavigate }: Props) {
     return () => el.removeEventListener('wheel', stop);
   }, []);
 
-  const scrollActiveIntoView = useCallback((idx: number) => {
-    const item = listRef.current?.children[idx] as HTMLElement | undefined;
-    item?.scrollIntoView({ block: 'nearest' });
-  }, []);
+  // Changing the query or a filter moves the highlight back to the first result.
+  const changeQuery = useCallback((v: string) => { setQuery(v); setActiveIdx(0); }, [setQuery, setActiveIdx]);
+  const selectGroup = useCallback((v: GroupFilter) => { setGroupFilter(v); setActiveIdx(0); }, [setGroupFilter, setActiveIdx]);
+  const selectType = useCallback((v: TypeFilter) => { setTypeFilter(v); setActiveIdx(0); }, [setTypeFilter, setActiveIdx]);
 
-  useEffect(() => {
-    const onKey = (e: KeyboardEvent) => {
-      if (e.key === 'Escape') { e.preventDefault(); onClose(); return; }
-      if (e.key === 'ArrowDown') {
-        e.preventDefault();
-        setActiveIdx(i => { const n = Math.min(i + 1, results.length - 1); scrollActiveIntoView(n); return n; });
-      }
-      if (e.key === 'ArrowUp') {
-        e.preventDefault();
-        setActiveIdx(i => { const n = Math.max(i - 1, 0); scrollActiveIntoView(n); return n; });
-      }
-      if (e.key === 'Enter') {
-        e.preventDefault();
-        if (results[activeIdx]) onNavigate(results[activeIdx]);
-      }
-    };
-    window.addEventListener('keydown', onKey);
-    return () => window.removeEventListener('keydown', onKey);
-  }, [results, activeIdx, onClose, onNavigate, scrollActiveIntoView]);
+  // Grouped, memoized prop bags for the memoized FilterChips child.
+  const groups = useMemo(() => ({ options: groupOptions, showUngrouped }), [groupOptions, showUngrouped]);
+  const selected = useMemo(() => ({ group: groupFilter, type: typeFilter }), [groupFilter, typeFilter]);
+  const onSelect = useMemo(() => ({ group: selectGroup, type: selectType }), [selectGroup, selectType]);
 
   return (
     <div
@@ -86,21 +70,21 @@ export default function SearchModal({ blocks, onClose, onNavigate }: Props) {
         {/* Input */}
         <div
           className="flex items-center gap-2.5 px-4"
-          style={{ height: 48, borderBottom: '1px solid var(--color-border-subtle)' }}
+          style={{ height: INPUT_HEIGHT, borderBottom: '1px solid var(--color-border-subtle)' }}
         >
           <Search size={14} style={{ color: 'var(--color-text-muted)', flexShrink: 0 }} />
           <input
             ref={inputRef}
             type="text"
             value={query}
-            onChange={e => { setQuery(e.target.value); setActiveIdx(0); }}
+            onChange={e => changeQuery(e.target.value)}
             placeholder="Search..."
             className="flex-1 bg-transparent outline-none text-[13px]"
             style={{ color: 'var(--color-text-primary)' }}
           />
           {query && (
             <button
-              onClick={() => setQuery('')}
+              onClick={() => changeQuery('')}
               style={{ color: 'var(--color-text-muted)', fontSize: 11 }}
             >
               Clear
@@ -108,12 +92,15 @@ export default function SearchModal({ blocks, onClose, onNavigate }: Props) {
           )}
         </div>
 
+        {/* Filters */}
+        <FilterChips groups={groups} types={typeOptions} selected={selected} onSelect={onSelect} />
+
         {/* List */}
-        <div ref={listRef} style={{ overflowY: 'auto', maxHeight: 300 }}>
+        <div ref={listRef} className="ui-scrollbar" style={{ overflowY: 'auto', maxHeight: LIST_MAX_HEIGHT }}>
           {results.length === 0 ? (
             <div
               className="flex items-center justify-center text-[12px]"
-              style={{ height: 80, color: 'var(--color-text-muted)' }}
+              style={{ height: EMPTY_HEIGHT, color: 'var(--color-text-muted)' }}
             >
               No results
             </div>
@@ -123,7 +110,7 @@ export default function SearchModal({ blocks, onClose, onNavigate }: Props) {
                 key={block.id}
                 className="w-full flex items-center gap-3 px-4 text-left"
                 style={{
-                  height: 40,
+                  height: ROW_HEIGHT,
                   background: i === activeIdx ? 'var(--color-bg-hover)' : 'transparent',
                 }}
                 onMouseEnter={() => setActiveIdx(i)}
@@ -148,7 +135,7 @@ export default function SearchModal({ blocks, onClose, onNavigate }: Props) {
           <div
             className="flex items-center px-4 text-[10px]"
             style={{
-              height: 32,
+              height: FOOTER_HEIGHT,
               borderTop: '1px solid var(--color-border-subtle)',
               color: 'var(--color-text-muted)',
             }}
