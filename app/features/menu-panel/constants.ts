@@ -30,6 +30,9 @@ export const Z_PANEL = 200;
 export const Z_ACTION_DROPDOWN = 500;
 export const Z_MODAL = 600;
 
+/** Max canvas rows shown before the "Canvases" list scrolls within itself. */
+export const MAX_VISIBLE_WORKSPACES = 5;
+
 /** Timeouts (ms). */
 export const COPY_FEEDBACK_MS = 2000;
 export const DELETE_FOCUS_DELAY_MS = 50;

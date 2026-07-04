@@ -1,5 +1,5 @@
 'use client';
-import { useCallback, useMemo, useRef, useState } from 'react';
+import { useCallback, useEffect, useMemo, useRef, useState } from 'react';
 import { createPortal } from 'react-dom';
 import { motion } from 'framer-motion';
 import { useRouter, usePathname } from 'next/navigation';
@@ -69,9 +69,16 @@ export default function MenuPanel({ themeChoice, onSetTheme, onClose }: Props) {
 
   const onNavigate = useCallback((id: string) => { onClose(); router.push(`/w/${id}`); }, [onClose, router]);
 
-  const onExportAll = useCallback(() => {
-    setExportTarget({ title: 'Export all canvases', filename: exportFilename(null), rows: workspaces });
-  }, [workspaces]);
+  // The canvas viewport has a native wheel listener that pans/zooms. Since the panel renders
+  // inside the viewport, stop wheel events here so the scrollable canvas list scrolls under the
+  // mouse instead of the canvas behind it — same approach as ItemsSheet/CommentsSheet.
+  useEffect(() => {
+    const el = panelRef.current;
+    if (!el) return;
+    const stop = (e: WheelEvent) => e.stopPropagation();
+    el.addEventListener('wheel', stop);
+    return () => el.removeEventListener('wheel', stop);
+  }, []);
 
   const onOpenImport = useCallback(() => setImportStep('choose'), []);
   const onUploadImport = useCallback(() => { setImportStep(null); fileInputRef.current?.click(); }, []);
@@ -163,7 +170,6 @@ export default function MenuPanel({ themeChoice, onSetTheme, onClose }: Props) {
           hasUser={!!user}
           onNavigate={onNavigate}
           onCreateCanvas={user ? () => setCreateOpen(true) : undefined}
-          onImport={onOpenImport}
           actionMenu={actionMenu}
         />
 
@@ -172,9 +178,8 @@ export default function MenuPanel({ themeChoice, onSetTheme, onClose }: Props) {
         <SettingsGroup
           hasUser={!!user}
           trashCount={deletedWorkspaces.length}
-          canExportAll={workspaces.length > 0}
           onOpenTrash={() => setTrashOpen(true)}
-          onExportAll={onExportAll}
+          onImport={onOpenImport}
         />
       </motion.div>
 

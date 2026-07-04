@@ -1,7 +1,8 @@
 'use client';
-import { Plus, FileUp } from 'lucide-react';
+import { Plus } from 'lucide-react';
 import WorkspaceRow from './WorkspaceRow';
 import { Row } from './primitives';
+import { MAX_VISIBLE_WORKSPACES } from './constants';
 import type { WorkspaceItem } from './types';
 
 interface ActionMenuBag {
@@ -18,13 +19,12 @@ interface Props {
   hasUser: boolean;
   onNavigate: (id: string) => void;
   onCreateCanvas?: () => void;
-  onImport?: () => void;
   actionMenu: ActionMenuBag;
 }
 
-/** The "Canvases" section: workspace rows plus the New canvas and Import actions. */
+/** The "Canvases" section: workspace rows plus the New canvas action. */
 export default function WorkspaceList({
-  workspaces, currentPath, hasUser, onNavigate, onCreateCanvas, onImport, actionMenu,
+  workspaces, currentPath, hasUser, onNavigate, onCreateCanvas, actionMenu,
 }: Props) {
   return (
     <div className="py-2">
@@ -35,22 +35,28 @@ export default function WorkspaceList({
         Canvases
       </div>
 
-      {hasUser && workspaces.map(ws => (
-        <WorkspaceRow
-          key={ws.id}
-          ws={ws}
-          isActive={currentPath === `/w/${ws.id}`}
-          isHovered={actionMenu.hoveredId === ws.id}
-          dotOpen={actionMenu.actionMenuId === ws.id}
-          onHoverChange={actionMenu.onHoverChange}
-          onNavigate={onNavigate}
-          onOpenActionMenu={actionMenu.onOpenActionMenu}
-          registerDotRef={actionMenu.registerDotRef}
-        />
-      ))}
+      {hasUser && (
+        <div
+          className="ui-scrollbar overflow-y-auto"
+          style={{ maxHeight: `calc(var(--row-height) * ${MAX_VISIBLE_WORKSPACES})` }}
+        >
+          {workspaces.map(ws => (
+            <WorkspaceRow
+              key={ws.id}
+              ws={ws}
+              isActive={currentPath === `/w/${ws.id}`}
+              isHovered={actionMenu.hoveredId === ws.id}
+              dotOpen={actionMenu.actionMenuId === ws.id}
+              onHoverChange={actionMenu.onHoverChange}
+              onNavigate={onNavigate}
+              onOpenActionMenu={actionMenu.onOpenActionMenu}
+              registerDotRef={actionMenu.registerDotRef}
+            />
+          ))}
+        </div>
+      )}
 
       <Row icon={<Plus size={14} />} label="New canvas" onClick={onCreateCanvas} />
-      {hasUser && <Row icon={<FileUp size={14} />} label="Import canvas…" onClick={onImport} />}
     </div>
   );
 }
