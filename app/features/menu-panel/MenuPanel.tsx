@@ -10,6 +10,7 @@ import { MAX_WORKSPACE_NAME_LENGTH } from '../workspace/constants';
 import type { ImportPreview } from '../workspace/types';
 import NameModal from '../ui/NameModal';
 import { PANEL_WIDTH, Z_PANEL } from './constants';
+import { OPEN_SHORTCUTS_EVENT } from '@/app/lib/constants';
 import { useWorkspaceCrud } from './hooks/useWorkspaceCrud';
 import { useActionMenu } from './hooks/useActionMenu';
 import { useWorkspaceTransfer } from './hooks/useWorkspaceTransfer';
@@ -19,6 +20,8 @@ import AccountRow from './AccountRow';
 import WorkspaceList from './WorkspaceList';
 import ThemeSwitcher from './ThemeSwitcher';
 import SettingsGroup from './SettingsGroup';
+import SettingsModal from './SettingsModal';
+import FeedbackModal from './FeedbackModal';
 import ActionDropdown from './ActionDropdown';
 import TrashModal from './TrashModal';
 import DeleteModal from './DeleteModal';
@@ -57,7 +60,9 @@ export default function MenuPanel({ themeChoice, onSetTheme, onClose }: Props) {
   const [importStep, setImportStep] = useState<'choose' | 'paste' | null>(null);
   const [importPreview, setImportPreview] = useState<ImportPreview | null>(null);
   const [importBusy, setImportBusy] = useState(false);
-  const modalOpen = !!(createOpen || renameTarget || deleteTarget || trashOpen || exportTarget || importStep || importPreview);
+  const [settingsOpen, setSettingsOpen] = useState(false);
+  const [feedbackOpen, setFeedbackOpen] = useState(false);
+  const modalOpen = !!(createOpen || renameTarget || deleteTarget || trashOpen || exportTarget || importStep || importPreview || settingsOpen || feedbackOpen);
 
   const { workspaces, deletedWorkspaces, createCanvas, rename, softDelete, restore, deleteForever } =
     useWorkspaceCrud(user?.id ?? null, onClose);
@@ -68,6 +73,18 @@ export default function MenuPanel({ themeChoice, onSetTheme, onClose }: Props) {
   } = useActionMenu(panelRef, onClose, modalOpen);
 
   const onNavigate = useCallback((id: string) => { onClose(); router.push(`/w/${id}`); }, [onClose, router]);
+
+  const onSignIn = useCallback(() => { onClose(); router.push('/sign-in?next=/w'); }, [onClose, router]);
+  const onSignUp = useCallback(() => { onClose(); router.push('/sign-up?next=/w'); }, [onClose, router]);
+  const onSignOut = useCallback(() => { db.auth.signOut().catch(() => {}); router.replace('/'); }, [router]);
+  // Close the menu and ask the canvas to open its keyboard-shortcuts cheat-sheet (via window event).
+  const onOpenShortcuts = useCallback(() => { onClose(); window.dispatchEvent(new Event(OPEN_SHORTCUTS_EVENT)); }, [onClose]);
+
+  const settingsTheme = useMemo(() => ({ choice: themeChoice, onSet: onSetTheme }), [themeChoice, onSetTheme]);
+  const settingsAccount = useMemo(
+    () => ({ email: user?.email ?? null, isAuthed: !!user, onSignIn, onSignUp, onSignOut }),
+    [user, onSignIn, onSignUp, onSignOut],
+  );
 
   // The canvas viewport has a native wheel listener that pans/zooms. Since the panel renders
   // inside the viewport, stop wheel events here so the scrollable canvas list scrolls under the
@@ -160,8 +177,8 @@ export default function MenuPanel({ themeChoice, onSetTheme, onClose }: Props) {
         <AccountRow
           isLoading={isLoading}
           email={user?.email ?? null}
-          onSignIn={() => { onClose(); router.push('/sign-in?next=/w'); }}
-          onSignOut={() => { db.auth.signOut().catch(() => {}); router.replace('/'); }}
+          onSignIn={onSignIn}
+          onSignOut={onSignOut}
         />
 
         <WorkspaceList
@@ -169,17 +186,27 @@ export default function MenuPanel({ themeChoice, onSetTheme, onClose }: Props) {
           currentPath={pathname}
           hasUser={!!user}
           onNavigate={onNavigate}
-          onCreateCanvas={user ? () => setCreateOpen(true) : undefined}
+          onCreateCanvas={user ? () => setCreateOpen(true) : onSignUp}
           actionMenu={actionMenu}
         />
 
-        <ThemeSwitcher themeChoice={themeChoice} onSetTheme={onSetTheme} />
+        <div className="pt-2 pb-2" style={{ borderTop: '1px solid var(--color-border-default)' }}>
+          <div className="px-3 pb-1.5 text-[10px] font-medium uppercase tracking-widest" style={{ color: 'var(--color-text-muted)' }}>
+            Theme
+          </div>
+          <div className="px-3">
+            <ThemeSwitcher themeChoice={themeChoice} onSetTheme={onSetTheme} layoutId="theme-pill-menu" />
+          </div>
+        </div>
 
         <SettingsGroup
           hasUser={!!user}
           trashCount={deletedWorkspaces.length}
+          onOpenSettings={() => setSettingsOpen(true)}
+          onOpenShortcuts={onOpenShortcuts}
           onOpenTrash={() => setTrashOpen(true)}
           onImport={onOpenImport}
+          onOpenFeedback={() => setFeedbackOpen(true)}
         />
       </motion.div>
 
@@ -294,6 +321,25 @@ export default function MenuPanel({ themeChoice, onSetTheme, onClose }: Props) {
           workspace={deleteTarget}
           onConfirm={async () => { await softDelete(deleteTarget.id); setDeleteTarget(null); }}
           onClose={() => setDeleteTarget(null)}
+        />,
+        document.body
+      )}
+
+      {/* Settings modal — appearance (theme) and account */}
+      {settingsOpen && createPortal(
+        <SettingsModal
+          theme={settingsTheme}
+          account={settingsAccount}
+          onClose={() => setSettingsOpen(false)}
+        />,
+        document.body
+      )}
+
+      {/* Feedback modal — mood + category + message, POSTed to /api/feedback */}
+      {feedbackOpen && createPortal(
+        <FeedbackModal
+          path={pathname}
+          onClose={() => setFeedbackOpen(false)}
         />,
         document.body
       )}

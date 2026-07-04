@@ -1,5 +1,5 @@
 'use client';
-import { memo } from 'react';
+import { memo, useEffect } from 'react';
 import dynamic from 'next/dynamic';
 import { AnimatePresence } from 'framer-motion';
 import type { Block, Frame } from '@/app/features/types';
@@ -19,6 +19,7 @@ import EmptyState from './EmptyState';
 import HintFlash from './HintFlash';
 import IdleHint from './IdleHint';
 import { ZOOM_STEP } from './constants';
+import { OPEN_SHORTCUTS_EVENT } from '@/app/lib/constants';
 
 // Heavy, conditionally-mounted overlays — code-split out of the initial canvas
 // chunk and loaded on demand. All are client-only interactive UI, so SSR is off.
@@ -96,6 +97,14 @@ function CanvasOverlays({ canEdit, isFollowing, transient, modals, data, comment
   const { marquee, addPos, menu, hint, idleHint, commentTarget } = transient;
   const { isSearchOpen, isHelpOpen, isItemsOpen, lightbox, pdfLightbox } = modals;
   const { blocks, frames, blockById, frameById, scale, canUndo, canRedo, themeChoice, topRightSlot, toolbarStatus, toolbarActions } = data;
+
+  // The hamburger menu (Help modal / "Keyboard shortcuts" row) opens this cheat-sheet via a
+  // window event, avoiding a cross-feature import from menu-panel into canvas.
+  useEffect(() => {
+    const open = () => actions.setIsHelpOpen(true);
+    window.addEventListener(OPEN_SHORTCUTS_EVENT, open);
+    return () => window.removeEventListener(OPEN_SHORTCUTS_EVENT, open);
+  }, [actions]);
 
   // Label of the block/frame whose comment thread is open — shown in the sheet header.
   let commentTargetLabel: string | undefined;

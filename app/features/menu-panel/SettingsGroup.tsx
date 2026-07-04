@@ -6,16 +6,19 @@ import { Row } from './primitives';
 interface Props {
   hasUser: boolean;
   trashCount: number;
+  onOpenSettings: () => void;
+  onOpenShortcuts: () => void;
   onOpenTrash: () => void;
   onImport: () => void;
+  onOpenFeedback: () => void;
 }
 
 /** Settings, shortcuts, import, trash, and help rows at the bottom of the panel. */
-function SettingsGroup({ hasUser, trashCount, onOpenTrash, onImport }: Props) {
+function SettingsGroup({ hasUser, trashCount, onOpenSettings, onOpenShortcuts, onOpenTrash, onImport, onOpenFeedback }: Props) {
   return (
     <div style={{ borderTop: '1px solid var(--color-border-default)' }} className="py-2">
-      <Row icon={<Settings size={14} />} label="Settings" />
-      <Row icon={<Command size={14} />} label="Keyboard shortcuts" shortcut="?" />
+      <Row icon={<Settings size={14} />} label="Settings" onClick={onOpenSettings} />
+      <Row icon={<Command size={14} />} label="Keyboard shortcuts" shortcut="?" onClick={onOpenShortcuts} />
       {hasUser && <Row icon={<FileUp size={14} />} label="Import canvas…" onClick={onImport} />}
       {hasUser && (
         <Row
@@ -25,7 +28,7 @@ function SettingsGroup({ hasUser, trashCount, onOpenTrash, onImport }: Props) {
           onClick={onOpenTrash}
         />
       )}
-      <Row icon={<HelpCircle size={14} />} label="Help & feedback" />
+      <Row icon={<HelpCircle size={14} />} label="Help & feedback" onClick={onOpenFeedback} />
     </div>
   );
 }
