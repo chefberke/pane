@@ -2,6 +2,7 @@
 import { useCallback } from 'react';
 import { useRouter, usePathname } from 'next/navigation';
 import { db } from '@/app/lib/db';
+import { uniqueWorkspaceName } from '../../workspace/utils';
 import type { WorkspaceItem } from '../types';
 
 /**
@@ -31,14 +32,14 @@ export function useWorkspaceCrud(userId: string | null, onCloseMenu: () => void)
     await db.transact(
       db.tx.workspaces[wid].update({
         userId,
-        name: 'New canvas',
+        name: uniqueWorkspaceName('New canvas', workspaces.map(w => w.name)),
         createdAt: Date.now(),
         updatedAt: Date.now(),
       })
     );
     onCloseMenu();
     router.push(`/w/${wid}`);
-  }, [userId, onCloseMenu, router]);
+  }, [userId, workspaces, onCloseMenu, router]);
 
   const rename = useCallback(async (id: string, name: string) => {
     await db.transact(db.tx.workspaces[id].update({ name, updatedAt: Date.now() }));

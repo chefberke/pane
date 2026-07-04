@@ -58,6 +58,19 @@ export function buildExportEnvelope(workspaces: ExportedWorkspace[], exportedAt:
   return { format: EXPORT_FORMAT, version: EXPORT_VERSION, exportedAt, workspaces };
 }
 
+/** Returns `desired`, or `desired N` with the lowest N≥2 not already in `existing`, so workspace names stay unique. */
+export function uniqueWorkspaceName(desired: string, existing: Iterable<string>): string {
+  const taken = new Set<string>();
+  for (const n of existing) taken.add(n.trim());
+  const name = desired.trim();
+  if (!taken.has(name)) return name;
+  // Strip an existing " N" suffix so "New canvas 2" dedupes on stem "New canvas", giving clean sequential names.
+  const stem = name.replace(/\s+\d+$/, '').trim() || name;
+  let i = 2;
+  while (taken.has(`${stem} ${i}`)) i++;
+  return `${stem} ${i}`;
+}
+
 /** Builds a filesystem-safe `.pane.json` filename from a workspace name (or a default for bulk exports). */
 export function exportFilename(name: string | null): string {
   const base = (name ?? 'workspaces')

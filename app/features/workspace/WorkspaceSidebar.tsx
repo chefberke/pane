@@ -1,12 +1,13 @@
 /* eslint-disable @typescript-eslint/no-explicit-any */
 'use client';
+import { useCallback } from 'react';
 import { useRouter, useParams } from 'next/navigation';
 import { Plus, LogOut, Users } from 'lucide-react';
 import { db } from '@/app/lib/db';
 import { useAuth } from '../auth/hooks/useAuth';
 import { useWorkspaces } from './hooks/useWorkspaces';
 import WorkspaceItem from './WorkspaceItem';
-import { uid } from './utils';
+import { uid, uniqueWorkspaceName } from './utils';
 import { SIDEBAR_WIDTH } from './constants';
 import type { Workspace } from './types';
 
@@ -34,19 +35,19 @@ export default function WorkspaceSidebar() {
     .slice()
     .sort((a, b) => (a.createdAt ?? 0) - (b.createdAt ?? 0));
 
-  const handleNewWorkspace = async () => {
+  const handleNewWorkspace = useCallback(async () => {
     if (!user) return;
     const wid = uid();
     await db.transact(
       db.tx.workspaces[wid].update({
         userId: user.id,
-        name: 'New canvas',
+        name: uniqueWorkspaceName('New canvas', ownedWorkspaces.map(w => w.name)),
         createdAt: Date.now(),
         updatedAt: Date.now(),
       })
     );
     router.push(`/w/${wid}`);
-  };
+  }, [user, ownedWorkspaces, router]);
 
   const handleSignOut = () => {
     db.auth.signOut().catch(() => { /* ignore */ });

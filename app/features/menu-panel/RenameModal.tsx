@@ -6,12 +6,13 @@ import type { WorkspaceItem } from './types';
 
 interface Props {
   workspace: WorkspaceItem;
+  existingNames: string[];
   onSave: (name: string) => void;
   onClose: () => void;
 }
 
-/** Portaled modal to rename a canvas. */
-function RenameModal({ workspace, onSave, onClose }: Props) {
+/** Portaled modal to rename a canvas. Blocks names that exactly match another canvas. */
+function RenameModal({ workspace, existingNames, onSave, onClose }: Props) {
   const [value, setValue] = useState(workspace.name);
   const inputRef = useRef<HTMLInputElement>(null);
 
@@ -23,9 +24,11 @@ function RenameModal({ workspace, onSave, onClose }: Props) {
     return () => window.removeEventListener('keydown', onKey);
   }, [onClose]);
 
+  const trimmed = value.trim();
+  const duplicate = trimmed.length > 0 && existingNames.some(n => n.trim() === trimmed);
+
   const handleSave = () => {
-    const trimmed = value.trim();
-    if (trimmed) onSave(trimmed);
+    if (trimmed && !duplicate) onSave(trimmed);
   };
 
   return (
@@ -55,7 +58,7 @@ function RenameModal({ workspace, onSave, onClose }: Props) {
           style={{
             height: 36,
             background: 'var(--color-surface-input)',
-            border: '1px solid var(--color-border-default)',
+            border: `1px solid ${duplicate ? 'var(--color-border-danger, var(--color-text-danger))' : 'var(--color-border-default)'}`,
             borderRadius: 'var(--radius-lg)',
             color: 'var(--color-text-primary)',
           }}
@@ -64,9 +67,14 @@ function RenameModal({ workspace, onSave, onClose }: Props) {
           onKeyDown={e => { if (e.key === 'Enter') handleSave(); }}
           placeholder="Canvas name"
         />
+        {duplicate && (
+          <span className="text-[11px] leading-relaxed" style={{ color: 'var(--color-text-danger)' }}>
+            A canvas with this name already exists.
+          </span>
+        )}
         <div className="flex justify-end gap-2">
           <ModalButton label="Cancel" onClick={onClose} />
-          <ModalButton label="Save" primary onClick={handleSave} disabled={!value.trim()} />
+          <ModalButton label="Save" primary onClick={handleSave} disabled={!trimmed || duplicate} />
         </div>
       </div>
     </div>

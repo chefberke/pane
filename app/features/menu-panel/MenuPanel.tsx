@@ -5,7 +5,7 @@ import { motion } from 'framer-motion';
 import { useRouter, usePathname } from 'next/navigation';
 import { db } from '@/app/lib/db';
 import { useAuth } from '../auth/hooks/useAuth';
-import { exportFilename } from '../workspace/utils';
+import { exportFilename, uniqueWorkspaceName } from '../workspace/utils';
 import type { ImportPreview } from '../workspace/types';
 import { PANEL_WIDTH, Z_PANEL } from './constants';
 import { useWorkspaceCrud } from './hooks/useWorkspaceCrud';
@@ -74,18 +74,32 @@ export default function MenuPanel({ themeChoice, onSetTheme, onClose }: Props) {
   const onOpenImport = useCallback(() => setImportStep('choose'), []);
   const onUploadImport = useCallback(() => { setImportStep(null); fileInputRef.current?.click(); }, []);
 
+  // Number any imported name that would collide with an existing (or batch-internal) workspace,
+  // so the preview shows exactly the names that will be created.
+  const dedupePreview = useCallback((preview: ImportPreview): ImportPreview => {
+    const taken = new Set(workspaces.map(w => w.name.trim()));
+    return {
+      ...preview,
+      workspaces: preview.workspaces.map(w => {
+        const name = uniqueWorkspaceName(w.name, taken);
+        taken.add(name); // reserve so batch-internal duplicates also get numbered
+        return { ...w, name };
+      }),
+    };
+  }, [workspaces]);
+
   const onSubmitImportPreview = useCallback((preview: ImportPreview) => {
     setImportStep(null);
-    setImportPreview(preview);
-  }, []);
+    setImportPreview(dedupePreview(preview));
+  }, [dedupePreview]);
 
   const onFileChange = useCallback(async (e: React.ChangeEvent<HTMLInputElement>) => {
     const file = e.target.files?.[0];
     e.target.value = ''; // reset so re-selecting the same file re-triggers change
     if (!file) return;
     setImportStep(null);
-    setImportPreview(await readImportFile(file));
-  }, [readImportFile]);
+    setImportPreview(dedupePreview(await readImportFile(file)));
+  }, [readImportFile, dedupePreview]);
 
   const onConfirmImport = useCallback(async () => {
     if (!importPreview || importPreview.workspaces.length === 0) return;
@@ -242,6 +256,7 @@ export default function MenuPanel({ themeChoice, onSetTheme, onClose }: Props) {
       {renameTarget && createPortal(
         <RenameModal
           workspace={renameTarget}
+          existingNames={workspaces.filter(w => w.id !== renameTarget.id).map(w => w.name)}
           onSave={async name => { await rename(renameTarget.id, name); setRenameTarget(null); }}
           onClose={() => setRenameTarget(null)}
         />,
