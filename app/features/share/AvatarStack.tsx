@@ -70,7 +70,7 @@ function PeerAvatar({
     >
       {tip && (
         <div
-          className="absolute bottom-full left-1/2 -translate-x-1/2 mb-2 px-2 py-1 text-[11px] rounded-lg whitespace-nowrap pointer-events-none z-50"
+          className="absolute top-full left-1/2 -translate-x-1/2 mt-2 px-2 py-1 text-[11px] rounded-lg whitespace-nowrap pointer-events-none z-50"
           style={{
             background:  'var(--color-surface-raised)',
             color:       'var(--color-text-primary)',

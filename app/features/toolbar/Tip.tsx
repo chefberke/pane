@@ -33,7 +33,11 @@ function Tip({ label, shortcut, children }: Props) {
     <div className="relative" onMouseEnter={show} onMouseLeave={hide}>
       {children}
       {visible && (
-        <div className="absolute bottom-full left-1/2 -translate-x-1/2 mb-2.5 pointer-events-none z-50 flex flex-col items-center">
+        <div className="absolute top-full left-1/2 -translate-x-1/2 mt-2.5 pointer-events-none z-50 flex flex-col items-center">
+          <div
+            className="w-2 h-2 rotate-45 -mb-1 rounded-[1px] border-l border-t"
+            style={ARROW_STYLE}
+          />
           <div
             className="flex items-center gap-1.5 text-[11px] rounded-lg px-2.5 py-1.5 whitespace-nowrap backdrop-blur-sm"
             style={TOOLTIP_STYLE}
@@ -48,10 +52,6 @@ function Tip({ label, shortcut, children }: Props) {
               </kbd>
             )}
           </div>
-          <div
-            className="w-2 h-2 rotate-45 -mt-1 rounded-[1px] border-r border-b"
-            style={ARROW_STYLE}
-          />
         </div>
       )}
     </div>

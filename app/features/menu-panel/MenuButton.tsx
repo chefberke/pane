@@ -60,7 +60,7 @@ export default function MenuButton({ themeChoice, onSetTheme }: Props) {
       )}
 
       <button
-        className="w-9 h-9 flex items-center justify-center rounded-2xl backdrop-blur-md border transition-all duration-150 hover:scale-105 cursor-pointer"
+        className="w-9 h-9 flex items-center justify-center rounded-2xl backdrop-blur-md border transition-all duration-150 cursor-pointer"
         style={base}
         onPointerDown={e => e.stopPropagation()}
         onDoubleClick={e => e.stopPropagation()}

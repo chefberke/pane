@@ -10,7 +10,7 @@ const ITEMS: { mode: AlignMode; label: string; icon: React.ReactNode }[] = [
   { mode: 'distributeV', label: 'Arrange top to bottom', icon: <Rows2 size={13} /> },
 ];
 
-/** Single toolbar button that opens an alignment popup above; active when 2+ blocks are selected. */
+/** Single toolbar button that opens an alignment popup below; active when 2+ blocks are selected. */
 export default function AlignGroup({
   selectedCount,
   onAlign,
@@ -52,7 +52,7 @@ export default function AlignGroup({
 
       {open && (
         <div
-          className="absolute bottom-full left-1/2 -translate-x-1/2 mb-5 flex gap-0.5 rounded-xl p-1.5 pointer-events-auto"
+          className="absolute top-full left-1/2 -translate-x-1/2 mt-5 flex gap-0.5 rounded-xl p-1.5 pointer-events-auto"
           style={{
             background: 'var(--color-surface-raised)',
             border: '1px solid var(--color-border-default)',

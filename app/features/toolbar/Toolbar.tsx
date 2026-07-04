@@ -16,7 +16,7 @@ const CONTAINER_STYLE: CSSProperties = {
 const SEGMENT_STYLE: CSSProperties = { background: 'var(--color-surface-sunken)' };
 const PILL_STYLE: CSSProperties = { background: 'var(--color-surface-control-active)', boxShadow: 'var(--shadow-float-sm)' };
 
-/** Floating bottom toolbar with mode toggles and canvas actions. */
+/** Floating top toolbar with mode toggles and canvas actions. */
 export default function Toolbar({ status, actions }: { status: ToolbarStatus; actions: ToolbarActions }) {
   const { isPanMode, hasRefreshable, isRefreshing, selectedCount } = status;
   const { addText, togglePanMode, search, refresh, alignSelected, zoomToFit, groupSelected } = actions;
@@ -25,7 +25,7 @@ export default function Toolbar({ status, actions }: { status: ToolbarStatus; ac
 
   return (
     <div
-      className="absolute bottom-6 left-1/2 -translate-x-1/2 flex items-center gap-0.5 backdrop-blur-md rounded-2xl px-2 py-2 pointer-events-auto"
+      className="absolute top-6 left-1/2 -translate-x-1/2 flex items-center gap-0.5 backdrop-blur-md rounded-2xl px-2 py-2 pointer-events-auto"
       style={CONTAINER_STYLE}
       onDoubleClick={e => e.stopPropagation()}
       onPointerDown={e => e.stopPropagation()}
