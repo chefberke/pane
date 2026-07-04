@@ -14,6 +14,7 @@ interface Params {
   blocksRef: React.RefObject<Block[]>;
   framesRef: React.RefObject<Frame[]>;
   selectedIdsRef: React.RefObject<Set<string>>;
+  setBlocks: Dispatch<SetStateAction<Block[]>>;
   setFrames: Dispatch<SetStateAction<Frame[]>>;
   /** Live id → true rendered rect map, so frame re-fits use measured (not static) member sizes. */
   blockRectByIdRef: React.RefObject<Map<string, Rect>>;
@@ -25,7 +26,7 @@ interface DragHover {
 }
 
 /** Tracks the live block-drag drop-target, drives frame preview rects, and commits frame bounds on drop. */
-export function useBlockDropTarget({ blocksRef, framesRef, selectedIdsRef, setFrames, blockRectByIdRef }: Params) {
+export function useBlockDropTarget({ blocksRef, framesRef, selectedIdsRef, setBlocks, setFrames, blockRectByIdRef }: Params) {
   const dragCtxRef = useRef<{
     draggedIds: Set<string>;
     originals: Map<string, Rect>;
@@ -43,6 +44,15 @@ export function useBlockDropTarget({ blocksRef, framesRef, selectedIdsRef, setFr
       if (!ctx || !ctx.lastDelta) return;
       const { dx, dy } = ctx.lastDelta;
       if (dx === 0 && dy === 0) return;
+
+      // Commit stored membership from the SAME resolution that drove the glow (ctx.hoverFrameId):
+      // a frame id (nest) or null (top-level / un-nest even while still overlapping). Runs after the
+      // position commit (useBlockDrag.onUp → onUpdate / onMultiDragEnd), which is also a functional
+      // setBlocks update keyed by id, so this .map sees final positions and only patches parentFrameId.
+      // The early returns above (no move / net-zero) leave the block's prior parent intact — the
+      // block path's equivalent of the frame path's `undefined` "keep current parent" case.
+      setBlocks(prev => prev.map(b =>
+        ctx.draggedIds.has(b.id) ? ({ ...b, parentFrameId: ctx.hoverFrameId } as Block) : b));
 
       const projectedRects = new Map<string, Rect>();
       ctx.draggedIds.forEach(id => {
@@ -157,7 +167,7 @@ export function useBlockDropTarget({ blocksRef, framesRef, selectedIdsRef, setFr
       }
       return { hoverFrameId, previewByFrame };
     });
-  }, [blocksRef, framesRef, selectedIdsRef, setFrames, blockRectByIdRef]);
+  }, [blocksRef, framesRef, selectedIdsRef, setBlocks, setFrames, blockRectByIdRef]);
 
   return { dragHover, handleBlockDragRect };
 }

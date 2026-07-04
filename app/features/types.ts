@@ -16,6 +16,8 @@ export interface BaseBlock {
   height?: number;
   comments?: Comment[];
   pinned?: boolean;
+  /** Stored parent frame id. `undefined` = pre-migration (backfilled from geometry on load); `null` = intentionally top-level (never re-derived); a string = intentionally nested. */
+  parentFrameId?: string | null;
 }
 
 export interface LinkBlock extends BaseBlock {

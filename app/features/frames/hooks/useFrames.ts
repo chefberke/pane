@@ -4,10 +4,10 @@ import { FRAME_DEFAULT_COLOR, FRAME_DEFAULT_TITLE, FRAME_MIN_H, FRAME_MIN_W } fr
 import { findEnclosingFrame, frameUid, groupBoundsFromBlocks } from '../utils';
 
 /** Manages frame collection + CRUD operations (create from selection, rename, color, collapse, delete). */
-export function useFrames() {
+export function useFrames(setBlocks: Dispatch<SetStateAction<Block[]>>) {
   const [frames, setFrames] = useState<Frame[]>([]);
 
-  /** Creates a new frame wrapping the selected blocks; nests it under whatever frame it geometrically sits inside (or top-level). Returns the new frame id (or null). */
+  /** Creates a new frame wrapping the selected blocks; nests it under whatever frame it geometrically sits inside (or top-level), and adopts the selected blocks as its stored members. Returns the new frame id (or null). */
   const createFromSelection = useCallback((blocks: Block[], selectedIds: Set<string>, frames: Frame[]): string | null => {
     if (selectedIds.size === 0) return null;
     const rect = groupBoundsFromBlocks(blocks, selectedIds);
@@ -25,20 +25,24 @@ export function useFrames() {
       parentFrameId: findEnclosingFrame(rect, frames)?.id ?? null,
     };
     setFrames(prev => [...prev, frame]);
+    // Reparent exactly the selected blocks to the new frame (they leave any frame they were in),
+    // so membership is stored intent — the new frame moves them, not geometry.
+    setBlocks(prev => prev.map(b => selectedIds.has(b.id) ? ({ ...b, parentFrameId: id } as Block) : b));
     return id;
-  }, []);
+  }, [setBlocks]);
 
   /** Updates partial fields on a frame. */
   const updateFrame = useCallback((id: string, updates: Partial<Frame>) => {
     setFrames(prev => prev.map(f => f.id === id ? { ...f, ...updates } : f));
   }, []);
 
-  /** Removes a frame entity; members stay where they are, and any child frames become top-level (parentFrameId → null). */
+  /** Removes a frame entity; members stay where they are, and any child frames/blocks become top-level (parentFrameId → null). */
   const deleteFrame = useCallback((id: string) => {
     setFrames(prev => prev
       .filter(f => f.id !== id)
       .map(f => f.parentFrameId === id ? { ...f, parentFrameId: null } : f));
-  }, []);
+    setBlocks(prev => prev.map(b => b.parentFrameId === id ? ({ ...b, parentFrameId: null } as Block) : b));
+  }, [setBlocks]);
 
   /** Toggles the collapsed state of a frame. */
   const toggleCollapse = useCallback((id: string) => {

@@ -6,7 +6,7 @@ import { useContextMenu } from '../../context-menu/hooks/useContextMenu';
 import { blockShareUrl } from '../../context-menu/utils';
 import type { ContextMenuRow, ContextMenuSubmenuRow, ContextMenuTarget } from '../../context-menu/types';
 import type { FrameRenameRequest } from '../../frames/types';
-import { blockRect, findEnclosingFrame, frameMembers } from '../../frames/utils';
+import { blockParent, frameMembers } from '../../frames/utils';
 
 interface ContextMenuActions {
   setAddPos: (pos: { x: number; y: number; connectSourceId?: string } | null) => void;
@@ -68,7 +68,7 @@ export function useCanvasContextMenu(actions: ContextMenuActions, refs: Refs) {
         { kind: 'action', label: 'Group selected', icon: FolderPlus, shortcut: ['⌘', 'G'], onClick: actions.groupSelected },
       );
       // "Add to group" flyout: the block's current group (if any) shown first with a check, then every other frame to move into.
-      const currentFrame = findEnclosingFrame(blockRect(block), framesRef.current);
+      const currentFrame = blockParent(block, framesRef.current);
       const otherFrames = framesRef.current.filter(f => f.id !== currentFrame?.id);
       const groupItems: ContextMenuSubmenuRow['items'] = [
         ...(currentFrame ? [{ label: currentFrame.title, color: currentFrame.color, current: true, onClick: () => {} }] : []),

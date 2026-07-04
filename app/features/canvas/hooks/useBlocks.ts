@@ -1,6 +1,7 @@
-import { useState, useCallback, type Dispatch, type SetStateAction } from 'react';
-import type { Block, GitHubBlock, LinkBlock } from '@/app/features/types';
+import { useState, useCallback, type Dispatch, type SetStateAction, type RefObject } from 'react';
+import type { Block, Frame, GitHubBlock, LinkBlock } from '@/app/features/types';
 import { uid, detectType, extractYouTubeId, extractTweetId, extractSpotifyInfo, extractMapEmbedUrl, extractGitHubRepo } from '../utils';
+import { findEnclosingFrame } from '../../frames/utils';
 import { BLOCK_SIZES } from '../constants';
 
 async function hydrateGitHubBlock(
@@ -46,8 +47,9 @@ async function hydrateLinkBlock(
 }
 
 /** Manages the block collection, CRUD operations, and link-preview hydration. */
-export function useBlocks({ screenToCanvas }: {
+export function useBlocks({ screenToCanvas, framesRef }: {
   screenToCanvas: (sx: number, sy: number) => { x: number; y: number };
+  framesRef: RefObject<Frame[]>;
 }) {
   const [blocks, setBlocks] = useState<Block[]>([]);
   const [isRefreshing, setIsRefreshing] = useState(false);
@@ -56,13 +58,17 @@ export function useBlocks({ screenToCanvas }: {
   const addBlockFromUrl = useCallback(async (url: string, screenX: number, screenY: number): Promise<string | null> => {
     const pos = screenToCanvas(screenX, screenY);
     const type = detectType(url);
+    // Auto-join whatever frame the new block lands over, frozen as stored intent at creation
+    // (an explicit id/null, so a reload never re-derives it against moved geometry).
+    const parentOf = (w: number, h: number) =>
+      findEnclosingFrame({ x: pos.x - w / 2, y: pos.y - h / 2, width: w, height: h }, framesRef.current)?.id ?? null;
 
     if (type === 'youtube') {
       const videoId = extractYouTubeId(url);
       if (!videoId) return null;
       const id = uid();
       const { w, h } = BLOCK_SIZES.youtube;
-      setBlocks(prev => [...prev, { id, type: 'youtube', videoId, x: pos.x - w / 2, y: pos.y - h / 2 }]);
+      setBlocks(prev => [...prev, { id, type: 'youtube', videoId, x: pos.x - w / 2, y: pos.y - h / 2, parentFrameId: parentOf(w, h) }]);
       return id;
     }
     if (type === 'twitter') {
@@ -70,13 +76,13 @@ export function useBlocks({ screenToCanvas }: {
       if (!tweetId) return null;
       const id = uid();
       const { w, h } = BLOCK_SIZES.twitter;
-      setBlocks(prev => [...prev, { id, type: 'twitter', tweetId, url, x: pos.x - w / 2, y: pos.y - h / 2 }]);
+      setBlocks(prev => [...prev, { id, type: 'twitter', tweetId, url, x: pos.x - w / 2, y: pos.y - h / 2, parentFrameId: parentOf(w, h) }]);
       return id;
     }
     if (type === 'image') {
       const id = uid();
       const { w, h } = BLOCK_SIZES.image;
-      setBlocks(prev => [...prev, { id, type: 'image', url, x: pos.x - w / 2, y: pos.y - h / 2 }]);
+      setBlocks(prev => [...prev, { id, type: 'image', url, x: pos.x - w / 2, y: pos.y - h / 2, parentFrameId: parentOf(w, h) }]);
       return id;
     }
     if (type === 'spotify') {
@@ -84,7 +90,7 @@ export function useBlocks({ screenToCanvas }: {
       if (!info) return null;
       const id = uid();
       const { w, h } = BLOCK_SIZES.spotify;
-      setBlocks(prev => [...prev, { id, type: 'spotify', ...info, url, x: pos.x - w / 2, y: pos.y - h / 2 }]);
+      setBlocks(prev => [...prev, { id, type: 'spotify', ...info, url, x: pos.x - w / 2, y: pos.y - h / 2, parentFrameId: parentOf(w, h) }]);
       return id;
     }
     if (type === 'map') {
@@ -92,7 +98,7 @@ export function useBlocks({ screenToCanvas }: {
       if (!embedUrl) return null;
       const id = uid();
       const { w, h } = BLOCK_SIZES.map;
-      setBlocks(prev => [...prev, { id, type: 'map', embedUrl, x: pos.x - w / 2, y: pos.y - h / 2 }]);
+      setBlocks(prev => [...prev, { id, type: 'map', embedUrl, x: pos.x - w / 2, y: pos.y - h / 2, parentFrameId: parentOf(w, h) }]);
       return id;
     }
     if (type === 'github') {
@@ -100,23 +106,23 @@ export function useBlocks({ screenToCanvas }: {
       if (!info) return null;
       const id = uid();
       const { w, h } = BLOCK_SIZES.github;
-      setBlocks(prev => [...prev, { id, type: 'github', ...info, url, loading: true, x: pos.x - w / 2, y: pos.y - h / 2 }]);
+      setBlocks(prev => [...prev, { id, type: 'github', ...info, url, loading: true, x: pos.x - w / 2, y: pos.y - h / 2, parentFrameId: parentOf(w, h) }]);
       void hydrateGitHubBlock(id, info.owner, info.repo, setBlocks);
       return id;
     }
     if (type === 'pdf') {
       const id = uid();
       const { w, h } = BLOCK_SIZES.pdf;
-      setBlocks(prev => [...prev, { id, type: 'pdf', url, x: pos.x - w / 2, y: pos.y - h / 2 }]);
+      setBlocks(prev => [...prev, { id, type: 'pdf', url, x: pos.x - w / 2, y: pos.y - h / 2, parentFrameId: parentOf(w, h) }]);
       return id;
     }
 
     const id = uid();
     const { w, h } = BLOCK_SIZES.link;
-    setBlocks(prev => [...prev, { id, type: 'link', url, loading: true, x: pos.x - w / 2, y: pos.y - h / 2 }]);
+    setBlocks(prev => [...prev, { id, type: 'link', url, loading: true, x: pos.x - w / 2, y: pos.y - h / 2, parentFrameId: parentOf(w, h) }]);
     void hydrateLinkBlock(id, url, setBlocks);
     return id;
-  }, [screenToCanvas]);
+  }, [screenToCanvas, framesRef]);
 
   /** Refreshes metadata for all link + github blocks on the canvas. */
   const refreshEmbeds = useCallback(async () => {

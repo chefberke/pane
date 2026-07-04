@@ -2,7 +2,7 @@
 import { useCallback, useMemo, useState } from 'react';
 import type { Block, Frame } from '@/app/features/types';
 import type { Rect } from '../../frames/types';
-import { blockRect, findCollapsedAncestorFrame } from '../../frames/utils';
+import { blockCollapsedAncestorFrame } from '../../frames/utils';
 import { FRAME_COLLAPSED_W, FRAME_COLLAPSED_H } from '../../frames/constants';
 import { BLOCK_SIZES } from '../constants';
 
@@ -42,7 +42,7 @@ export function useBlockBounds(blocks: Block[], frames: Frame[]): {
   const rectById = useMemo(() => {
     const m = new Map<string, Rect>();
     for (const b of blocks) {
-      const collapsedFrame = frames.length > 0 ? findCollapsedAncestorFrame(blockRect(b), frames) : null;
+      const collapsedFrame = frames.length > 0 ? blockCollapsedAncestorFrame(b, frames) : null;
       if (collapsedFrame) {
         m.set(b.id, { x: collapsedFrame.x, y: collapsedFrame.y, width: FRAME_COLLAPSED_W, height: FRAME_COLLAPSED_H });
         continue;

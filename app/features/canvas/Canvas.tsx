@@ -1,11 +1,13 @@
 'use client';
-import { useState, useRef, useCallback, useMemo } from 'react';
+import { useState, useRef, useCallback, useMemo, useEffect } from 'react';
 import type { Block, Frame, Connector } from '@/app/features/types';
 import type { CanvasProps, LiveDrag } from './types';
 import { BLOCK_SIZES, MIN_SCALE, MAX_SCALE, ZOOM_TO_FIT_PADDING, CONNECTOR_DRAG_SHIELD_Z } from './constants';
 import { uid } from './utils';
 import {
   arrangeItemsInGrid,
+  blockInsideCollapsedFrame,
+  blockParent,
   blockRect,
   buildBlockFrameMap,
   findEmptySpotInFrame,
@@ -17,7 +19,6 @@ import {
   frameOuterRect,
   frameParent,
   groupBoundsFromRects,
-  isInsideCollapsedFrame,
   sortFramesByDepth,
 } from '../frames/utils';
 import type { FrameHandlers, FrameRenameRequest, Rect } from '../frames/types';
@@ -70,19 +71,23 @@ export default function Canvas({
   viewportKey,
 }: CanvasProps) {
   const viewportRef = useRef<HTMLDivElement>(null);
+  // Declared up-front (mirrors useLatestRef, synced by the effect below) so new blocks created in
+  // useBlocks can read the current frames to auto-join whatever frame they land over. This also lets
+  // useFrames receive setBlocks without a construction cycle (blocks ← frames ← setBlocks).
+  const framesRef = useRef<Frame[]>([]);
 
   // ─── Domain hooks ────────────────────────────────────────────────────────
   const { themeChoice, toggleTheme, setTheme } = useTheme();
   const { offset, scale, offsetRef, scaleRef, setOffset, setScale, screenToCanvas, zoomBy, resetView, viewportRestoredRef } = useViewport(viewportRef, isFollowing, viewportKey);
-  const { blocks, setBlocks, isRefreshing, addBlockFromUrl, refreshEmbeds, updateBlock, deleteBlock } = useBlocks({ screenToCanvas });
+  const { blocks, setBlocks, isRefreshing, addBlockFromUrl, refreshEmbeds, updateBlock, deleteBlock } = useBlocks({ screenToCanvas, framesRef });
   const {
     frames, setFrames, createFromSelection, updateFrame, deleteFrame,
     toggleCollapse, renameFrame, setFrameColor,
-  } = useFrames();
+  } = useFrames(setBlocks);
   const { connectors, setConnectors, addConnector, deleteConnector, updateConnector, pruneByBlocks } = useConnectors();
 
   const blocksRef = useLatestRef(blocks);
-  const framesRef = useLatestRef(frames);
+  useEffect(() => { framesRef.current = frames; }, [frames]);
   const connectorsRef = useLatestRef(connectors);
   const { pushSnapshot, undo, redo, canUndo, canRedo } = useHistory({ setBlocks, blocksRef, setFrames, framesRef, setConnectors, connectorsRef });
   const { selectedIds, setSelectedIds, handleBlockSelect, handleBlockClickEnd, handleMultiDragMove, handleMultiDragEnd, duplicateSelected, selectAll, nudgeSelected, alignSelected } = useSelection({ blocks, setBlocks, pushSnapshot });
@@ -147,17 +152,21 @@ export default function Canvas({
     const sy = el ? el.clientHeight / 2 : 300;
     const { x, y } = screenToCanvas(sx, sy);
     const { w, h } = BLOCK_SIZES.text;
+    const nx = x - w / 2, ny = y - h / 2;
+    const parentFrameId = findEnclosingFrame({ x: nx, y: ny, width: w, height: h }, framesRef.current)?.id ?? null;
     pushSnapshot();
-    setBlocks(prev => [...prev, { id: uid(), type: 'text', content: '', x: x - w / 2, y: y - h / 2 }]);
-  }, [screenToCanvas, setBlocks, pushSnapshot]);
+    setBlocks(prev => [...prev, { id: uid(), type: 'text', content: '', x: nx, y: ny, parentFrameId }]);
+  }, [screenToCanvas, setBlocks, pushSnapshot, framesRef]);
 
   /** Adds an empty text note centered on the given screen point (used by the canvas context menu). */
   const addTextNoteAt = useCallback((sx: number, sy: number) => {
     const { x, y } = screenToCanvas(sx, sy);
     const { w, h } = BLOCK_SIZES.text;
+    const nx = x - w / 2, ny = y - h / 2;
+    const parentFrameId = findEnclosingFrame({ x: nx, y: ny, width: w, height: h }, framesRef.current)?.id ?? null;
     pushSnapshot();
-    setBlocks(prev => [...prev, { id: uid(), type: 'text', content: '', x: x - w / 2, y: y - h / 2 }]);
-  }, [screenToCanvas, setBlocks, pushSnapshot]);
+    setBlocks(prev => [...prev, { id: uid(), type: 'text', content: '', x: nx, y: ny, parentFrameId }]);
+  }, [screenToCanvas, setBlocks, pushSnapshot, framesRef]);
 
   // ─── Drop/paste hint + comments ──────────────────────────────────────────
   const { hint, flashHint } = useCanvasHint();
@@ -260,7 +269,10 @@ export default function Canvas({
       const w = measured?.width ?? b.width ?? BLOCK_SIZES[b.type].w;
       const h = measured?.height ?? b.height ?? BLOCK_SIZES[b.type].h;
       const { x, y } = findEmptySpotInFrame(frame, { w, h }, workingBlocks, framesRef.current, id);
-      workingBlocks[idx] = { ...b, x, y };
+      // Set stored membership on the working copy too, so blocks placed earlier in this batch count
+      // as members of the destination (findEmptySpotInFrame reads stored membership) and later blocks
+      // avoid overlapping them.
+      workingBlocks[idx] = { ...b, x, y, parentFrameId: frameId };
       posMap.set(id, { x, y });
     });
 
@@ -306,7 +318,8 @@ export default function Canvas({
       }
     });
 
-    setBlocks(prev => prev.map(b => { const p = posMap.get(b.id); return p ? { ...b, ...p } as Block : b; }));
+    // Force the moved blocks into `frameId` (the overwrite also un-nests them from any prior frame).
+    setBlocks(prev => prev.map(b => { const p = posMap.get(b.id); return p ? { ...b, ...p, parentFrameId: frameId } as Block : b; }));
     setFrames(prev => prev.map(f => {
       let next = f;
       if (f.id === frameId && f.collapsed) next = { ...next, collapsed: false };
@@ -469,7 +482,7 @@ export default function Canvas({
     getFrameDropTargetId,
   });
 
-  const { dragHover, handleBlockDragRect } = useBlockDropTarget({ blocksRef, framesRef, selectedIdsRef, setFrames, blockRectByIdRef });
+  const { dragHover, handleBlockDragRect } = useBlockDropTarget({ blocksRef, framesRef, selectedIdsRef, setBlocks, setFrames, blockRectByIdRef });
   // Block and frame drags are mutually exclusive, so one shared highlight state feeds the frame layer.
   const activeDragHover = dragHover ?? frameDragHover;
 
@@ -504,17 +517,19 @@ export default function Canvas({
       const { x, y } = screenToCanvas(sx, sy);
       const { w, h } = BLOCK_SIZES.text;
       const id = uid();
-      setBlocks(prev => [...prev, { id, type: 'text', content: trimmed, x: x - w / 2, y: y - h / 2 }]);
+      const nx = x - w / 2, ny = y - h / 2;
+      const parentFrameId = findEnclosingFrame({ x: nx, y: ny, width: w, height: h }, framesRef.current)?.id ?? null;
+      setBlocks(prev => [...prev, { id, type: 'text', content: trimmed, x: nx, y: ny, parentFrameId }]);
       newId = id;
     }
     if (connectSourceId && newId) addConnector(connectSourceId, newId);
-  }, [addBlockFromUrl, screenToCanvas, setBlocks, pushSnapshot, addConnector]);
+  }, [addBlockFromUrl, screenToCanvas, setBlocks, pushSnapshot, addConnector, framesRef]);
 
   const navigateToBlock = useCallback((block: Block) => {
     setIsSearchOpen(false);
     setIsItemsOpen(false);
     // If the block is inside a collapsed frame, expand its ancestor chain first.
-    let ancestor = findEnclosingFrame(blockRect(block), framesRef.current);
+    let ancestor = blockParent(block, framesRef.current);
     while (ancestor) {
       if (ancestor.collapsed) updateFrame(ancestor.id, { collapsed: false });
       ancestor = frameParent(ancestor, framesRef.current);
@@ -677,10 +692,10 @@ export default function Canvas({
     return sorted.filter(f => !frameAncestorCollapsed(f, frames));
   }, [frames]);
 
-  // Skip blocks whose nearest ancestor frame is collapsed.
+  // Skip blocks whose stored ancestor frame is collapsed.
   const visibleBlocks = useMemo(() => {
     if (frames.length === 0) return blocks;
-    return blocks.filter(b => !isInsideCollapsedFrame(blockRect(b), frames));
+    return blocks.filter(b => !blockInsideCollapsedFrame(b, frames));
   }, [blocks, frames]);
 
   // Precompute member counts + descendant blocks per frame (for title bar count / collapsed thumbnails).

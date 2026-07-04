@@ -56,6 +56,12 @@ export function frameParent(frame: Frame, frames: Frame[]): Frame | null {
   return frames.find(f => f.id === frame.parentFrameId) ?? null;
 }
 
+/** The stored parent frame of `block` (via `parentFrameId`), or null when top-level or the id is dangling/unset. */
+export function blockParent(block: Block, frames: Frame[]): Frame | null {
+  if (!block.parentFrameId) return null;
+  return frames.find(f => f.id === block.parentFrameId) ?? null;
+}
+
 /** The frames whose stored `parentFrameId` points at `frame` (its direct child frames). */
 export function frameChildFrames(frame: Frame, frames: Frame[]): Frame[] {
   return frames.filter(f => f.parentFrameId === frame.id);
@@ -75,15 +81,14 @@ export function findEnclosingFrame(rect: Rect, frames: Frame[], excludeId?: stri
 }
 
 /**
- * Direct members of `frame`: blocks are derived geometrically (smallest enclosing frame wins),
- * child frames come from STORED `parentFrameId` — so a frame only counts as nested when it was
- * intentionally dropped in, never merely by geometric overlap.
+ * Direct members of `frame`: both blocks and child frames come from STORED `parentFrameId` — so a
+ * block/frame only counts as a member when it was intentionally dropped/added in, never merely by
+ * geometric overlap. Geometry is used only to *decide* membership at drop/create/backfill time.
  */
 export function frameMembers(frame: Frame, blocks: Block[], frames: Frame[]): FrameMembership {
   const blockIds = new Set<string>();
   for (const b of blocks) {
-    const owner = findEnclosingFrame(blockRect(b), frames);
-    if (owner && owner.id === frame.id) blockIds.add(b.id);
+    if (b.parentFrameId === frame.id) blockIds.add(b.id);
   }
   const childFrameIds = new Set<string>(frameChildFrames(frame, frames).map(f => f.id));
   return { blockIds, childFrameIds };
@@ -172,21 +177,15 @@ export function frameDescendantFrames(frame: Frame, frames: Frame[]): Set<string
   return out;
 }
 
-/** True when any ancestor frame of a block (transitive) is collapsed. Block→owner step is geometric; the ancestor walk follows stored `parentFrameId`. */
-export function isInsideCollapsedFrame(rect: Rect, frames: Frame[]): boolean {
-  let owner = findEnclosingFrame(rect, frames);
-  const seen = new Set<string>();
-  while (owner && !seen.has(owner.id)) {
-    if (owner.collapsed) return true;
-    seen.add(owner.id);
-    owner = frameParent(owner, frames);
-  }
-  return false;
+/** True when a block's stored parent frame, or any frame above it, is collapsed. Owner + ancestor walk follows stored `parentFrameId`. */
+export function blockInsideCollapsedFrame(block: Block, frames: Frame[]): boolean {
+  const owner = blockParent(block, frames);
+  return owner ? (owner.collapsed || frameAncestorCollapsed(owner, frames)) : false;
 }
 
-/** The outermost collapsed ancestor frame enclosing `rect` — i.e. the one whose collapsed pill is actually visible on the canvas — or null if no ancestor is collapsed. Ancestor walk follows stored `parentFrameId`. */
-export function findCollapsedAncestorFrame(rect: Rect, frames: Frame[]): Frame | null {
-  let owner = findEnclosingFrame(rect, frames);
+/** The outermost collapsed stored ancestor frame of `block` — i.e. the one whose collapsed pill is actually visible on the canvas — or null if none is collapsed. Walk follows stored `parentFrameId`. */
+export function blockCollapsedAncestorFrame(block: Block, frames: Frame[]): Frame | null {
+  let owner = blockParent(block, frames);
   let collapsed: Frame | null = null;
   const seen = new Set<string>();
   while (owner && !seen.has(owner.id)) {
@@ -292,47 +291,42 @@ export function sortFramesByDepth(frames: Frame[]): Frame[] {
   return [...frames].sort((a, b) => (depths.get(a.id)! - depths.get(b.id)!));
 }
 
-/** Maps every block id to its smallest enclosing frame id, if any. */
+/** Maps every block id to its STORED parent frame id (`parentFrameId`), when set and the frame still exists. */
 export function buildBlockFrameMap(blocks: Block[], frames: Frame[]): Map<string, string> {
   const map = new Map<string, string>();
+  const ids = new Set(frames.map(f => f.id));
   for (const b of blocks) {
-    const owner = findEnclosingFrame(blockRect(b), frames);
-    if (owner) map.set(b.id, owner.id);
+    if (b.parentFrameId && ids.has(b.parentFrameId)) map.set(b.id, b.parentFrameId);
   }
   return map;
 }
 
-/** Returns the area of intersection of two rects. */
-function rectIntersectArea(a: Rect, b: Rect): number {
-  const w = Math.max(0, Math.min(a.x + a.width, b.x + b.width) - Math.max(a.x, b.x));
-  const h = Math.max(0, Math.min(a.y + a.height, b.y + b.height) - Math.max(a.y, b.y));
-  return w * h;
+/**
+ * The SMALLEST frame whose rect contains the point (cx, cy), skipping any id in `exclude`; null if
+ * none. Bounds are inclusive on all sides. Shared center hit-test for both drop paths (block-into-
+ * group and frame-into-frame) so they can never drift apart.
+ */
+export function smallestFrameAtPoint(cx: number, cy: number, frames: Frame[], exclude?: Set<string>): Frame | null {
+  let best: Frame | null = null;
+  let bestArea = Infinity;
+  for (const f of frames) {
+    if (exclude?.has(f.id)) continue;
+    const inner = frameInnerRect(f);
+    if (cx < inner.x || cy < inner.y || cx > inner.x + inner.width || cy > inner.y + inner.height) continue;
+    const a = rectArea(frameOuterRect(f));
+    if (a < bestArea) { best = f; bestArea = a; }
+  }
+  return best;
 }
 
 /**
- * Picks the best drop-target frame for a dragged BLOCK rect: the smallest frame whose inner rect
- * contains the dragged rect's center, else the smallest frame it overlaps by more than 25%.
- * (Frame-into-frame nesting is decided by `frameDropTarget`, which is center-only.)
+ * Picks the drop-target frame for a dragged BLOCK (union) rect: the SMALLEST frame whose rect
+ * contains the rect's CENTER, or null over empty space. Center-only, matching `frameDropTarget`, so
+ * a block nests only when its center is genuinely inside a group — never on mere proximity or
+ * overlap, and adjacent groups never steal a block that sits over its neighbour.
  */
 export function pickDropTargetFrame(rect: Rect, frames: Frame[]): Frame | null {
-  const cx = rect.x + rect.width / 2;
-  const cy = rect.y + rect.height / 2;
-  const dragArea = Math.max(1, rect.width * rect.height);
-  let centerHit: Frame | null = null;
-  let centerArea = Infinity;
-  let overlapHit: Frame | null = null;
-  let overlapArea = Infinity;
-  for (const f of frames) {
-    const inner = frameInnerRect(f);
-    const a = rectArea(frameOuterRect(f));
-    if (cx >= inner.x && cy >= inner.y && cx <= inner.x + inner.width && cy <= inner.y + inner.height) {
-      if (a < centerArea) { centerHit = f; centerArea = a; }
-    } else {
-      const ov = rectIntersectArea(inner, rect);
-      if (ov / dragArea > 0.25 && a < overlapArea) { overlapHit = f; overlapArea = a; }
-    }
-  }
-  return centerHit ?? overlapHit;
+  return smallestFrameAtPoint(rect.x + rect.width / 2, rect.y + rect.height / 2, frames);
 }
 
 /**
@@ -343,18 +337,8 @@ export function pickDropTargetFrame(rect: Rect, frames: Frame[]): Frame | null {
  * just as reliably as the reverse; a center over empty space → null (top-level).
  */
 export function frameDropTarget(frame: Frame, dx: number, dy: number, frames: Frame[]): Frame | null {
-  // A zero-size rect at the projected center makes rectContains reduce exactly to point-in-rect.
-  const center: Rect = { x: frame.x + dx + frame.width / 2, y: frame.y + dy + frame.height / 2, width: 0, height: 0 };
   const exclude = new Set<string>([frame.id, ...frameDescendantFrames(frame, frames)]);
-  let best: Frame | null = null;
-  let bestArea = Infinity;
-  for (const f of frames) {
-    if (exclude.has(f.id)) continue;
-    if (!rectContains(frameInnerRect(f), center)) continue;
-    const a = rectArea(frameOuterRect(f));
-    if (a < bestArea) { best = f; bestArea = a; }
-  }
-  return best;
+  return smallestFrameAtPoint(frame.x + dx + frame.width / 2, frame.y + dy + frame.height / 2, frames, exclude);
 }
 
 /**
@@ -369,6 +353,21 @@ export function backfillFrameParents(frames: Frame[]): Frame[] {
     f.parentFrameId === undefined
       ? { ...f, parentFrameId: findEnclosingFrame(frameOuterRect(f), frames, f.id)?.id ?? null }
       : f,
+  );
+}
+
+/**
+ * One-time migration mirroring backfillFrameParents: for every block with an unset (`undefined`)
+ * parentFrameId, derive it from geometry (smallest enclosing frame) so pre-migration canvases keep
+ * their existing grouping. Blocks with an explicit value (`string` | `null`) are left untouched —
+ * making this idempotent and preserving intentional un-nests across reloads / remote re-hydration.
+ */
+export function backfillBlockParents(blocks: Block[], frames: Frame[]): Block[] {
+  if (blocks.every(b => b.parentFrameId !== undefined)) return blocks;
+  return blocks.map(b =>
+    b.parentFrameId === undefined
+      ? { ...b, parentFrameId: findEnclosingFrame(blockRect(b), frames)?.id ?? null }
+      : b,
   );
 }
 
