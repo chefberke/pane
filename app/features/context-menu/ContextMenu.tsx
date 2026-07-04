@@ -141,7 +141,7 @@ export default function ContextMenu({ x, y, bounds, rows, onClose }: Props) {
           }}
         >
           {panel.items.map((item, i) => (
-            <GroupRow key={i} label={item.label} color={item.color} onClick={() => { item.onClick(); onClose(); }} />
+            <GroupRow key={i} label={item.label} color={item.color} current={item.current} onClick={() => { item.onClick(); onClose(); }} />
           ))}
         </div>
       )}

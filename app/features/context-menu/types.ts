@@ -48,7 +48,8 @@ export interface ContextMenuSubmenuRow {
   kind: 'submenu';
   label: string;
   icon: LucideIcon;
-  items: { label: string; color: FrameColor; onClick: () => void }[];
+  /** `current` marks the block's existing group — shown with a check and non-interactive. */
+  items: { label: string; color: FrameColor; current?: boolean; onClick: () => void }[];
 }
 
 /** A thin divider between groups of rows. */

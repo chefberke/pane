@@ -4,7 +4,7 @@ import { Plus, Type, BoxSelect, Maximize2, ExternalLink, Link2, MessageCircle, C
 import type { Block, Frame, Connector, FrameColor } from '@/app/features/types';
 import { useContextMenu } from '../../context-menu/hooks/useContextMenu';
 import { blockShareUrl } from '../../context-menu/utils';
-import type { ContextMenuRow, ContextMenuTarget } from '../../context-menu/types';
+import type { ContextMenuRow, ContextMenuSubmenuRow, ContextMenuTarget } from '../../context-menu/types';
 import type { FrameRenameRequest } from '../../frames/types';
 import { blockRect, findEnclosingFrame, frameMembers } from '../../frames/utils';
 
@@ -67,16 +67,16 @@ export function useCanvasContextMenu(actions: ContextMenuActions, refs: Refs) {
         { kind: 'action', label: 'Duplicate', icon: Copy, shortcut: ['⌘', 'D'], onClick: actions.duplicateSelected },
         { kind: 'action', label: 'Group selected', icon: FolderPlus, shortcut: ['⌘', 'G'], onClick: actions.groupSelected },
       );
+      // "Add to group" flyout: the block's current group (if any) shown first with a check, then every other frame to move into.
       const currentFrame = findEnclosingFrame(blockRect(block), framesRef.current);
       const otherFrames = framesRef.current.filter(f => f.id !== currentFrame?.id);
-      if (otherFrames.length > 0) {
+      const groupItems: ContextMenuSubmenuRow['items'] = [
+        ...(currentFrame ? [{ label: currentFrame.title, color: currentFrame.color, current: true, onClick: () => {} }] : []),
+        ...otherFrames.map(f => ({ label: f.title, color: f.color, onClick: () => actions.addSelectedToFrame(f.id) })),
+      ];
+      if (groupItems.length > 0) {
         rows.push({ kind: 'separator' });
-        rows.push({
-          kind: 'submenu',
-          label: 'Add to group',
-          icon: FolderInput,
-          items: otherFrames.map(f => ({ label: f.title, color: f.color, onClick: () => actions.addSelectedToFrame(f.id) })),
-        });
+        rows.push({ kind: 'submenu', label: 'Add to group', icon: FolderInput, items: groupItems });
       }
       rows.push(
         { kind: 'separator' },

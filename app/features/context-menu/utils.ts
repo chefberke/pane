@@ -1,12 +1,17 @@
-import type { Block } from '@/app/features/types';
+import type { Block, FrameColor } from '@/app/features/types';
 import type { ContextMenuRow } from './types';
-import { MENU_EDGE_PADDING, MENU_ROW_HEIGHT } from './constants';
+import { MENU_EDGE_PADDING, MENU_FRAME_SWATCHES, MENU_ROW_HEIGHT } from './constants';
 
 /** Rendered height of a menu row, used to estimate total menu height and to top-align submenu flyouts. */
 export function rowHeight(row: ContextMenuRow): number {
   if (row.kind === 'separator') return 9;
   if (row.kind === 'color') return 28;
   return MENU_ROW_HEIGHT;
+}
+
+/** Maps a frame color to its menu swatch RGB, falling back to the first swatch. */
+export function frameSwatch(color: FrameColor): string {
+  return MENU_FRAME_SWATCHES.find(s => s.color === color)?.swatch ?? MENU_FRAME_SWATCHES[0].swatch;
 }
 
 /** Returns the external URL a block opens to, or null when it has none (text/image/pdf). */
