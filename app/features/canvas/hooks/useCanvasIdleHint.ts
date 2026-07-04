@@ -72,6 +72,28 @@ export function useCanvasIdleHint({ enabled }: Options): IdleHintApi {
     };
   }, [clearTimers, scheduleIdle]);
 
+  // Leaving the tab/app (tab switch, alt-tab) must hide any wink and stop the
+  // timers, so a frozen hint isn't left on screen and throttled timers don't
+  // fire coalesced on return. Returning just restarts a fresh idle countdown.
+  useEffect(() => {
+    const hide = () => {
+      clearTimers();
+      setIdleHint(prev => (prev ? null : prev));
+    };
+    const resume = () => {
+      if (enabledRef.current) scheduleIdle();
+    };
+    const onVisibility = () => (document.hidden ? hide() : resume());
+    window.addEventListener('blur', hide);
+    window.addEventListener('focus', resume);
+    document.addEventListener('visibilitychange', onVisibility);
+    return () => {
+      window.removeEventListener('blur', hide);
+      window.removeEventListener('focus', resume);
+      document.removeEventListener('visibilitychange', onVisibility);
+    };
+  }, [clearTimers, scheduleIdle, enabledRef]);
+
   // Start counting when the canvas is idle-eligible; stop everything when busy.
   useEffect(() => {
     if (enabled) scheduleIdle();
