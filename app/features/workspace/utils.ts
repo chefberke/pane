@@ -2,6 +2,7 @@ import type { Block } from '@/app/features/types';
 import type { CanvasState } from '../canvas/types';
 import type { ExportedWorkspace, WorkspaceExportEnvelope, ImportPreview } from './types';
 import { EXPORT_FORMAT, EXPORT_VERSION } from './constants';
+import { backfillFrameParents } from '../frames/utils';
 
 /** Generates a UUID v4 for use as an InstantDB entity ID. */
 export function uid(): string {
@@ -20,7 +21,9 @@ export function deserializeState(raw: string): CanvasState | null {
     if (!parsed || !Array.isArray(parsed.blocks)) return null;
     return {
       blocks: parsed.blocks,
-      frames: Array.isArray(parsed.frames) ? parsed.frames : [],
+      // Backfill stored frame nesting from geometry for legacy payloads; idempotent, so re-hydration
+      // (incl. remote sync) never clobbers an intentional un-nest once explicit values are persisted.
+      frames: backfillFrameParents(Array.isArray(parsed.frames) ? parsed.frames : []),
       connectors: Array.isArray(parsed.connectors) ? parsed.connectors : [],
       offset: parsed.offset ?? { x: 0, y: 0 },
       scale: typeof parsed.scale === 'number' ? parsed.scale : 1,

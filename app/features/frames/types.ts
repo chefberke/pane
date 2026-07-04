@@ -9,6 +9,8 @@ export interface FrameHandlers {
   onDelete: (id: string) => void;
   onDragMove: (id: string, dx: number, dy: number) => void;
   onDragEnd: (id: string, dx: number, dy: number) => void;
+  /** Coalesced drop-target signal during a frame drag; `null` delta clears the highlight on drop. */
+  onDragRect: (id: string, delta: { dx: number; dy: number } | null) => void;
   onResize: (id: string, next: { x: number; y: number; width: number; height: number }) => void;
   onOpenComments: (frame: Frame, anchor: { x: number; y: number }) => void;
   onBeforeMutate: () => void;

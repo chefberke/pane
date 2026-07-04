@@ -15,6 +15,7 @@ import {
   frameDescendantFrames,
   frameMembers,
   frameOuterRect,
+  frameParent,
   groupBoundsFromRects,
   isInsideCollapsedFrame,
   sortFramesByDepth,
@@ -47,6 +48,7 @@ import { useCanvasIdleHint } from './hooks/useCanvasIdleHint';
 import { useComments } from './hooks/useComments';
 import { useFrameInteractions } from './hooks/useFrameInteractions';
 import { useBlockDropTarget } from './hooks/useBlockDropTarget';
+import { useFrameDropTarget } from './hooks/useFrameDropTarget';
 import { useCanvasContextMenu } from './hooks/useCanvasContextMenu';
 import DotGrid from './DotGrid';
 import CanvasWorld from './CanvasWorld';
@@ -223,12 +225,12 @@ export default function Canvas({
   const groupSelected = useCallback(() => {
     if (selectedIds.size === 0) return;
     pushSnapshot();
-    const id = createFromSelection(blocksRef.current, selectedIds);
+    const id = createFromSelection(blocksRef.current, selectedIds, framesRef.current);
     if (id) {
       setSelectedIds(new Set());
       setSelectedFrameId(id);
     }
-  }, [selectedIds, createFromSelection, blocksRef, pushSnapshot, setSelectedIds]);
+  }, [selectedIds, createFromSelection, blocksRef, framesRef, pushSnapshot, setSelectedIds]);
 
   /** Remove the currently selected frame (members stay where they are). */
   const ungroupSelected = useCallback(() => {
@@ -362,7 +364,7 @@ export default function Canvas({
       const dx = p.x - childFrame.x, dy = p.y - childFrame.y;
       frameDeltas.set(it.id, { dx, dy });
       frameDescendantBlocks(childFrame, blocksRef.current, framesRef.current).forEach(id => descBlockDeltas.set(id, { dx, dy }));
-      frameDescendantFrames(childFrame, framesRef.current, blocksRef.current).forEach(id => descFrameDeltas.set(id, { dx, dy }));
+      frameDescendantFrames(childFrame, framesRef.current).forEach(id => descFrameDeltas.set(id, { dx, dy }));
     });
 
     // Recompute the target frame's own bounds from the new item rects — child frames contribute
@@ -419,7 +421,10 @@ export default function Canvas({
     pruneByBlocks(selectedIdsRef.current);
     setSelectedIds(new Set());
     if (toDeleteFrames.length > 0) {
-      setFrames(prev => prev.filter(f => !toDeleteFrames.some(df => df.id === f.id)));
+      const deletedIds = new Set(toDeleteFrames.map(df => df.id));
+      setFrames(prev => prev
+        .filter(f => !deletedIds.has(f.id))
+        .map(f => f.parentFrameId && deletedIds.has(f.parentFrameId) ? { ...f, parentFrameId: null } : f));
     }
   }, [selectedConnectorIdRef, deleteConnector, selectedFrameId, deleteFrame, framesRef, blocksRef, selectedIdsRef, pushSnapshot, setBlocks, pruneByBlocks, setSelectedIds, setFrames]);
 
@@ -452,6 +457,8 @@ export default function Canvas({
   }, [deleteBlock, pruneByBlocks, setSelectedIds, pushSnapshot, setCommentTarget]);
 
   // ─── Frame interactions + block drop-target ──────────────────────────────
+  const { frameDragHover, handleFrameDragRect, getFrameDropTargetId } = useFrameDropTarget({ framesRef });
+
   const {
     handleFrameDragMove, handleFrameDragEnd, handleFrameResize,
     handleFrameRename, handleFrameColor, handleFrameToggleCollapse, handleFrameDelete,
@@ -459,9 +466,12 @@ export default function Canvas({
     blocksRef, framesRef, blockRectByIdRef, setBlocks, setFrames, setLiveDrag,
     updateFrame, renameFrame, setFrameColor, toggleCollapse, deleteFrame,
     pushSnapshot, selectedFrameId, setSelectedFrameId, setCommentTarget,
+    getFrameDropTargetId,
   });
 
   const { dragHover, handleBlockDragRect } = useBlockDropTarget({ blocksRef, framesRef, selectedIdsRef, setFrames, blockRectByIdRef });
+  // Block and frame drags are mutually exclusive, so one shared highlight state feeds the frame layer.
+  const activeDragHover = dragHover ?? frameDragHover;
 
   /** Wraps the drop-target signal so connectors follow blocks live (and smoothly) during a drag, before state commits on drop. */
   const handleBlockDragLive = useCallback((blockId: string, delta: { dx: number; dy: number } | null) => {
@@ -507,7 +517,7 @@ export default function Canvas({
     let ancestor = findEnclosingFrame(blockRect(block), framesRef.current);
     while (ancestor) {
       if (ancestor.collapsed) updateFrame(ancestor.id, { collapsed: false });
-      ancestor = findEnclosingFrame({ x: ancestor.x, y: ancestor.y, width: ancestor.width, height: ancestor.height }, framesRef.current, ancestor.id);
+      ancestor = frameParent(ancestor, framesRef.current);
     }
     setSelectedIds(new Set([block.id]));
     setSelectedFrameId(null);
@@ -589,6 +599,7 @@ export default function Canvas({
     onDelete: handleFrameDelete,
     onDragMove: handleFrameDragMove,
     onDragEnd: handleFrameDragEnd,
+    onDragRect: handleFrameDragRect,
     onResize: handleFrameResize,
     onOpenComments: commentHandlers.handleOpenFrameComments,
     onBeforeMutate: pushSnapshot,
@@ -602,7 +613,7 @@ export default function Canvas({
     },
     scaleRef,
     canEdit,
-  }), [handleFrameSelect, handleFrameRename, handleFrameColor, handleFrameToggleCollapse, handleFrameDelete, handleFrameDragMove, handleFrameDragEnd, handleFrameResize, commentHandlers, pushSnapshot, openMenu, buildMenuRows, setCommentTarget, scaleRef, canEdit]);
+  }), [handleFrameSelect, handleFrameRename, handleFrameColor, handleFrameToggleCollapse, handleFrameDelete, handleFrameDragMove, handleFrameDragEnd, handleFrameDragRect, handleFrameResize, commentHandlers, pushSnapshot, openMenu, buildMenuRows, setCommentTarget, scaleRef, canEdit]);
 
   const blockHandlers = useMemo(() => ({
     onSelect: (id: string, shiftKey: boolean) => { setCommentTarget(null); handleBlockSelectWithFrameClear(id, shiftKey); },
@@ -650,11 +661,11 @@ export default function Canvas({
     (blocks.length + frames.length) > 0 &&   // EmptyState already advertises this on an empty canvas
     !addPos && !menu && !commentTarget && !selectedConnectorId &&
     !isSearchOpen && !isHelpOpen && !isItemsOpen && !lightbox && !pdfLightbox &&
-    !liveDrag && !pending && !dragHover && !marquee && !isPanMode && !renameFrameReq
+    !liveDrag && !pending && !activeDragHover && !marquee && !isPanMode && !renameFrameReq
   ), [
     canEdit, isFollowing, blocks.length, frames.length, addPos, menu, commentTarget,
     selectedConnectorId, isSearchOpen, isHelpOpen, isItemsOpen, lightbox, pdfLightbox,
-    liveDrag, pending, dragHover, marquee, isPanMode, renameFrameReq,
+    liveDrag, pending, activeDragHover, marquee, isPanMode, renameFrameReq,
   ]);
   const { idleHint, reportPointer } = useCanvasIdleHint({ enabled: idleHintEnabled });
 
@@ -748,11 +759,11 @@ export default function Canvas({
   const frameLayer = useMemo(() => ({
     visibleFrames,
     framePresent,
-    dragHover,
+    dragHover: activeDragHover,
     selectedFrameId,
     handlers: frameHandlers,
     renameRequest: renameFrameReq,
-  }), [visibleFrames, framePresent, dragHover, selectedFrameId, frameHandlers, renameFrameReq]);
+  }), [visibleFrames, framePresent, activeDragHover, selectedFrameId, frameHandlers, renameFrameReq]);
 
   const blockLayer = useMemo(() => ({
     visibleBlocks,

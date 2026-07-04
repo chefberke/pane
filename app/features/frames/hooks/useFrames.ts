@@ -1,14 +1,14 @@
 import { useCallback, useState, type Dispatch, type SetStateAction } from 'react';
 import type { Block, Frame, FrameColor } from '@/app/features/types';
 import { FRAME_DEFAULT_COLOR, FRAME_DEFAULT_TITLE, FRAME_MIN_H, FRAME_MIN_W } from '../constants';
-import { frameUid, groupBoundsFromBlocks } from '../utils';
+import { findEnclosingFrame, frameUid, groupBoundsFromBlocks } from '../utils';
 
 /** Manages frame collection + CRUD operations (create from selection, rename, color, collapse, delete). */
 export function useFrames() {
   const [frames, setFrames] = useState<Frame[]>([]);
 
-  /** Creates a new frame wrapping the selected blocks; returns the new frame id (or null). */
-  const createFromSelection = useCallback((blocks: Block[], selectedIds: Set<string>): string | null => {
+  /** Creates a new frame wrapping the selected blocks; nests it under whatever frame it geometrically sits inside (or top-level). Returns the new frame id (or null). */
+  const createFromSelection = useCallback((blocks: Block[], selectedIds: Set<string>, frames: Frame[]): string | null => {
     if (selectedIds.size === 0) return null;
     const rect = groupBoundsFromBlocks(blocks, selectedIds);
     if (!rect) return null;
@@ -22,6 +22,7 @@ export function useFrames() {
       width: Math.max(FRAME_MIN_W, rect.width),
       height: Math.max(FRAME_MIN_H, rect.height),
       collapsed: false,
+      parentFrameId: findEnclosingFrame(rect, frames)?.id ?? null,
     };
     setFrames(prev => [...prev, frame]);
     return id;
@@ -32,9 +33,11 @@ export function useFrames() {
     setFrames(prev => prev.map(f => f.id === id ? { ...f, ...updates } : f));
   }, []);
 
-  /** Removes a frame entity; members stay where they are. */
+  /** Removes a frame entity; members stay where they are, and any child frames become top-level (parentFrameId → null). */
   const deleteFrame = useCallback((id: string) => {
-    setFrames(prev => prev.filter(f => f.id !== id));
+    setFrames(prev => prev
+      .filter(f => f.id !== id)
+      .map(f => f.parentFrameId === id ? { ...f, parentFrameId: null } : f));
   }, []);
 
   /** Toggles the collapsed state of a frame. */

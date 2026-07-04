@@ -130,6 +130,7 @@ export interface Frame {
   width: number;
   height: number;
   collapsed: boolean;
-  parentFrameId?: string;
+  /** Stored parent frame id. `undefined` = pre-migration (backfilled from geometry on load); `null` = intentionally top-level (never re-derived); a string = intentionally nested. */
+  parentFrameId?: string | null;
   comments?: Comment[];
 }

@@ -7,6 +7,7 @@ import {
   frameDescendantBlocks,
   frameDescendantFrames,
   frameMembers,
+  rectContains,
 } from '../../frames/utils';
 import { FRAME_PADDING } from '../../frames/constants';
 import type { CommentTarget, LiveDrag } from '../types';
@@ -30,6 +31,8 @@ interface Params {
   selectedFrameId: string | null;
   setSelectedFrameId: Dispatch<SetStateAction<string | null>>;
   setCommentTarget: Dispatch<SetStateAction<CommentTarget>>;
+  /** Reads the drop target resolved by useFrameDropTarget during the drag (shared with the glow). */
+  getFrameDropTargetId: (id: string) => string | null | undefined;
 }
 
 /** Frame interaction handlers: drag (imperative transform + flushSync commit), resize, and metadata edits. */
@@ -37,12 +40,13 @@ export function useFrameInteractions({
   blocksRef, framesRef, blockRectByIdRef, setBlocks, setFrames, setLiveDrag,
   updateFrame, renameFrame, setFrameColor, toggleCollapse, deleteFrame,
   pushSnapshot, selectedFrameId, setSelectedFrameId, setCommentTarget,
+  getFrameDropTargetId,
 }: Params) {
   const handleFrameDragMove = useCallback((id: string, dx: number, dy: number) => {
     const frame = framesRef.current.find(f => f.id === id);
     if (!frame) return;
     const descBlocks = frameDescendantBlocks(frame, blocksRef.current, framesRef.current);
-    const descFrames = frameDescendantFrames(frame, framesRef.current, blocksRef.current);
+    const descFrames = frameDescendantFrames(frame, framesRef.current);
     // Suppress transitions on the moving elements so the imperative transform tracks the pointer
     // 1:1 — the collapsed frame's `transform` transition would otherwise ease each move (slide/lag).
     const fEl = document.querySelector(`[data-frame-id="${id}"]`) as HTMLElement | null;
@@ -63,7 +67,7 @@ export function useFrameInteractions({
     const frame = framesRef.current.find(f => f.id === id);
     if (!frame) return;
     const descBlocks = frameDescendantBlocks(frame, blocksRef.current, framesRef.current);
-    const descFrames = frameDescendantFrames(frame, framesRef.current, blocksRef.current);
+    const descFrames = frameDescendantFrames(frame, framesRef.current);
 
     const collectEls = (): HTMLElement[] => {
       const els: HTMLElement[] = [];
@@ -81,6 +85,31 @@ export function useFrameInteractions({
       return;
     }
 
+    // Intentional nesting, read from the SAME resolution that drove the glow (useFrameDropTarget), so
+    // what highlighted at release is exactly what nests — the commit never recomputes it. The frame joins
+    // the smallest frame its center lands inside (self + descendants excluded to prevent cycles). No
+    // target → top-level (null), which un-nests even if it still geometrically overlaps its old parent
+    // (membership is stored now). `undefined` means no detection ran (micro-flick) → keep the current parent.
+    const resolved = getFrameDropTargetId(id);
+    const newParentId = resolved === undefined ? (frame.parentFrameId ?? null) : resolved;
+    const target = newParentId ? framesRef.current.find(f => f.id === newParentId) ?? null : null;
+
+    // Grow the target to wrap the dropped frame (mirrors how blocks grow their frame), so a nested
+    // frame stays visually inside its parent even when dropped near an edge. Only grows where the
+    // padded child pokes out — if it already fits, the target is left unchanged (idempotent).
+    let grownTarget: { id: string; rect: Rect } | null = null;
+    if (target) {
+      const childRect: Rect = { x: frame.x + dx, y: frame.y + dy, width: frame.width, height: frame.height };
+      const targetRect: Rect = { x: target.x, y: target.y, width: target.width, height: target.height };
+      if (!rectContains(targetRect, childRect)) {
+        const px = childRect.x - FRAME_PADDING, py = childRect.y - FRAME_PADDING;
+        const pr = childRect.x + childRect.width + FRAME_PADDING, pb = childRect.y + childRect.height + FRAME_PADDING;
+        const minX = Math.min(targetRect.x, px), minY = Math.min(targetRect.y, py);
+        const maxX = Math.max(targetRect.x + targetRect.width, pr), maxY = Math.max(targetRect.y + targetRect.height, pb);
+        grownTarget = { id: target.id, rect: { x: minX, y: minY, width: maxX - minX, height: maxY - minY } };
+      }
+    }
+
     const els = collectEls();
     // Suppress CSS left/top transitions so they don't fight the transform during commit.
     els.forEach(el => { el.style.transition = 'none'; });
@@ -88,17 +117,19 @@ export function useFrameInteractions({
     // so the DOM is updated before we clear transforms and connectors never see a stale frame.
     flushSync(() => {
       setBlocks(prev => prev.map(b => descBlocks.has(b.id) ? { ...b, x: b.x + dx, y: b.y + dy } as Block : b));
-      setFrames(prev => prev.map(f =>
-        f.id === id ? { ...f, x: f.x + dx, y: f.y + dy } :
-        descFrames.has(f.id) ? { ...f, x: f.x + dx, y: f.y + dy } : f
-      ));
+      setFrames(prev => prev.map(f => {
+        if (f.id === id) return { ...f, x: f.x + dx, y: f.y + dy, parentFrameId: newParentId };
+        if (descFrames.has(f.id)) return { ...f, x: f.x + dx, y: f.y + dy };
+        if (grownTarget && f.id === grownTarget.id) return { ...f, ...grownTarget.rect };
+        return f;
+      }));
       setLiveDrag(null);
     });
     // Clear transforms — left/top is already at final position, so no snap.
     els.forEach(el => { el.style.transform = ''; });
     // Re-enable transitions after the browser has painted the committed frame.
     requestAnimationFrame(() => { els.forEach(el => { el.style.transition = ''; }); });
-  }, [blocksRef, framesRef, setBlocks, setFrames, setLiveDrag]);
+  }, [blocksRef, framesRef, setBlocks, setFrames, setLiveDrag, getFrameDropTargetId]);
 
   const handleFrameResize = useCallback((id: string, next: { x: number; y: number; width: number; height: number }) => {
     const frame = framesRef.current.find(f => f.id === id);

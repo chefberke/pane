@@ -52,6 +52,7 @@ function Frame({ frame, selected, memberCount, descendantBlocks, handlers, dropP
     onEnd: handlers.onDragEnd,
     onSelect: handlers.onSelect,
     onBeforeMutate: handlers.onBeforeMutate,
+    onDragRect: handlers.onDragRect,
   });
 
   const { onHandlePointerDown } = useFrameResize({
