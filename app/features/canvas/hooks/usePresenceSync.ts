@@ -1,5 +1,6 @@
 'use client';
-import { useEffect } from 'react';
+import { useEffect, useRef } from 'react';
+import { PRESENCE_VIEWPORT_THROTTLE_MS } from '../constants';
 
 interface Params {
   selectedIds: Set<string>;
@@ -23,11 +24,30 @@ export function usePresenceSync({
     onSelectionChange(Array.from(selectedIds), selectedFrameId);
   }, [selectedIds, selectedFrameId, onSelectionChange]);
 
-  // Publish own viewport to presence so others can follow us.
+  // Publish own viewport to presence so others can follow us — throttled (leading + trailing) so a fast pan
+  // publishes at ~10 Hz instead of once per animation frame, sparing a forced layout read every frame.
+  const lastPublish = useRef(0);
+  const trailingTimer = useRef<ReturnType<typeof setTimeout> | null>(null);
+  const latest = useRef({ offset, scale });
   useEffect(() => {
+    latest.current = { offset, scale };
     if (isFollowing || !onViewportChange) return;
     const el = viewportRef.current;
     if (!el) return;
-    onViewportChange(offset, scale, { w: el.clientWidth, h: el.clientHeight });
+    const publish = () => {
+      trailingTimer.current = null;
+      lastPublish.current = Date.now();
+      onViewportChange(latest.current.offset, latest.current.scale, { w: el.clientWidth, h: el.clientHeight });
+    };
+    const elapsed = Date.now() - lastPublish.current;
+    if (elapsed >= PRESENCE_VIEWPORT_THROTTLE_MS) {
+      if (trailingTimer.current) { clearTimeout(trailingTimer.current); trailingTimer.current = null; }
+      publish();
+    } else if (trailingTimer.current === null) {
+      trailingTimer.current = setTimeout(publish, PRESENCE_VIEWPORT_THROTTLE_MS - elapsed);
+    }
   }, [offset, scale, isFollowing, onViewportChange, viewportRef]);
+
+  // Clear any pending trailing publish on unmount.
+  useEffect(() => () => { if (trailingTimer.current) clearTimeout(trailingTimer.current); }, []);
 }

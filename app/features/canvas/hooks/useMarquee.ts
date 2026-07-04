@@ -6,14 +6,15 @@ import { DRAG_THRESHOLD, MARQUEE_THRESHOLD } from '../constants';
 export function useMarquee({
   viewportRef,
   offsetRef,
-  setOffset,
+  commit,
   setSelectedIds,
   onDoubleClickCanvas,
   onCanvasClick,
 }: {
   viewportRef: RefObject<HTMLDivElement | null>;
   offsetRef: RefObject<{ x: number; y: number }>;
-  setOffset: Dispatch<SetStateAction<{ x: number; y: number }>>;
+  /** rAF-coalesced commit of `offsetRef` into React state — keeps the pan to ≤1 render per frame. */
+  commit: () => void;
   setSelectedIds: Dispatch<SetStateAction<Set<string>>>;
   onDoubleClickCanvas: (sx: number, sy: number) => void;
   onCanvasClick?: () => void;
@@ -73,7 +74,9 @@ export function useMarquee({
       const dx = e.clientX - panOrigin.current.mx;
       const dy = e.clientY - panOrigin.current.my;
       if (Math.abs(dx) > DRAG_THRESHOLD || Math.abs(dy) > DRAG_THRESHOLD) didDrag.current = true;
-      setOffset({ x: panOrigin.current.ox + dx, y: panOrigin.current.oy + dy });
+      // Absolute offset from the drag origin (robust to any ref clobber); committed to React ≤1×/frame.
+      offsetRef.current = { x: panOrigin.current.ox + dx, y: panOrigin.current.oy + dy };
+      commit();
       return;
     }
     if (isMarqueeing.current) {
@@ -92,7 +95,7 @@ export function useMarquee({
         setMarquee(m);
       }
     }
-  }, [setOffset, viewportRef]);
+  }, [commit, offsetRef, viewportRef]);
 
   const onPointerUp = useCallback(() => {
     isPanning.current = false;

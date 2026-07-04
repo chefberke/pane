@@ -1,4 +1,5 @@
 'use client';
+import { memo } from 'react';
 import dynamic from 'next/dynamic';
 import { AnimatePresence } from 'framer-motion';
 import type { Block, Frame } from '@/app/features/types';
@@ -91,7 +92,7 @@ interface Props {
 }
 
 /** The full floating overlay stack rendered above the canvas world (chrome, modals, popovers). */
-export default function CanvasOverlays({ canEdit, isFollowing, transient, modals, data, commentHandlers, actions }: Props) {
+function CanvasOverlays({ canEdit, isFollowing, transient, modals, data, commentHandlers, actions }: Props) {
   const { marquee, addPos, menu, hint, idleHint, commentTarget } = transient;
   const { isSearchOpen, isHelpOpen, isItemsOpen, lightbox, pdfLightbox } = modals;
   const { blocks, frames, blockById, frameById, scale, canUndo, canRedo, themeChoice, topRightSlot, toolbarStatus, toolbarActions } = data;
@@ -241,3 +242,5 @@ export default function CanvasOverlays({ canEdit, isFollowing, transient, modals
     </>
   );
 }
+
+export default memo(CanvasOverlays);

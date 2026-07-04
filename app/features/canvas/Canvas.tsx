@@ -34,6 +34,7 @@ import { useHistory } from './hooks/useHistory';
 import { usePinchZoom } from './hooks/usePinchZoom';
 import { useLatestRef } from './hooks/useLatestRef';
 import { useBlockBounds } from './hooks/useBlockBounds';
+import { useVisibleBlocks } from './hooks/useVisibleBlocks';
 import { useFollowViewport } from './hooks/useFollowViewport';
 import { useFrames } from '../frames/hooks/useFrames';
 import { useConnectors } from '../connectors/hooks/useConnectors';
@@ -78,7 +79,7 @@ export default function Canvas({
 
   // ─── Domain hooks ────────────────────────────────────────────────────────
   const { themeChoice, toggleTheme, setTheme } = useTheme();
-  const { offset, scale, offsetRef, scaleRef, setOffset, setScale, screenToCanvas, zoomBy, resetView, viewportRestoredRef } = useViewport(viewportRef, isFollowing, viewportKey);
+  const { offset, scale, offsetRef, scaleRef, setOffset, setScale, scheduleViewportCommit, screenToCanvas, zoomBy, resetView, viewportRestoredRef } = useViewport(viewportRef, isFollowing, viewportKey);
   const { blocks, setBlocks, isRefreshing, addBlockFromUrl, refreshEmbeds, updateBlock, deleteBlock } = useBlocks({ screenToCanvas, framesRef });
   const {
     frames, setFrames, createFromSelection, updateFrame, deleteFrame,
@@ -106,7 +107,7 @@ export default function Canvas({
   const [pdfLightbox, setPdfLightbox] = useState<{ url: string; title?: string } | null>(null);
   const selectedIdsRef = useLatestRef(selectedIds);
 
-  usePinchZoom({ viewportRef, setOffset, setScale, offsetRef, scaleRef, disabled: isFollowing });
+  usePinchZoom({ viewportRef, scheduleViewportCommit, offsetRef, scaleRef, disabled: isFollowing });
   usePersistence({ initialState, syncedAt, onSave, canEdit, blocks, frames, connectors, offset, scale, setBlocks, setFrames, setConnectors, setScale, setOffset, viewportRestoredRef });
   usePresenceSync({ selectedIds, selectedFrameId, onSelectionChange, offset, scale, isFollowing, onViewportChange, viewportRef });
   useFollowViewport({ isFollowing, followTarget, viewportRef, offset, scale, setOffset, setScale });
@@ -590,7 +591,7 @@ export default function Canvas({
   const { marquee, isPanMode, setIsPanMode, isPanning, onPointerDown, onPointerMove, onPointerUp, onDoubleClick } = useMarquee({
     viewportRef,
     offsetRef,
-    setOffset,
+    commit: scheduleViewportCommit,
     setSelectedIds,
     onDoubleClickCanvas: (sx, sy) => setAddPos({ x: sx, y: sy }),
     onCanvasClick: () => { setAddPos(null); setSelectedFrameId(null); setSelectedConnectorId(null); setCommentTarget(null); closeMenu(); },
@@ -667,7 +668,15 @@ export default function Canvas({
     groupSelected,
   }), [addTextNote, setIsPanMode, refreshEmbeds, undo, redo, alignSelected, zoomToFit, groupSelected]);
 
-  const toolbarStatus = { isPanMode, hasRefreshable: blocks.some(b => b.type === 'link' || b.type === 'github'), isRefreshing, canUndo, canRedo, selectedCount: selectedIds.size };
+  // Memoized so the CanvasOverlays `data` bag stays identity-stable across pan frames (no re-render/rescan).
+  const toolbarStatus = useMemo(() => ({
+    isPanMode,
+    hasRefreshable: blocks.some(b => b.type === 'link' || b.type === 'github'),
+    isRefreshing,
+    canUndo,
+    canRedo,
+    selectedCount: selectedIds.size,
+  }), [isPanMode, blocks, isRefreshing, canUndo, canRedo, selectedIds]);
   const inPanMode = isPanMode || isPanning.current;
 
   // The idle "double-click to add" hint may show only when editing is allowed and nothing else is going on.
@@ -692,11 +701,13 @@ export default function Canvas({
     return sorted.filter(f => !frameAncestorCollapsed(f, frames));
   }, [frames]);
 
-  // Skip blocks whose stored ancestor frame is collapsed.
-  const visibleBlocks = useMemo(() => {
+  // Skip blocks whose stored ancestor frame is collapsed, then cull to the viewport (+ overscan) so far
+  // off-screen cards aren't mounted/reconciled on large boards. `visibleBlocks` is the final rendered set.
+  const mountableBlocks = useMemo(() => {
     if (frames.length === 0) return blocks;
     return blocks.filter(b => !blockInsideCollapsedFrame(b, frames));
   }, [blocks, frames]);
+  const visibleBlocks = useVisibleBlocks(mountableBlocks, blockRectById, offset, scale, viewportRef);
 
   // Precompute member counts + descendant blocks per frame (for title bar count / collapsed thumbnails).
   const framePresent = useMemo(() => {
@@ -792,6 +803,33 @@ export default function Canvas({
 
   const peerLayer = useMemo(() => ({ peers: peerSelections, frameById }), [peerSelections, frameById]);
 
+  // Referentially-stable overlay bags so memo(CanvasOverlays) can skip on pure pan (none of these change
+  // when only `offset` moves). `data` carries `scale`, so a zoom still re-renders the overlay chrome — fine.
+  const overlayTransient = useMemo(
+    () => ({ marquee, addPos, menu, hint, commentTarget, idleHint }),
+    [marquee, addPos, menu, hint, commentTarget, idleHint],
+  );
+  const overlayModals = useMemo(
+    () => ({ isSearchOpen, isHelpOpen, isItemsOpen, lightbox, pdfLightbox }),
+    [isSearchOpen, isHelpOpen, isItemsOpen, lightbox, pdfLightbox],
+  );
+  const overlayData = useMemo(
+    () => ({ blocks, frames, blockById, frameById, scale, canUndo, canRedo, themeChoice, topRightSlot, toolbarStatus, toolbarActions }),
+    [blocks, frames, blockById, frameById, scale, canUndo, canRedo, themeChoice, topRightSlot, toolbarStatus, toolbarActions],
+  );
+  const overlayActions = useMemo(
+    () => ({
+      handleAddSubmit, setAddPos, closeMenu, setCommentTarget, navigateToBlock, navigateToFrame,
+      setIsSearchOpen, setIsHelpOpen, setIsItemsOpen, setLightbox, setPdfLightbox,
+      handleDeleteBlock, updateBlock, zoomBy, resetView, undo, redo, setTheme,
+    }),
+    [
+      handleAddSubmit, setAddPos, closeMenu, setCommentTarget, navigateToBlock, navigateToFrame,
+      setIsSearchOpen, setIsHelpOpen, setIsItemsOpen, setLightbox, setPdfLightbox,
+      handleDeleteBlock, updateBlock, zoomBy, resetView, undo, redo, setTheme,
+    ],
+  );
+
   return (
     <div
       ref={viewportRef}
@@ -859,30 +897,11 @@ export default function Canvas({
       <CanvasOverlays
         canEdit={canEdit}
         isFollowing={isFollowing}
-        transient={{ marquee, addPos, menu, hint, commentTarget, idleHint }}
-        modals={{ isSearchOpen, isHelpOpen, isItemsOpen, lightbox, pdfLightbox }}
-        data={{ blocks, frames, blockById, frameById, scale, canUndo, canRedo, themeChoice, topRightSlot, toolbarStatus, toolbarActions }}
+        transient={overlayTransient}
+        modals={overlayModals}
+        data={overlayData}
         commentHandlers={commentHandlers}
-        actions={{
-          handleAddSubmit,
-          setAddPos,
-          closeMenu,
-          setCommentTarget,
-          navigateToBlock,
-          navigateToFrame,
-          setIsSearchOpen,
-          setIsHelpOpen,
-          setIsItemsOpen,
-          setLightbox,
-          setPdfLightbox,
-          handleDeleteBlock,
-          updateBlock,
-          zoomBy,
-          resetView,
-          undo,
-          redo,
-          setTheme,
-        }}
+        actions={overlayActions}
       />
     </div>
   );

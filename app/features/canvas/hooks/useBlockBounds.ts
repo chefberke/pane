@@ -1,5 +1,5 @@
 'use client';
-import { useCallback, useMemo, useState } from 'react';
+import { useCallback, useEffect, useMemo, useState } from 'react';
 import type { Block, Frame } from '@/app/features/types';
 import type { Rect } from '../../frames/types';
 import { blockCollapsedAncestorFrame } from '../../frames/utils';
@@ -24,13 +24,12 @@ export function useBlockBounds(blocks: Block[], frames: Frame[]): {
   const [sizes, setSizes] = useState<Map<string, Size>>(() => new Map());
 
   const reportSize = useCallback((id: string, size: Size | null) => {
+    // A null report means the card unmounted. We deliberately RETAIN the last measured size here (sticky):
+    // viewport culling unmounts off-screen blocks, and dropping their measured size would revert their rect
+    // to the default and make connectors anchored to them jump. Sizes of genuinely deleted blocks are pruned
+    // by the effect below instead. (Collapsed-frame blocks are handled by the collapsedFrame branch in rectById.)
+    if (size === null) return;
     setSizes(prev => {
-      if (size === null) {
-        if (!prev.has(id)) return prev;
-        const next = new Map(prev);
-        next.delete(id);
-        return next;
-      }
       const cur = prev.get(id);
       if (cur && cur.width === size.width && cur.height === size.height) return prev;
       const next = new Map(prev);
@@ -38,6 +37,24 @@ export function useBlockBounds(blocks: Block[], frames: Frame[]): {
       return next;
     });
   }, []);
+
+  // Garbage-collect measured sizes for blocks that no longer exist so the sticky map can't grow unbounded
+  // across a create/delete-heavy session. This synchronizes the size cache with the external block list;
+  // it returns the previous map unchanged (no render) unless a block was actually removed — hence the
+  // targeted disable of the set-state-in-effect heuristic, which can't see that this is a rare GC pass.
+  useEffect(() => {
+    // eslint-disable-next-line react-hooks/set-state-in-effect
+    setSizes(prev => {
+      if (prev.size === 0) return prev;
+      const ids = new Set(blocks.map(b => b.id));
+      let stale = false;
+      for (const id of prev.keys()) if (!ids.has(id)) { stale = true; break; }
+      if (!stale) return prev;
+      const next = new Map(prev);
+      for (const id of next.keys()) if (!ids.has(id)) next.delete(id);
+      return next;
+    });
+  }, [blocks]);
 
   const rectById = useMemo(() => {
     const m = new Map<string, Rect>();

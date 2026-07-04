@@ -1,18 +1,17 @@
-import { useEffect, useRef, type RefObject, type Dispatch, type SetStateAction } from 'react';
+import { useEffect, useRef, type RefObject } from 'react';
 import { MIN_SCALE, MAX_SCALE } from '../constants';
 
 /** Tracks two-finger pinch on touch devices, updating scale and offset around the pinch midpoint. */
 export function usePinchZoom({
   viewportRef,
-  setOffset,
-  setScale,
+  scheduleViewportCommit,
   offsetRef,
   scaleRef,
   disabled = false,
 }: {
   viewportRef: RefObject<HTMLDivElement | null>;
-  setOffset: Dispatch<SetStateAction<{ x: number; y: number }>>;
-  setScale: Dispatch<SetStateAction<number>>;
+  /** rAF-coalesced commit of `offsetRef`/`scaleRef` into React state — keeps the pinch to ≤1 render per frame. */
+  scheduleViewportCommit: () => void;
   offsetRef: RefObject<{ x: number; y: number }>;
   scaleRef: RefObject<number>;
   disabled?: boolean;
@@ -55,8 +54,7 @@ export function usePinchZoom({
         };
         scaleRef.current = next;
         offsetRef.current = nextOffset;
-        setScale(next);
-        setOffset(nextOffset);
+        scheduleViewportCommit();
       }
       lastDist.current = dist;
     };
@@ -77,5 +75,5 @@ export function usePinchZoom({
       el.removeEventListener('pointerup', onUp);
       el.removeEventListener('pointercancel', onUp);
     };
-  }, [viewportRef, setOffset, setScale, offsetRef, scaleRef, disabled]);
+  }, [viewportRef, scheduleViewportCommit, offsetRef, scaleRef, disabled]);
 }

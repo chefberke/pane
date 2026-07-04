@@ -1,18 +1,48 @@
-import { useState, useCallback, useEffect, useRef, type RefObject } from 'react';
+import { useState, useCallback, useEffect, useRef, type RefObject, type Dispatch, type SetStateAction } from 'react';
 import { MIN_SCALE, MAX_SCALE, VIEWPORT_SAVE_DEBOUNCE_MS } from '../constants';
 import { useLatestRef } from './useLatestRef';
 import { loadViewport, saveViewport } from '../utils/storage';
 /** Manages pan offset, zoom scale, wheel zoom, and coordinate conversion for the canvas viewport. When `persistKey` is set, restores/saves this device's pan+zoom to localStorage. */
 export function useViewport(viewportRef: RefObject<HTMLDivElement | null>, disabled = false, persistKey?: string) {
-  const [offset, setOffset] = useState({ x: 0, y: 0 });
-  const [scale, setScale] = useState(1);
+  const [offset, setOffsetState] = useState({ x: 0, y: 0 });
+  const [scale, setScaleState] = useState(1);
 
-  const offsetRef = useLatestRef(offset);
-  const scaleRef = useLatestRef(scale);
+  // Refs are the single source of truth for the *live* viewport during a gesture. They are written
+  // synchronously by every setter (below) — not via a passive effect — so a wheel/pinch delta accumulated
+  // between rAF-coalesced commits can never be clobbered by a late-running effect flushing a stale snapshot.
+  const offsetRef = useRef(offset);
+  const scaleRef = useRef(scale);
   const disabledRef = useLatestRef(disabled);
   /** True once a per-device viewport was restored from localStorage — lets usePersistence skip the server viewport. */
   const viewportRestoredRef = useRef(false);
   const saveTimer = useRef<ReturnType<typeof setTimeout> | null>(null);
+
+  // Public setters that keep the refs in lock-step with React state (supports the functional form so
+  // callers like zoomBy/useFollowViewport can update relative to the current value without a stale read).
+  const setOffset = useCallback<Dispatch<SetStateAction<{ x: number; y: number }>>>((v) => {
+    const next = typeof v === 'function' ? v(offsetRef.current) : v;
+    offsetRef.current = next;
+    setOffsetState(next);
+  }, []);
+  const setScale = useCallback<Dispatch<SetStateAction<number>>>((v) => {
+    const next = typeof v === 'function' ? v(scaleRef.current) : v;
+    scaleRef.current = next;
+    setScaleState(next);
+  }, []);
+
+  // rAF-coalesced commit: gesture handlers mutate offsetRef/scaleRef synchronously (for 1:1 pointer math)
+  // and call this; it flushes the latest refs into React state at most once per animation frame, so the
+  // world re-renders ≤1×/frame no matter how fast the trackpad/wheel fires.
+  const commitRaf = useRef<number | null>(null);
+  const scheduleViewportCommit = useCallback(() => {
+    if (commitRaf.current !== null) return;
+    commitRaf.current = requestAnimationFrame(() => {
+      commitRaf.current = null;
+      setOffsetState(offsetRef.current);
+      setScaleState(scaleRef.current);
+    });
+  }, []);
+  useEffect(() => () => { if (commitRaf.current !== null) cancelAnimationFrame(commitRaf.current); }, []);
 
   // Restore this device's viewport from localStorage on mount, else center. Runs before
   // usePersistence's hydrate (hook order), so viewportRestoredRef is set in time for it to
@@ -20,21 +50,15 @@ export function useViewport(viewportRef: RefObject<HTMLDivElement | null>, disab
   // DOM measurement is a legitimate effect the set-state-in-effect heuristic can't detect.
   useEffect(() => {
     const restored = persistKey ? loadViewport(persistKey) : null;
-    let next: { offset: { x: number; y: number }; scale: number } | null = null;
     if (restored) {
       viewportRestoredRef.current = true;
-      next = restored;
+      setScale(restored.scale);
+      setOffset(restored.offset);
     } else {
       const el = viewportRef.current;
-      if (el) next = { offset: { x: el.clientWidth / 2, y: el.clientHeight / 2 }, scale: scaleRef.current };
+      if (el) setOffset({ x: el.clientWidth / 2, y: el.clientHeight / 2 });
     }
-    if (!next) return;
-    // Update refs synchronously so the debounced save / flush below can never persist the pre-restore {0,0}.
-    offsetRef.current = next.offset;
-    scaleRef.current = next.scale;
-    setOffset(next.offset);
-    setScale(next.scale);
-  }, [viewportRef, persistKey, offsetRef, scaleRef]);
+  }, [viewportRef, persistKey, setOffset, setScale]);
 
   // Debounced save of pan/zoom. Skipped while following a peer so the lerped transient view is never persisted.
   useEffect(() => {
@@ -46,7 +70,7 @@ export function useViewport(viewportRef: RefObject<HTMLDivElement | null>, disab
       saveViewport(persistKey, { offset: offsetRef.current, scale: scaleRef.current });
     }, VIEWPORT_SAVE_DEBOUNCE_MS);
     return () => { if (saveTimer.current) clearTimeout(saveTimer.current); };
-  }, [offset, scale, disabled, persistKey, offsetRef, scaleRef]);
+  }, [offset, scale, disabled, persistKey]);
 
   // Flush the latest viewport on F5 / tab close / unmount so a pan inside the debounce window isn't lost.
   useEffect(() => {
@@ -57,9 +81,10 @@ export function useViewport(viewportRef: RefObject<HTMLDivElement | null>, disab
     };
     window.addEventListener('beforeunload', flush);
     return () => { window.removeEventListener('beforeunload', flush); flush(); };
-  }, [persistKey, offsetRef, scaleRef, disabledRef]);
+  }, [persistKey, disabledRef]);
 
-  // Wheel zoom anchored to cursor position
+  // Wheel zoom anchored to cursor position (pan on plain scroll). Both branches accumulate into the refs
+  // synchronously and defer the React commit to the next animation frame via scheduleViewportCommit.
   useEffect(() => {
     const el = viewportRef.current;
     if (!el) return;
@@ -75,53 +100,50 @@ export function useViewport(viewportRef: RefObject<HTMLDivElement | null>, disab
         const prev = scaleRef.current;
         const next = Math.min(MAX_SCALE, Math.max(MIN_SCALE, prev * factor));
         const ratio = next / prev;
-        const nextOffset = {
+        scaleRef.current = next;
+        offsetRef.current = {
           x: cx - (cx - offsetRef.current.x) * ratio,
           y: cy - (cy - offsetRef.current.y) * ratio,
         };
-        scaleRef.current = next;
-        offsetRef.current = nextOffset;
-        setScale(next);
-        setOffset(nextOffset);
+        scheduleViewportCommit();
       } else {
-        const nextOffset = {
+        offsetRef.current = {
           x: offsetRef.current.x - e.deltaX,
           y: offsetRef.current.y - e.deltaY,
         };
-        offsetRef.current = nextOffset;
-        setOffset(nextOffset);
+        scheduleViewportCommit();
       }
     };
     el.addEventListener('wheel', onWheel, { passive: false });
     return () => el.removeEventListener('wheel', onWheel);
-  }, [viewportRef, scaleRef, offsetRef, disabled]);
+  }, [viewportRef, disabled, scheduleViewportCommit]);
 
   /** Converts screen coordinates to canvas world coordinates. */
   const screenToCanvas = useCallback((sx: number, sy: number) => ({
     x: (sx - offsetRef.current.x) / scaleRef.current,
     y: (sy - offsetRef.current.y) / scaleRef.current,
-  }), [offsetRef, scaleRef]);
+  }), []);
 
   /** Scales around the viewport center by `factor`. */
   const zoomBy = useCallback((factor: number) => {
-    setScale(s => {
-      const next = Math.min(MAX_SCALE, Math.max(MIN_SCALE, s * factor));
-      const el = viewportRef.current;
-      if (el) {
-        const cx = el.clientWidth / 2;
-        const cy = el.clientHeight / 2;
-        setOffset(o => ({ x: cx - (cx - o.x) * (next / s), y: cy - (cy - o.y) * (next / s) }));
-      }
-      return next;
-    });
-  }, [viewportRef]);
+    const prev = scaleRef.current;
+    const next = Math.min(MAX_SCALE, Math.max(MIN_SCALE, prev * factor));
+    const el = viewportRef.current;
+    if (el) {
+      const cx = el.clientWidth / 2;
+      const cy = el.clientHeight / 2;
+      const ratio = next / prev;
+      setOffset(o => ({ x: cx - (cx - o.x) * ratio, y: cy - (cy - o.y) * ratio }));
+    }
+    setScale(next);
+  }, [viewportRef, setOffset, setScale]);
 
   /** Resets scale to 1 and re-centers the viewport. */
   const resetView = useCallback(() => {
     setScale(1);
     const el = viewportRef.current;
     if (el) setOffset({ x: el.clientWidth / 2, y: el.clientHeight / 2 });
-  }, [viewportRef]);
+  }, [viewportRef, setOffset, setScale]);
 
-  return { offset, scale, offsetRef, scaleRef, setOffset, setScale, screenToCanvas, zoomBy, resetView, viewportRestoredRef };
+  return { offset, scale, offsetRef, scaleRef, setOffset, setScale, scheduleViewportCommit, screenToCanvas, zoomBy, resetView, viewportRestoredRef };
 }

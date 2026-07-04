@@ -13,6 +13,10 @@ export const HINT_FLASH_MS = 2500;
 export const SAVE_DEBOUNCE_MS = 500;
 /** Debounce before persisting the per-device viewport (pan/zoom) to localStorage, in ms. */
 export const VIEWPORT_SAVE_DEBOUNCE_MS = 300;
+/** Min interval (ms) between publishing our own pan/zoom to presence — peers following us don't need 60 Hz. */
+export const PRESENCE_VIEWPORT_THROTTLE_MS = 100;
+/** Extra world-space padding (px) around the viewport within which blocks stay mounted (viewport culling). */
+export const CULL_OVERSCAN = 1400;
 /** Screen-edge padding (px) reserved when zooming to fit all blocks. */
 export const ZOOM_TO_FIT_PADDING = 64;
 /** Stacking order for screen-space remote peer cursors. */
