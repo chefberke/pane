@@ -88,7 +88,6 @@ function ImportModal({ preview, busy, onConfirm, onClose }: Props) {
         )}
 
         <div className="flex justify-end gap-2">
-          <ModalButton label="Cancel" onClick={onClose} disabled={busy} />
           <ModalButton label={busy ? 'Importing…' : 'Import'} primary onClick={onConfirm} disabled={!canImport} />
         </div>
       </div>

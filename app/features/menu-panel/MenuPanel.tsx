@@ -23,6 +23,8 @@ import TrashModal from './TrashModal';
 import DeleteModal from './DeleteModal';
 import ExportModal from './ExportModal';
 import ImportModal from './ImportModal';
+import ImportChooserModal from './ImportChooserModal';
+import ImportPasteModal from './ImportPasteModal';
 import type { ThemeChoice, WorkspaceItem } from './types';
 
 /** A pending export: what to export, the file name, and the dialog title. */
@@ -50,9 +52,10 @@ export default function MenuPanel({ themeChoice, onSetTheme, onClose }: Props) {
   const [deleteTarget, setDeleteTarget] = useState<WorkspaceItem | null>(null);
   const [trashOpen, setTrashOpen] = useState(false);
   const [exportTarget, setExportTarget] = useState<ExportTarget | null>(null);
+  const [importStep, setImportStep] = useState<'choose' | 'paste' | null>(null);
   const [importPreview, setImportPreview] = useState<ImportPreview | null>(null);
   const [importBusy, setImportBusy] = useState(false);
-  const modalOpen = !!(renameTarget || deleteTarget || trashOpen || exportTarget || importPreview);
+  const modalOpen = !!(renameTarget || deleteTarget || trashOpen || exportTarget || importStep || importPreview);
 
   const { workspaces, deletedWorkspaces, createCanvas, rename, softDelete, restore, deleteForever } =
     useWorkspaceCrud(user?.id ?? null, onClose);
@@ -68,12 +71,19 @@ export default function MenuPanel({ themeChoice, onSetTheme, onClose }: Props) {
     setExportTarget({ title: 'Export all canvases', filename: exportFilename(null), rows: workspaces });
   }, [workspaces]);
 
-  const onPickImportFile = useCallback(() => fileInputRef.current?.click(), []);
+  const onOpenImport = useCallback(() => setImportStep('choose'), []);
+  const onUploadImport = useCallback(() => { setImportStep(null); fileInputRef.current?.click(); }, []);
+
+  const onSubmitImportPreview = useCallback((preview: ImportPreview) => {
+    setImportStep(null);
+    setImportPreview(preview);
+  }, []);
 
   const onFileChange = useCallback(async (e: React.ChangeEvent<HTMLInputElement>) => {
     const file = e.target.files?.[0];
     e.target.value = ''; // reset so re-selecting the same file re-triggers change
     if (!file) return;
+    setImportStep(null);
     setImportPreview(await readImportFile(file));
   }, [readImportFile]);
 
@@ -137,7 +147,7 @@ export default function MenuPanel({ themeChoice, onSetTheme, onClose }: Props) {
           hasUser={!!user}
           onNavigate={onNavigate}
           onCreateCanvas={user ? createCanvas : undefined}
-          onImport={onPickImportFile}
+          onImport={onOpenImport}
           actionMenu={actionMenu}
         />
 
@@ -194,6 +204,25 @@ export default function MenuPanel({ themeChoice, onSetTheme, onClose }: Props) {
           rows={exportTarget.rows}
           filename={exportTarget.filename}
           onClose={() => setExportTarget(null)}
+        />,
+        document.body
+      )}
+
+      {/* Import chooser — pick a source (mirrors ExportModal): paste JSON or upload a file */}
+      {importStep === 'choose' && createPortal(
+        <ImportChooserModal
+          onPaste={() => setImportStep('paste')}
+          onUpload={onUploadImport}
+          onClose={() => setImportStep(null)}
+        />,
+        document.body
+      )}
+
+      {/* Import paste modal — paste JSON text, then preview */}
+      {importStep === 'paste' && createPortal(
+        <ImportPasteModal
+          onSubmit={onSubmitImportPreview}
+          onClose={() => setImportStep(null)}
         />,
         document.body
       )}

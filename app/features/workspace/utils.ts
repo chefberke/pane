@@ -77,7 +77,7 @@ export function parseImport(raw: string): ImportPreview {
   try {
     parsed = JSON.parse(raw);
   } catch {
-    return { workspaces: [], errors: ['File is not valid JSON.'] };
+    return { workspaces: [], errors: ["That isn't valid JSON."] };
   }
 
   const candidates: { name: string; state: unknown }[] = [];
@@ -90,7 +90,7 @@ export function parseImport(raw: string): ImportPreview {
   } else if (parsed && typeof parsed === 'object' && Array.isArray((parsed as { blocks?: unknown }).blocks)) {
     candidates.push({ name: 'Imported canvas', state: parsed });
   } else {
-    return { workspaces: [], errors: ['Unrecognized file — expected a pane workspace export.'] };
+    return { workspaces: [], errors: ['Unrecognized data — expected a pane workspace export.'] };
   }
 
   const workspaces: ExportedWorkspace[] = [];
