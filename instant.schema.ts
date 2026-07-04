@@ -34,6 +34,15 @@ const _schema = i.schema({
       createdAt:   i.number(),
       acceptedAt:  i.number().optional(),
     }),
+    feedback: i.entity({
+      mood:      i.string(),          // mood label: 'Awful' | 'Poor' | 'Okay' | 'Good' | 'Great'
+      category:  i.string(),          // 'bug' | 'idea' | 'praise' | 'other'
+      message:   i.string(),
+      userId:    i.string().optional(),  // set when the submitter is signed in
+      email:     i.string().optional(),
+      path:      i.string().optional(),  // route the feedback was sent from
+      createdAt: i.number(),
+    }),
   },
   // Links let the permission rules in instant.perms.ts traverse relationships
   // (e.g. "is the caller a member of the workspace this share belongs to").

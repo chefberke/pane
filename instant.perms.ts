@@ -84,6 +84,19 @@ const rules = {
     },
   },
 
+  // ── feedback ──────────────────────────────────────────────────────────────────
+  // Written only by /api/feedback (admin token), which lets anonymous and signed-in
+  // users submit alike. The client never reads or writes it directly, so every
+  // action is denied here.
+  feedback: {
+    allow: {
+      view: 'false',
+      create: 'false',
+      update: 'false',
+      delete: 'false',
+    },
+  },
+
   // ── deny-all fallback ─────────────────────────────────────────────────────────
   // Any namespace not explicitly listed above — InstantDB built-ins ($users/$files)
   // and any future entity — defaults to closed, so a forgotten rule fails safe

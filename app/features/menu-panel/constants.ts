@@ -24,6 +24,23 @@ export const TRASH_MODAL_WIDTH = 380;
 export const DELETE_MODAL_WIDTH = 360;
 export const EXPORT_MODAL_WIDTH = 360;
 export const IMPORT_MODAL_WIDTH = 380;
+export const SETTINGS_MODAL_WIDTH = 380;
+export const FEEDBACK_MODAL_WIDTH = 400;
+
+/** Feedback modal: the 1–5 mood scale and category options (max length lives in @/app/lib/constants). */
+export const FEEDBACK_MOODS = [
+  { value: 1, emoji: '😞', label: 'Awful' },
+  { value: 2, emoji: '🙁', label: 'Poor' },
+  { value: 3, emoji: '😐', label: 'Okay' },
+  { value: 4, emoji: '🙂', label: 'Good' },
+  { value: 5, emoji: '🤩', label: 'Great' },
+] as const;
+export const FEEDBACK_CATEGORIES = [
+  { value: 'bug', label: 'Bug' },
+  { value: 'idea', label: 'Idea' },
+  { value: 'praise', label: 'Praise' },
+  { value: 'other', label: 'Other' },
+] as const;
 
 /** Stacking layers. */
 export const Z_PANEL = 200;
