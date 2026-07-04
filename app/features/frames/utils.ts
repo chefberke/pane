@@ -1,7 +1,7 @@
 import type { Block, Frame } from '@/app/features/types';
 import { BLOCK_SIZES } from '@/app/features/canvas/constants';
 import type { FrameMembership, Rect } from './types';
-import { FRAME_PADDING } from './constants';
+import { FRAME_PADDING, FRAME_COLLAPSED_W, FRAME_COLLAPSED_H } from './constants';
 
 // Tuning knobs for findEmptySpotInFrame's grid scan — single-consumer, kept local rather than in constants.ts.
 const EMPTY_SPOT_STEP = FRAME_PADDING;
@@ -27,6 +27,14 @@ export function frameOuterRect(frame: Frame): Rect {
 
 /** Returns the inner content rect of a frame. With the exterior header style, this equals the outer rect. */
 export function frameInnerRect(frame: Frame): Rect {
+  return { x: frame.x, y: frame.y, width: frame.width, height: frame.height };
+}
+
+/** The rect a frame occupies for drop hit-testing: a collapsed frame is only its visible pill, not its stored expanded rect. */
+export function frameHitRect(frame: Frame): Rect {
+  if (frame.collapsed) {
+    return { x: frame.x, y: frame.y, width: FRAME_COLLAPSED_W, height: FRAME_COLLAPSED_H };
+  }
   return { x: frame.x, y: frame.y, width: frame.width, height: frame.height };
 }
 
@@ -311,9 +319,9 @@ export function smallestFrameAtPoint(cx: number, cy: number, frames: Frame[], ex
   let bestArea = Infinity;
   for (const f of frames) {
     if (exclude?.has(f.id)) continue;
-    const inner = frameInnerRect(f);
-    if (cx < inner.x || cy < inner.y || cx > inner.x + inner.width || cy > inner.y + inner.height) continue;
-    const a = rectArea(frameOuterRect(f));
+    const hit = frameHitRect(f);
+    if (cx < hit.x || cy < hit.y || cx > hit.x + hit.width || cy > hit.y + hit.height) continue;
+    const a = rectArea(hit);
     if (a < bestArea) { best = f; bestArea = a; }
   }
   return best;

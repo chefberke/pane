@@ -75,6 +75,9 @@ export function useBlockDropTarget({ blocksRef, framesRef, selectedIdsRef, setBl
       affected.forEach(fid => {
         const f = currentFrames.find(x => x.id === fid);
         if (!f) return;
+        // Dropping into a collapsed frame keeps it collapsed and at its stored size — no auto-expand,
+        // no grow (mirrors the hover-preview skip below). The block just joins as a hidden member.
+        if (fid === hoverFrameId && f.collapsed) return;
         const isIncoming = fid === hoverFrameId;
         const r = computeFramePreviewRect(f, currentBlocks, currentFrames, ctx.draggedIds, projectedRects, isIncoming, blockRectByIdRef.current);
         newRects.set(fid, {
@@ -86,13 +89,8 @@ export function useBlockDropTarget({ blocksRef, framesRef, selectedIdsRef, setBl
       });
 
       setFrames(prev => prev.map(f => {
-        let next = f;
-        if (hoverFrameId && f.id === hoverFrameId && f.collapsed) {
-          next = { ...next, collapsed: false };
-        }
         const nr = newRects.get(f.id);
-        if (nr) next = { ...next, x: nr.x, y: nr.y, width: nr.width, height: nr.height };
-        return next;
+        return nr ? { ...f, x: nr.x, y: nr.y, width: nr.width, height: nr.height } : f;
       }));
       return;
     }

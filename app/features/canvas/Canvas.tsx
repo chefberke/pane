@@ -287,6 +287,9 @@ export default function Canvas({
     affected.forEach(fid => {
       const f = framesRef.current.find(x => x.id === fid);
       if (!f) return;
+      // Collapsed destination: leave it fully intact (no resize) so it stays collapsed at its stored
+      // size — the added blocks join as hidden members shown in the thumbnail, no visible growth.
+      if (fid === frameId && f.collapsed) return;
       // Membership can't be inferred purely by geometry here: a moved block may land right at
       // (or just past) the destination frame's stale edge, so force it in for `frameId` and force
       // it out of whichever frame(s) it's leaving, rather than trusting containment against old rects.
@@ -321,11 +324,8 @@ export default function Canvas({
     // Force the moved blocks into `frameId` (the overwrite also un-nests them from any prior frame).
     setBlocks(prev => prev.map(b => { const p = posMap.get(b.id); return p ? { ...b, ...p, parentFrameId: frameId } as Block : b; }));
     setFrames(prev => prev.map(f => {
-      let next = f;
-      if (f.id === frameId && f.collapsed) next = { ...next, collapsed: false };
       const nr = newRects.get(f.id);
-      if (nr) next = { ...next, ...nr };
-      return next;
+      return nr ? { ...f, ...nr } : f;
     }));
     setSelectedIds(new Set());
     setSelectedFrameId(frameId);
