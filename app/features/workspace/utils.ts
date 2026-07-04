@@ -1,7 +1,7 @@
 import type { Block } from '@/app/features/types';
 import type { CanvasState } from '../canvas/types';
 import type { ExportedWorkspace, WorkspaceExportEnvelope, ImportPreview } from './types';
-import { EXPORT_FORMAT, EXPORT_VERSION } from './constants';
+import { EXPORT_FORMAT, EXPORT_VERSION, MAX_WORKSPACE_NAME_LENGTH } from './constants';
 import { backfillBlockParents, backfillFrameParents } from '../frames/utils';
 
 /** Generates a UUID v4 for use as an InstantDB entity ID. */
@@ -58,6 +58,15 @@ export function buildExportEnvelope(workspaces: ExportedWorkspace[], exportedAt:
   return { format: EXPORT_FORMAT, version: EXPORT_VERSION, exportedAt, workspaces };
 }
 
+/** Sanitizes an untrusted display name: strips control chars/newlines, collapses whitespace, trims, and clamps to MAX_WORKSPACE_NAME_LENGTH. Falls back to `fallback` when empty. */
+export function normalizeWorkspaceName(raw: string, fallback: string): string {
+  const cleaned = raw
+    .replace(/[\u0000-\u001F\u007F]+/g, ' ') // control chars incl. newline/tab/CR -> space
+    .replace(/\s+/g, ' ')                    // collapse runs of whitespace
+    .trim();
+  return cleaned.slice(0, MAX_WORKSPACE_NAME_LENGTH).trim() || fallback;
+}
+
 /** Returns `desired`, or `desired N` with the lowest N≥2 not already in `existing`, so workspace names stay unique. */
 export function uniqueWorkspaceName(desired: string, existing: Iterable<string>): string {
   const taken = new Set<string>();
@@ -98,7 +107,7 @@ export function parseImport(raw: string): ImportPreview {
   if (envelope && Array.isArray(envelope.workspaces)) {
     for (const w of envelope.workspaces) {
       const item = w as Partial<ExportedWorkspace>;
-      candidates.push({ name: typeof item?.name === 'string' ? item.name : 'Imported canvas', state: item?.state });
+      candidates.push({ name: normalizeWorkspaceName(typeof item?.name === 'string' ? item.name : '', 'Imported canvas'), state: item?.state });
     }
   } else if (parsed && typeof parsed === 'object' && Array.isArray((parsed as { blocks?: unknown }).blocks)) {
     candidates.push({ name: 'Imported canvas', state: parsed });

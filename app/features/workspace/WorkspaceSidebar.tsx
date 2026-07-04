@@ -1,14 +1,16 @@
 /* eslint-disable @typescript-eslint/no-explicit-any */
 'use client';
-import { useCallback } from 'react';
+import { useCallback, useState } from 'react';
+import { createPortal } from 'react-dom';
 import { useRouter, useParams } from 'next/navigation';
 import { Plus, LogOut, Users } from 'lucide-react';
 import { db } from '@/app/lib/db';
 import { useAuth } from '../auth/hooks/useAuth';
 import { useWorkspaces } from './hooks/useWorkspaces';
+import NameModal from '../ui/NameModal';
 import WorkspaceItem from './WorkspaceItem';
 import { uid, uniqueWorkspaceName } from './utils';
-import { SIDEBAR_WIDTH } from './constants';
+import { SIDEBAR_WIDTH, MAX_WORKSPACE_NAME_LENGTH } from './constants';
 import type { Workspace } from './types';
 
 /** Persistent left sidebar listing the current user's workspaces. */
@@ -35,13 +37,15 @@ export default function WorkspaceSidebar() {
     .slice()
     .sort((a, b) => (a.createdAt ?? 0) - (b.createdAt ?? 0));
 
-  const handleNewWorkspace = useCallback(async () => {
+  const [createOpen, setCreateOpen] = useState(false);
+
+  const handleNewWorkspace = useCallback(async (name: string) => {
     if (!user) return;
     const wid = uid();
     await db.transact(
       db.tx.workspaces[wid].update({
         userId: user.id,
-        name: uniqueWorkspaceName('New canvas', ownedWorkspaces.map(w => w.name)),
+        name: uniqueWorkspaceName(name, ownedWorkspaces.map(w => w.name)),
         createdAt: Date.now(),
         updatedAt: Date.now(),
       })
@@ -55,6 +59,7 @@ export default function WorkspaceSidebar() {
   };
 
   return (
+    <>
     <aside
       className="flex flex-col h-full flex-shrink-0"
       style={{
@@ -126,7 +131,7 @@ export default function WorkspaceSidebar() {
           }}
           onMouseEnter={e => { (e.currentTarget as HTMLButtonElement).style.background = 'var(--color-bg-hover)'; }}
           onMouseLeave={e => { (e.currentTarget as HTMLButtonElement).style.background = 'transparent'; }}
-          onClick={handleNewWorkspace}
+          onClick={() => setCreateOpen(true)}
         >
           <Plus size={13} style={{ flexShrink: 0 }} />
           <span className="text-[13px]">New canvas</span>
@@ -163,6 +168,20 @@ export default function WorkspaceSidebar() {
         </button>
       </div>
     </aside>
+    {createOpen && createPortal(
+      <NameModal
+        title="New canvas"
+        description="Name your new canvas."
+        initialValue={uniqueWorkspaceName('New canvas', ownedWorkspaces.map(w => w.name))}
+        confirmLabel="Create"
+        existingNames={ownedWorkspaces.map(w => w.name)}
+        maxLength={MAX_WORKSPACE_NAME_LENGTH}
+        onSubmit={async name => { setCreateOpen(false); await handleNewWorkspace(name); }}
+        onClose={() => setCreateOpen(false)}
+      />,
+      document.body
+    )}
+    </>
   );
 }
 

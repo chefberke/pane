@@ -24,11 +24,15 @@ const rules = {
       // Owner or any linked member may read.
       view: "isOwner || (auth.id != null && auth.id in data.ref('members.userId'))",
       // Only authenticated users may create workspaces, and only their own.
+      // Name capped at 50 chars (see MAX_WORKSPACE_NAME_LENGTH); checked before the
+      // rate limit so an over-length write is rejected without burning a token.
       // Per-user rate limit so a script can't mass-create workspaces.
-      create: 'auth.id != null && auth.id == newData.userId && rateLimit.workspaceCreate.limit(auth.id)',
+      create: 'auth.id != null && auth.id == newData.userId && size(newData.name) <= 50 && rateLimit.workspaceCreate.limit(auth.id)',
       // Direct client writes are owner-only; everyone else uses /api/workspace/save.
+      // The modifiedFields guard applies the 50-char cap only when `name` actually
+      // changes, so state-only saves (stateJson/updatedAt) are never blocked.
       // Per-user rate limit caps runaway save loops (debounced saves stay well under).
-      update: 'isOwner && rateLimit.workspaceWrite.limit(auth.id)',
+      update: "isOwner && (!('name' in request.modifiedFields) || size(newData.name) <= 50) && rateLimit.workspaceWrite.limit(auth.id)",
       delete: 'isOwner',
     },
   },

@@ -3,6 +3,7 @@ import type { NextRequest } from 'next/server';
 import { adminDb, verifyBearer } from '@/app/lib/admin';
 import { rateLimitRequest } from '@/app/lib/rateLimit';
 import { logDevResult } from '@/app/lib/env';
+import { normalizeWorkspaceName } from '@/app/features/workspace/utils';
 
 // Match the per-canvas cap enforced on save, and bound how many canvases a single
 // import request may create so a bulk restore can't spam the database.
@@ -56,7 +57,7 @@ export async function POST(request: NextRequest) {
   const ids: string[] = [];
   const txs: any[] = [];
   for (const item of rawList) {
-    const name = typeof item.name === 'string' && item.name.trim() ? item.name.trim() : 'Imported canvas';
+    const name = normalizeWorkspaceName(typeof item.name === 'string' ? item.name : '', 'Imported canvas');
     const stateJson = typeof item.stateJson === 'string' ? item.stateJson : '';
     if (!stateJson) {
       logDevResult('workspace-import', 400, 'stateJson missing');

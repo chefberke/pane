@@ -26,13 +26,13 @@ export function useWorkspaceCrud(userId: string | null, onCloseMenu: () => void)
     .filter(w => w.deletedAt)
     .toSorted((a, b) => (b.deletedAt ?? 0) - (a.deletedAt ?? 0));
 
-  const createCanvas = useCallback(async () => {
+  const createCanvas = useCallback(async (name: string) => {
     if (!userId) return;
     const wid = crypto.randomUUID();
     await db.transact(
       db.tx.workspaces[wid].update({
         userId,
-        name: uniqueWorkspaceName('New canvas', workspaces.map(w => w.name)),
+        name: uniqueWorkspaceName(name, workspaces.map(w => w.name)),
         createdAt: Date.now(),
         updatedAt: Date.now(),
       })

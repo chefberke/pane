@@ -6,7 +6,9 @@ import { useRouter, usePathname } from 'next/navigation';
 import { db } from '@/app/lib/db';
 import { useAuth } from '../auth/hooks/useAuth';
 import { exportFilename, uniqueWorkspaceName } from '../workspace/utils';
+import { MAX_WORKSPACE_NAME_LENGTH } from '../workspace/constants';
 import type { ImportPreview } from '../workspace/types';
+import NameModal from '../ui/NameModal';
 import { PANEL_WIDTH, Z_PANEL } from './constants';
 import { useWorkspaceCrud } from './hooks/useWorkspaceCrud';
 import { useActionMenu } from './hooks/useActionMenu';
@@ -18,7 +20,6 @@ import WorkspaceList from './WorkspaceList';
 import ThemeSwitcher from './ThemeSwitcher';
 import SettingsGroup from './SettingsGroup';
 import ActionDropdown from './ActionDropdown';
-import RenameModal from './RenameModal';
 import TrashModal from './TrashModal';
 import DeleteModal from './DeleteModal';
 import ExportModal from './ExportModal';
@@ -48,6 +49,7 @@ export default function MenuPanel({ themeChoice, onSetTheme, onClose }: Props) {
   const pathname = usePathname();
   const { isLoading, user } = useAuth();
 
+  const [createOpen, setCreateOpen] = useState(false);
   const [renameTarget, setRenameTarget] = useState<WorkspaceItem | null>(null);
   const [deleteTarget, setDeleteTarget] = useState<WorkspaceItem | null>(null);
   const [trashOpen, setTrashOpen] = useState(false);
@@ -55,7 +57,7 @@ export default function MenuPanel({ themeChoice, onSetTheme, onClose }: Props) {
   const [importStep, setImportStep] = useState<'choose' | 'paste' | null>(null);
   const [importPreview, setImportPreview] = useState<ImportPreview | null>(null);
   const [importBusy, setImportBusy] = useState(false);
-  const modalOpen = !!(renameTarget || deleteTarget || trashOpen || exportTarget || importStep || importPreview);
+  const modalOpen = !!(createOpen || renameTarget || deleteTarget || trashOpen || exportTarget || importStep || importPreview);
 
   const { workspaces, deletedWorkspaces, createCanvas, rename, softDelete, restore, deleteForever } =
     useWorkspaceCrud(user?.id ?? null, onClose);
@@ -160,7 +162,7 @@ export default function MenuPanel({ themeChoice, onSetTheme, onClose }: Props) {
           currentPath={pathname}
           hasUser={!!user}
           onNavigate={onNavigate}
-          onCreateCanvas={user ? createCanvas : undefined}
+          onCreateCanvas={user ? () => setCreateOpen(true) : undefined}
           onImport={onOpenImport}
           actionMenu={actionMenu}
         />
@@ -253,11 +255,29 @@ export default function MenuPanel({ themeChoice, onSetTheme, onClose }: Props) {
       )}
 
       {/* Rename modal */}
+      {createOpen && createPortal(
+        <NameModal
+          title="New canvas"
+          description="Name your new canvas."
+          initialValue={uniqueWorkspaceName('New canvas', workspaces.map(w => w.name))}
+          confirmLabel="Create"
+          existingNames={workspaces.map(w => w.name)}
+          maxLength={MAX_WORKSPACE_NAME_LENGTH}
+          onSubmit={async name => { setCreateOpen(false); await createCanvas(name); }}
+          onClose={() => setCreateOpen(false)}
+        />,
+        document.body
+      )}
+
       {renameTarget && createPortal(
-        <RenameModal
-          workspace={renameTarget}
+        <NameModal
+          title="Rename canvas"
+          description="Enter a new name for this canvas."
+          initialValue={renameTarget.name}
+          confirmLabel="Save"
           existingNames={workspaces.filter(w => w.id !== renameTarget.id).map(w => w.name)}
-          onSave={async name => { await rename(renameTarget.id, name); setRenameTarget(null); }}
+          maxLength={MAX_WORKSPACE_NAME_LENGTH}
+          onSubmit={async name => { await rename(renameTarget.id, name); setRenameTarget(null); }}
           onClose={() => setRenameTarget(null)}
         />,
         document.body
