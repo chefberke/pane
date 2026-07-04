@@ -1,5 +1,4 @@
 'use client';
-/* eslint-disable @typescript-eslint/no-explicit-any */
 import { useCallback } from 'react';
 import { db } from '@/app/lib/db';
 import {
@@ -11,6 +10,7 @@ import {
   parseImport,
 } from '../../workspace/utils';
 import type { ExportedWorkspace, ImportPreview } from '../../workspace/types';
+import { postJson } from '@/app/lib/authedFetch';
 
 /** Where an export is delivered: a downloaded file or the clipboard. */
 export type ExportChannel = 'download' | 'copy';
@@ -79,15 +79,10 @@ export function useWorkspaceTransfer(): UseWorkspaceTransferResult {
 
   const importWorkspaces = useCallback(
     async (workspaces: ExportedWorkspace[]): Promise<string[]> => {
-      const token = (user as any)?.refresh_token;
-      if (!token) throw new Error('You must be signed in to import.');
-      const res = await fetch('/api/workspace/import', {
-        method: 'POST',
-        headers: { 'Content-Type': 'application/json', Authorization: `Bearer ${token}` },
-        body: JSON.stringify({
-          workspaces: workspaces.map((w) => ({ name: w.name, stateJson: serializeState(w.state) })),
-        }),
-      });
+      if (!user?.refresh_token) throw new Error('You must be signed in to import.');
+      const res = await postJson('/api/workspace/import', {
+        workspaces: workspaces.map((w) => ({ name: w.name, stateJson: serializeState(w.state) })),
+      }, user);
       if (!res.ok) {
         const err = (await res.json().catch(() => ({}))) as { error?: string };
         throw new Error(err.error || 'Import failed.');

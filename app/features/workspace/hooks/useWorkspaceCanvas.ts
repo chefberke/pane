@@ -1,6 +1,7 @@
 /* eslint-disable @typescript-eslint/no-explicit-any */
 import { useMemo, useCallback } from 'react';
 import { db } from '@/app/lib/db';
+import { postJson } from '@/app/lib/authedFetch';
 import type { CanvasState } from '../../canvas/types';
 import { serializeState, deserializeState } from '../utils';
 
@@ -57,13 +58,8 @@ export function useWorkspaceCanvas(workspaceId: string): UseWorkspaceCanvasResul
     } else {
       // Non-owner editor-members save through the server route, which verifies their
       // membership role with the admin token (client writes are blocked).
-      const token = (user as any)?.refresh_token;
-      if (!token) return;
-      void fetch('/api/workspace/save', {
-        method: 'POST',
-        headers: { 'Content-Type': 'application/json', Authorization: `Bearer ${token}` },
-        body: JSON.stringify({ id: workspaceId, stateJson }),
-      });
+      if (!user?.refresh_token) return;
+      void postJson('/api/workspace/save', { id: workspaceId, stateJson }, user);
     }
   }, [workspaceId, isOwner, user]);
 

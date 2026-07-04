@@ -1,8 +1,8 @@
-/* eslint-disable @typescript-eslint/no-explicit-any */
 'use client';
 import { use, useEffect, useRef, useState } from 'react';
 import { useRouter } from 'next/navigation';
 import { db } from '@/app/lib/db';
+import { authHeader } from '@/app/lib/authedFetch';
 import LoadingScreen from '@/app/features/loading/LoadingScreen';
 
 interface Props {
@@ -32,11 +32,10 @@ export default function InviteAcceptPage({ params }: Props) {
     ran.current = true;
 
     (async () => {
-      const authToken = (user as any)?.refresh_token;
       try {
         const res = await fetch(`/api/invite/${token}/accept`, {
           method: 'POST',
-          headers: { Authorization: `Bearer ${authToken}` },
+          headers: authHeader(user),
         });
         const data = await res.json().catch(() => ({}));
         if (res.ok && data.workspaceId) {
