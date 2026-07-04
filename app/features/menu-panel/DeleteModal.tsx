@@ -1,8 +1,9 @@
 'use client';
-import { memo, useEffect, useRef, useState } from 'react';
+import { memo, useEffect, useMemo, useRef, useState } from 'react';
 import { Copy, Check } from 'lucide-react';
 import { ModalButton } from './primitives';
 import { DELETE_MODAL_WIDTH, Z_MODAL, COPY_FEEDBACK_MS, DELETE_FOCUS_DELAY_MS } from './constants';
+import { deserializeState } from '../workspace/utils';
 import type { WorkspaceItem } from './types';
 
 interface Props {
@@ -11,12 +12,26 @@ interface Props {
   onClose: () => void;
 }
 
+/** Builds a human phrase for the canvas's deletable contents, e.g. "12 items and 3 groups". Empty parts are omitted. */
+function describeContents(items: number, groups: number): string {
+  const parts: string[] = [];
+  if (items > 0) parts.push(`${items} ${items === 1 ? 'item' : 'items'}`);
+  if (groups > 0) parts.push(`${groups} ${groups === 1 ? 'group' : 'groups'}`);
+  return parts.join(' and ');
+}
+
 /** Portaled destructive-delete modal that requires typing the canvas name to confirm. */
 function DeleteModal({ workspace, onConfirm, onClose }: Props) {
   const [value, setValue] = useState('');
   const [copied, setCopied] = useState(false);
   const inputRef = useRef<HTMLInputElement>(null);
   const confirmed = value === workspace.name;
+
+  const { items, groups } = useMemo(() => {
+    const state = workspace.stateJson ? deserializeState(workspace.stateJson) : null;
+    return { items: state?.blocks.length ?? 0, groups: state?.frames.length ?? 0 };
+  }, [workspace.stateJson]);
+  const hasContent = items > 0 || groups > 0;
 
   useEffect(() => { setTimeout(() => inputRef.current?.focus(), DELETE_FOCUS_DELAY_MS); }, []);
 
@@ -53,7 +68,12 @@ function DeleteModal({ workspace, onConfirm, onClose }: Props) {
         <div>
           <p className="text-[15px] font-semibold" style={{ color: 'var(--color-text-primary)' }}>Delete canvas?</p>
           <p className="text-[12px] mt-1 leading-relaxed" style={{ color: 'var(--color-text-secondary)' }}>
-            This will permanently delete <strong style={{ color: 'var(--color-text-primary)' }}>{workspace.name}</strong> and all its content. This action cannot be undone.
+            This will permanently delete <strong style={{ color: 'var(--color-text-primary)' }}>{workspace.name}</strong>
+            {hasContent ? (
+              <>, including <strong style={{ color: 'var(--color-text-primary)' }}>{describeContents(items, groups)}</strong>.</>
+            ) : (
+              <> and all its content.</>
+            )} This action cannot be undone.
           </p>
         </div>
 
