@@ -15,7 +15,8 @@ export const OAUTH_CALLBACK_PATH = '/auth/callback';
 /** Static copy for the left branding panel. */
 export const SIDE_PANEL_COPY = {
   wordmark: 'Pane',
-  tagline: 'An infinite visual workspace for saving and organizing internet content.',
+  headline: 'Your infinite canvas for the internet.',
+  tagline: 'Save, organize, and revisit everything worth keeping — all in one endless visual workspace.',
 } as const;
 
 /** Copy for the sign-in and sign-up pages. */

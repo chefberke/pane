@@ -3,6 +3,7 @@ import Link from 'next/link';
 import MagicCodeForm from './MagicCodeForm';
 import OAuthButtons from './OAuthButtons';
 import AuthSidePanel from './AuthSidePanel';
+import ThemeToggleTemp from './ThemeToggleTemp'; // ponytail: TEMPORARY — remove with the file
 import { COPY } from './constants';
 import type { AuthMode } from './types';
 
@@ -16,6 +17,7 @@ export default function AuthCard({ mode }: Props) {
 
   return (
     <div className="min-h-screen flex" style={{ background: 'var(--color-canvas)' }}>
+      <ThemeToggleTemp />
       <AuthSidePanel />
 
       <div className="flex-1 flex items-center justify-center px-6 py-12 md:px-16">
