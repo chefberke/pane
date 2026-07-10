@@ -64,3 +64,37 @@ function RowImpl({ icon, label, shortcut, onClick }: {
   );
 }
 export const Row = memo(RowImpl);
+
+/** Small on/off switch for boolean settings. */
+function ToggleImpl({ enabled, onToggle }: { enabled: boolean; onToggle: () => void }) {
+  return (
+    <button
+      type="button"
+      role="switch"
+      aria-checked={enabled}
+      onClick={onToggle}
+      className="relative flex-shrink-0 cursor-pointer transition-colors duration-150"
+      style={{
+        width: 38,
+        height: 22,
+        borderRadius: 11,
+        background: enabled ? 'var(--color-surface-action)' : 'var(--color-surface-sunken)',
+        border: 'none',
+      }}
+    >
+      <span
+        className="absolute rounded-full transition-transform duration-150"
+        style={{
+          top: 3,
+          left: 3,
+          width: 16,
+          height: 16,
+          background: 'var(--color-text-on-action)',
+          boxShadow: '0 1px 2px rgba(0,0,0,0.15)',
+          transform: enabled ? 'translateX(16px)' : 'translateX(0)',
+        }}
+      />
+    </button>
+  );
+}
+export const Toggle = memo(ToggleImpl);
