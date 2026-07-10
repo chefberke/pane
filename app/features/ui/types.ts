@@ -1,5 +1,5 @@
 /** Avatar size preset key. */
-export type AvatarSize = 'xs' | 'md' | 'lg';
+export type AvatarSize = 'xs' | 'md' | 'lg' | 'xl';
 
 /** Decorative ring drawn around an avatar (used for stacking separators / follow highlight). */
 export interface AvatarRing {

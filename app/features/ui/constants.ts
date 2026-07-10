@@ -22,6 +22,7 @@ export const AVATAR_SIZES: Record<AvatarSize, { box: number; font: number; dot: 
   xs: { box: 18, font: 9,  dot: 7  },
   md: { box: 28, font: 10, dot: 9  },
   lg: { box: 32, font: 11, dot: 10 },
+  xl: { box: 56, font: 20, dot: 12 },
 };
 
 /** Online presence indicator dot color (green). */
