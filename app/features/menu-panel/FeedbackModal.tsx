@@ -79,12 +79,7 @@ function FeedbackModal({ onClose, path }: Props) {
           <>
             {/* Header */}
             <div className="flex items-center gap-3 px-5 pt-5 pb-4">
-              <span
-                className="flex items-center justify-center flex-shrink-0"
-                style={{ width: 34, height: 34, borderRadius: 'var(--radius-xl)', background: 'var(--color-surface-sunken)', color: 'var(--color-text-secondary)' }}
-              >
-                <Megaphone size={17} />
-              </span>
+              <Megaphone size={17} style={{ color: 'var(--color-text-secondary)', flexShrink: 0 }} />
               <div className="flex-1 min-w-0">
                 <p className="text-[15px] font-semibold leading-tight" style={{ color: 'var(--color-text-primary)' }}>Send feedback</p>
                 <p className="text-[12px] leading-tight mt-0.5" style={{ color: 'var(--color-text-muted)' }}>Tell us what&apos;s working and what&apos;s not</p>
