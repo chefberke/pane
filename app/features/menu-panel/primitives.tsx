@@ -65,6 +65,26 @@ function RowImpl({ icon, label, shortcut, onClick }: {
 }
 export const Row = memo(RowImpl);
 
+/** Settings row: label + optional description on the left, a control (toggle/button/value) on the right. */
+function SettingRowImpl({ label, description, children }: {
+  label: string;
+  description?: string;
+  children?: React.ReactNode;
+}) {
+  return (
+    <div className="flex items-center gap-4 py-2.5">
+      <div className="flex-1 min-w-0">
+        <p className="text-[13px] font-medium leading-tight" style={{ color: 'var(--color-text-primary)' }}>{label}</p>
+        {description && (
+          <p className="text-[12px] leading-tight mt-1" style={{ color: 'var(--color-text-muted)' }}>{description}</p>
+        )}
+      </div>
+      {children}
+    </div>
+  );
+}
+export const SettingRow = memo(SettingRowImpl);
+
 /** Small on/off switch for boolean settings. */
 function ToggleImpl({ enabled, onToggle }: { enabled: boolean; onToggle: () => void }) {
   return (

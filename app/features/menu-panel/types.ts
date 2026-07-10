@@ -2,6 +2,9 @@ import type { THEME_CHOICES, FEEDBACK_CATEGORIES } from './constants';
 
 export type ThemeChoice = typeof THEME_CHOICES[number];
 
+/** Active section tab in the settings modal. */
+export type SettingsTab = 'account' | 'appearance' | 'canvases';
+
 /** A feedback category the user picks in the feedback modal. */
 export type FeedbackCategory = typeof FEEDBACK_CATEGORIES[number]['value'];
 

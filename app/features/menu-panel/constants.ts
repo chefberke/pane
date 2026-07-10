@@ -1,6 +1,6 @@
-import { Sun, Moon, Monitor } from 'lucide-react';
+import { Sun, Moon, Monitor, User, Palette, Layers } from 'lucide-react';
 import type { LucideIcon } from 'lucide-react';
-import type { ThemeChoice } from './types';
+import type { ThemeChoice, SettingsTab } from './types';
 
 export const APP_NAME = 'pane';
 export const PANEL_WIDTH = 240;
@@ -24,8 +24,17 @@ export const TRASH_MODAL_WIDTH = 380;
 export const DELETE_MODAL_WIDTH = 360;
 export const EXPORT_MODAL_WIDTH = 360;
 export const IMPORT_MODAL_WIDTH = 380;
-export const SETTINGS_MODAL_WIDTH = 380;
+export const SETTINGS_MODAL_WIDTH = 720;
+export const SETTINGS_MODAL_HEIGHT = 540;
+export const SETTINGS_SIDEBAR_WIDTH = 180;
 export const FEEDBACK_MODAL_WIDTH = 400;
+
+/** Settings modal sidebar tabs: section key, label, and icon. */
+export const SETTINGS_TABS: { key: SettingsTab; label: string; Icon: LucideIcon }[] = [
+  { key: 'account', label: 'Account', Icon: User },
+  { key: 'appearance', label: 'Appearance', Icon: Palette },
+  { key: 'canvases', label: 'Canvases', Icon: Layers },
+];
 
 /** Feedback modal: the 1–5 mood scale and category options (max length lives in @/app/lib/constants). */
 export const FEEDBACK_MOODS = [

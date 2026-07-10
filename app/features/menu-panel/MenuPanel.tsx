@@ -88,6 +88,16 @@ export default function MenuPanel({ themeChoice, onSetTheme, showDots, onSetShow
     () => ({ email: user?.email ?? null, isAuthed: !!user, onSignIn, onSignUp, onSignOut }),
     [user, onSignIn, onSignUp, onSignOut],
   );
+  const settingsCanvases = useMemo(
+    () => ({
+      count: workspaces.length,
+      trashCount: deletedWorkspaces.length,
+      isSynced: !!user,
+      // Trash renders at the same z-layer as Settings — close Settings first to avoid stacked overlays.
+      onOpenTrash: () => { setSettingsOpen(false); setTrashOpen(true); },
+    }),
+    [workspaces.length, deletedWorkspaces.length, user],
+  );
 
   // The canvas viewport has a native wheel listener that pans/zooms. Since the panel renders
   // inside the viewport, stop wheel events here so the scrollable canvas list scrolls under the
@@ -334,6 +344,7 @@ export default function MenuPanel({ themeChoice, onSetTheme, showDots, onSetShow
           theme={settingsTheme}
           dotGrid={settingsDotGrid}
           account={settingsAccount}
+          canvases={settingsCanvases}
           onClose={() => setSettingsOpen(false)}
         />,
         document.body

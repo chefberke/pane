@@ -1,11 +1,11 @@
 'use client';
-import { memo, useEffect } from 'react';
+import { memo, useEffect, useRef, useState } from 'react';
 import { Settings, X } from 'lucide-react';
-import Avatar from '../ui/Avatar';
-import ThemeSwitcher from './ThemeSwitcher';
-import { ModalButton, Toggle } from './primitives';
-import { SETTINGS_MODAL_WIDTH, Z_MODAL } from './constants';
-import type { ThemeChoice } from './types';
+import SettingsAccount from './SettingsAccount';
+import SettingsAppearance from './SettingsAppearance';
+import SettingsCanvases from './SettingsCanvases';
+import { SETTINGS_MODAL_WIDTH, SETTINGS_MODAL_HEIGHT, SETTINGS_SIDEBAR_WIDTH, SETTINGS_TABS, Z_MODAL } from './constants';
+import type { SettingsTab, ThemeChoice } from './types';
 
 interface Props {
   theme: { choice: ThemeChoice; onSet: (choice: ThemeChoice) => void };
@@ -17,28 +17,29 @@ interface Props {
     onSignUp: () => void;
     onSignOut: () => void;
   };
+  canvases: { count: number; trashCount: number; isSynced: boolean; onOpenTrash: () => void };
   onClose: () => void;
 }
 
-/** Section wrapper with an uppercase label and a top divider. */
-function Section({ label, children }: { label: string; children: React.ReactNode }) {
-  return (
-    <div className="px-5 py-4" style={{ borderTop: '1px solid var(--color-border-subtle)' }}>
-      <div className="mb-3 text-[11px] font-semibold uppercase tracking-wider" style={{ color: 'var(--color-text-muted)' }}>
-        {label}
-      </div>
-      {children}
-    </div>
-  );
-}
+/** Portaled two-pane settings dialog: sidebar tabs (account / appearance / canvases) + content. */
+function SettingsModal({ theme, dotGrid, account, canvases, onClose }: Props) {
+  const [tab, setTab] = useState<SettingsTab>('account');
+  const containerRef = useRef<HTMLDivElement>(null);
 
-/** Portaled settings dialog: appearance (theme) and account (identity + auth actions). */
-function SettingsModal({ theme, dotGrid, account, onClose }: Props) {
   useEffect(() => {
     const onKey = (e: KeyboardEvent) => { if (e.key === 'Escape') { e.preventDefault(); onClose(); } };
     window.addEventListener('keydown', onKey);
     return () => window.removeEventListener('keydown', onKey);
   }, [onClose]);
+
+  // The canvas viewport has a native wheel listener that pans/zooms; keep scroll inside the modal.
+  useEffect(() => {
+    const el = containerRef.current;
+    if (!el) return;
+    const stop = (e: WheelEvent) => e.stopPropagation();
+    el.addEventListener('wheel', stop);
+    return () => el.removeEventListener('wheel', stop);
+  }, []);
 
   return (
     <div
@@ -48,9 +49,11 @@ function SettingsModal({ theme, dotGrid, account, onClose }: Props) {
       onMouseDown={e => { if (e.target === e.currentTarget) onClose(); }}
     >
       <div
+        ref={containerRef}
         className="flex flex-col overflow-hidden"
         style={{
-          width: SETTINGS_MODAL_WIDTH,
+          width: `min(${SETTINGS_MODAL_WIDTH}px, 92vw)`,
+          height: `min(${SETTINGS_MODAL_HEIGHT}px, 86vh)`,
           background: 'var(--color-surface)',
           border: '1px solid var(--color-border-default)',
           borderRadius: 'var(--radius-4xl)',
@@ -58,17 +61,9 @@ function SettingsModal({ theme, dotGrid, account, onClose }: Props) {
         }}
       >
         {/* Header */}
-        <div className="flex items-center gap-3 px-5 pt-5 pb-4">
-          <span
-            className="flex items-center justify-center flex-shrink-0"
-            style={{ width: 34, height: 34, borderRadius: 'var(--radius-xl)', background: 'var(--color-surface-sunken)', color: 'var(--color-text-secondary)' }}
-          >
-            <Settings size={17} />
-          </span>
-          <div className="flex-1 min-w-0">
-            <p className="text-[15px] font-semibold leading-tight" style={{ color: 'var(--color-text-primary)' }}>Settings</p>
-            <p className="text-[12px] leading-tight mt-0.5" style={{ color: 'var(--color-text-muted)' }}>Appearance and account</p>
-          </div>
+        <div className="flex items-center gap-2.5 px-5 py-4" style={{ borderBottom: '1px solid var(--color-border-subtle)' }}>
+          <Settings size={17} style={{ color: 'var(--color-text-secondary)', flexShrink: 0 }} />
+          <p className="flex-1 text-[15px] font-semibold" style={{ color: 'var(--color-text-primary)' }}>Settings</p>
           <button
             type="button"
             aria-label="Close"
@@ -82,39 +77,45 @@ function SettingsModal({ theme, dotGrid, account, onClose }: Props) {
           </button>
         </div>
 
-        <Section label="Appearance">
-          <ThemeSwitcher themeChoice={theme.choice} onSetTheme={theme.onSet} />
-          <div className="flex items-center gap-3 mt-4">
-            <div className="flex-1 min-w-0">
-              <p className="text-[13px] font-medium leading-tight" style={{ color: 'var(--color-text-primary)' }}>Dot grid</p>
-              <p className="text-[11px] leading-tight mt-0.5" style={{ color: 'var(--color-text-muted)' }}>Show a dotted background behind your canvas</p>
-            </div>
-            <Toggle enabled={dotGrid.enabled} onToggle={dotGrid.onToggle} />
-          </div>
-        </Section>
+        {/* Body: sidebar + content */}
+        <div className="flex-1 flex min-h-0">
+          <nav
+            className="flex flex-col gap-0.5 py-3 px-2.5 flex-shrink-0"
+            style={{ width: SETTINGS_SIDEBAR_WIDTH, borderRight: '1px solid var(--color-border-subtle)' }}
+          >
+            {SETTINGS_TABS.map(({ key, label, Icon }) => {
+              const active = tab === key;
+              return (
+                <button
+                  key={key}
+                  type="button"
+                  className="flex items-center gap-2.5 px-2.5 text-left cursor-pointer"
+                  style={{
+                    height: 34,
+                    borderRadius: 'var(--radius-lg)',
+                    background: active ? 'var(--color-bg-active)' : 'transparent',
+                    color: active ? 'var(--color-text-primary)' : 'var(--color-text-secondary)',
+                    fontSize: 13,
+                    fontWeight: active ? 600 : 500,
+                    transition: 'background var(--duration-fast)',
+                  }}
+                  onMouseEnter={e => { if (!active) (e.currentTarget as HTMLButtonElement).style.background = 'var(--color-bg-hover)'; }}
+                  onMouseLeave={e => { if (!active) (e.currentTarget as HTMLButtonElement).style.background = 'transparent'; }}
+                  onClick={() => setTab(key)}
+                >
+                  <Icon size={15} style={{ flexShrink: 0 }} />
+                  {label}
+                </button>
+              );
+            })}
+          </nav>
 
-        <Section label="Account">
-          {account.isAuthed ? (
-            <div className="flex items-center gap-3">
-              <Avatar name={account.email ?? ''} seed={account.email ?? ''} size="md" />
-              <div className="flex-1 min-w-0">
-                <p className="text-[13px] font-medium leading-tight truncate" style={{ color: 'var(--color-text-primary)' }}>{account.email}</p>
-                <p className="text-[11px] leading-tight mt-0.5" style={{ color: 'var(--color-text-muted)' }}>Signed in</p>
-              </div>
-              <ModalButton label="Sign out" onClick={account.onSignOut} />
-            </div>
-          ) : (
-            <div className="flex flex-col gap-3">
-              <p className="text-[12px] leading-relaxed" style={{ color: 'var(--color-text-secondary)' }}>
-                Sign in to sync your canvases across devices and share them.
-              </p>
-              <div className="flex gap-2">
-                <ModalButton label="Sign in" primary onClick={account.onSignIn} />
-                <ModalButton label="Sign up" onClick={account.onSignUp} />
-              </div>
-            </div>
-          )}
-        </Section>
+          <div className="flex-1 overflow-y-auto px-6 py-6">
+            {tab === 'account' && <SettingsAccount {...account} />}
+            {tab === 'appearance' && <SettingsAppearance theme={theme} dotGrid={dotGrid} />}
+            {tab === 'canvases' && <SettingsCanvases {...canvases} />}
+          </div>
+        </div>
       </div>
     </div>
   );
