@@ -56,6 +56,7 @@ interface Data {
   canUndo: boolean;
   canRedo: boolean;
   themeChoice: ThemeChoice;
+  showDots: boolean;
   topRightSlot?: React.ReactNode;
   toolbarStatus: ToolbarStatus;
   toolbarActions: ToolbarActions;
@@ -80,6 +81,7 @@ interface Actions {
   undo: () => void;
   redo: () => void;
   setTheme: (choice: ThemeChoice) => void;
+  setShowDots: (v: boolean) => void;
 }
 
 interface Props {
@@ -96,7 +98,7 @@ interface Props {
 function CanvasOverlays({ canEdit, isFollowing, transient, modals, data, commentHandlers, actions }: Props) {
   const { marquee, addPos, menu, hint, idleHint, commentTarget } = transient;
   const { isSearchOpen, isHelpOpen, isItemsOpen, lightbox, pdfLightbox } = modals;
-  const { blocks, frames, blockById, frameById, scale, canUndo, canRedo, themeChoice, topRightSlot, toolbarStatus, toolbarActions } = data;
+  const { blocks, frames, blockById, frameById, scale, canUndo, canRedo, themeChoice, showDots, topRightSlot, toolbarStatus, toolbarActions } = data;
 
   // The hamburger menu (Help modal / "Keyboard shortcuts" row) opens this cheat-sheet via a
   // window event, avoiding a cross-feature import from menu-panel into canvas.
@@ -243,7 +245,7 @@ function CanvasOverlays({ canEdit, isFollowing, transient, modals, data, comment
         </div>
       )}
 
-      {!isFollowing && <MenuButton themeChoice={themeChoice} onSetTheme={actions.setTheme} />}
+      {!isFollowing && <MenuButton themeChoice={themeChoice} onSetTheme={actions.setTheme} showDots={showDots} onSetShowDots={actions.setShowDots} />}
 
       <AnimatePresence>
         {blocks.length === 0 && frames.length === 0 && !addPos && <EmptyState key="empty" />}

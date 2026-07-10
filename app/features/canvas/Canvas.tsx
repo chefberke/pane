@@ -25,6 +25,7 @@ import type { FrameHandlers, FrameRenameRequest, Rect } from '../frames/types';
 import { FRAME_MIN_H, FRAME_MIN_W, FRAME_PADDING, TIDY_GAP } from '../frames/constants';
 import { useViewport } from './hooks/useViewport';
 import { useTheme } from './hooks/useTheme';
+import { useDotGrid } from './hooks/useDotGrid';
 import { useBlocks } from './hooks/useBlocks';
 import { useSelection } from './hooks/useSelection';
 import { useMarquee } from './hooks/useMarquee';
@@ -79,6 +80,7 @@ export default function Canvas({
 
   // ─── Domain hooks ────────────────────────────────────────────────────────
   const { themeChoice, toggleTheme, setTheme } = useTheme();
+  const { showDots, setShowDots } = useDotGrid();
   const { offset, scale, offsetRef, scaleRef, setOffset, setScale, scheduleViewportCommit, screenToCanvas, zoomBy, resetView, viewportRestoredRef } = useViewport(viewportRef, isFollowing, viewportKey);
   const { blocks, setBlocks, isRefreshing, addBlockFromUrl, refreshEmbeds, updateBlock, deleteBlock } = useBlocks({ screenToCanvas, framesRef });
   const {
@@ -814,19 +816,19 @@ export default function Canvas({
     [isSearchOpen, isHelpOpen, isItemsOpen, lightbox, pdfLightbox],
   );
   const overlayData = useMemo(
-    () => ({ blocks, frames, blockById, frameById, scale, canUndo, canRedo, themeChoice, topRightSlot, toolbarStatus, toolbarActions }),
-    [blocks, frames, blockById, frameById, scale, canUndo, canRedo, themeChoice, topRightSlot, toolbarStatus, toolbarActions],
+    () => ({ blocks, frames, blockById, frameById, scale, canUndo, canRedo, themeChoice, showDots, topRightSlot, toolbarStatus, toolbarActions }),
+    [blocks, frames, blockById, frameById, scale, canUndo, canRedo, themeChoice, showDots, topRightSlot, toolbarStatus, toolbarActions],
   );
   const overlayActions = useMemo(
     () => ({
       handleAddSubmit, setAddPos, closeMenu, setCommentTarget, navigateToBlock, navigateToFrame,
       setIsSearchOpen, setIsHelpOpen, setIsItemsOpen, setLightbox, setPdfLightbox,
-      handleDeleteBlock, updateBlock, zoomBy, resetView, undo, redo, setTheme,
+      handleDeleteBlock, updateBlock, zoomBy, resetView, undo, redo, setTheme, setShowDots,
     }),
     [
       handleAddSubmit, setAddPos, closeMenu, setCommentTarget, navigateToBlock, navigateToFrame,
       setIsSearchOpen, setIsHelpOpen, setIsItemsOpen, setLightbox, setPdfLightbox,
-      handleDeleteBlock, updateBlock, zoomBy, resetView, undo, redo, setTheme,
+      handleDeleteBlock, updateBlock, zoomBy, resetView, undo, redo, setTheme, setShowDots,
     ],
   );
 
@@ -864,7 +866,7 @@ export default function Canvas({
       onDragOver={canEdit && !isFollowing ? (e => e.preventDefault()) : undefined}
       onDrop={canEdit && !isFollowing ? handleCanvasDrop : undefined}
     >
-      <DotGrid offset={offset} scale={scale} />
+      {showDots && <DotGrid offset={offset} scale={scale} />}
 
       <CanvasWorld
         offset={offset}

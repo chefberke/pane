@@ -3,12 +3,13 @@ import { memo, useEffect } from 'react';
 import { Settings, X } from 'lucide-react';
 import Avatar from '../ui/Avatar';
 import ThemeSwitcher from './ThemeSwitcher';
-import { ModalButton } from './primitives';
+import { ModalButton, Toggle } from './primitives';
 import { SETTINGS_MODAL_WIDTH, Z_MODAL } from './constants';
 import type { ThemeChoice } from './types';
 
 interface Props {
   theme: { choice: ThemeChoice; onSet: (choice: ThemeChoice) => void };
+  dotGrid: { enabled: boolean; onToggle: () => void };
   account: {
     email: string | null;
     isAuthed: boolean;
@@ -32,7 +33,7 @@ function Section({ label, children }: { label: string; children: React.ReactNode
 }
 
 /** Portaled settings dialog: appearance (theme) and account (identity + auth actions). */
-function SettingsModal({ theme, account, onClose }: Props) {
+function SettingsModal({ theme, dotGrid, account, onClose }: Props) {
   useEffect(() => {
     const onKey = (e: KeyboardEvent) => { if (e.key === 'Escape') { e.preventDefault(); onClose(); } };
     window.addEventListener('keydown', onKey);
@@ -83,6 +84,13 @@ function SettingsModal({ theme, account, onClose }: Props) {
 
         <Section label="Appearance">
           <ThemeSwitcher themeChoice={theme.choice} onSetTheme={theme.onSet} />
+          <div className="flex items-center gap-3 mt-4">
+            <div className="flex-1 min-w-0">
+              <p className="text-[13px] font-medium leading-tight" style={{ color: 'var(--color-text-primary)' }}>Dot grid</p>
+              <p className="text-[11px] leading-tight mt-0.5" style={{ color: 'var(--color-text-muted)' }}>Show a dotted background behind your canvas</p>
+            </div>
+            <Toggle enabled={dotGrid.enabled} onToggle={dotGrid.onToggle} />
+          </div>
         </Section>
 
         <Section label="Account">

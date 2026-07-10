@@ -8,10 +8,12 @@ import type { ThemeChoice } from '../canvas/hooks/useTheme';
 interface Props {
   themeChoice: ThemeChoice;
   onSetTheme: (choice: ThemeChoice) => void;
+  showDots: boolean;
+  onSetShowDots: (v: boolean) => void;
 }
 
 /** Floating menu button pinned to the top-left, opens an anchored dropdown panel on click. */
-export default function MenuButton({ themeChoice, onSetTheme }: Props) {
+export default function MenuButton({ themeChoice, onSetTheme, showDots, onSetShowDots }: Props) {
   const [open, setOpen] = useState(false);
   const [tipVisible, setTipVisible] = useState(false);
   const timer = useRef<ReturnType<typeof setTimeout> | null>(null);
@@ -82,7 +84,7 @@ export default function MenuButton({ themeChoice, onSetTheme }: Props) {
       </button>
 
       <AnimatePresence>
-        {open && <MenuPanel themeChoice={themeChoice} onSetTheme={onSetTheme} onClose={() => setOpen(false)} />}
+        {open && <MenuPanel themeChoice={themeChoice} onSetTheme={onSetTheme} showDots={showDots} onSetShowDots={onSetShowDots} onClose={() => setOpen(false)} />}
       </AnimatePresence>
     </div>
   );

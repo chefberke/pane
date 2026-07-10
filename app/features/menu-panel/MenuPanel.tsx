@@ -41,11 +41,13 @@ interface ExportTarget {
 interface Props {
   themeChoice: ThemeChoice;
   onSetTheme: (choice: ThemeChoice) => void;
+  showDots: boolean;
+  onSetShowDots: (v: boolean) => void;
   onClose: () => void;
 }
 
 /** Anchored dropdown menu panel that opens below the MenuButton. */
-export default function MenuPanel({ themeChoice, onSetTheme, onClose }: Props) {
+export default function MenuPanel({ themeChoice, onSetTheme, showDots, onSetShowDots, onClose }: Props) {
   const panelRef = useRef<HTMLDivElement>(null);
   const fileInputRef = useRef<HTMLInputElement>(null);
   const router = useRouter();
@@ -81,6 +83,7 @@ export default function MenuPanel({ themeChoice, onSetTheme, onClose }: Props) {
   const onOpenShortcuts = useCallback(() => { onClose(); window.dispatchEvent(new Event(OPEN_SHORTCUTS_EVENT)); }, [onClose]);
 
   const settingsTheme = useMemo(() => ({ choice: themeChoice, onSet: onSetTheme }), [themeChoice, onSetTheme]);
+  const settingsDotGrid = useMemo(() => ({ enabled: showDots, onToggle: () => onSetShowDots(!showDots) }), [showDots, onSetShowDots]);
   const settingsAccount = useMemo(
     () => ({ email: user?.email ?? null, isAuthed: !!user, onSignIn, onSignUp, onSignOut }),
     [user, onSignIn, onSignUp, onSignOut],
@@ -329,6 +332,7 @@ export default function MenuPanel({ themeChoice, onSetTheme, onClose }: Props) {
       {settingsOpen && createPortal(
         <SettingsModal
           theme={settingsTheme}
+          dotGrid={settingsDotGrid}
           account={settingsAccount}
           onClose={() => setSettingsOpen(false)}
         />,
